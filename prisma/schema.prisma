@@ -1,0 +1,180 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Sex {
+  M
+  F
+  O
+}
+
+enum LabSection {
+  BIOQUIMICA
+  HEMATOLOGIA
+  INMUNOLOGIA
+  ORINA
+  HECES
+  OTROS
+}
+
+enum ValueType {
+  NUMBER
+  TEXT
+  SELECT
+}
+
+enum OrderStatus {
+  PENDIENTE
+  EN_PROCESO
+  COMPLETADO
+  ENTREGADO
+  ANULADO
+}
+
+enum OrderItemStatus {
+  PENDIENTE
+  EN_PROCESO
+  COMPLETADO
+}
+
+model Patient {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  dni       String   @unique
+  firstName String
+  lastName  String
+  birthDate DateTime
+  sex       Sex
+  phone     String?
+  address   String?
+  email     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  orders LabOrder[]
+
+  @@index([dni])
+  @@index([code])
+}
+
+model LabTest {
+  id                    String   @id @default(cuid())
+  code                  String   @unique
+  name                  String
+  section               LabSection
+  price                 Float
+  estimatedTimeMinutes  Int?
+  isActive              Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  deletedAt             DateTime?
+
+  template LabTemplate?
+  items    LabOrderItem[]
+
+  @@index([section])
+  @@index([isActive])
+}
+
+model LabTemplate {
+  id        String   @id @default(cuid())
+  labTestId String   @unique
+  title     String
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  labTest LabTest           @relation(fields: [labTestId], references: [id])
+  items   LabTemplateItem[]
+}
+
+model LabTemplateItem {
+  id           String   @id @default(cuid())
+  templateId   String
+  groupName    String?
+  paramName    String
+  unit         String?
+  refRangeText String?
+  refMin       Float?
+  refMax       Float?
+  valueType    ValueType
+  selectOptions String   @default("[]")
+  order        Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  template LabTemplate        @relation(fields: [templateId], references: [id])
+  resultItems LabResultItem[]
+}
+
+model LabOrder {
+  id          String      @id @default(cuid())
+  orderCode   String      @unique
+  patientId   String
+  requestedBy String?
+  notes       String?
+  status      OrderStatus @default(PENDIENTE)
+  totalPrice  Float
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  deliveredAt DateTime?
+
+  patient Patient        @relation(fields: [patientId], references: [id])
+  items   LabOrderItem[]
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model LabOrderItem {
+  id               String          @id @default(cuid())
+  orderId          String
+  labTestId        String
+  status           OrderItemStatus @default(PENDIENTE)
+  priceSnapshot    Float
+  templateSnapshot Json?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  order    LabOrder   @relation(fields: [orderId], references: [id])
+  labTest  LabTest    @relation(fields: [labTestId], references: [id])
+  result   LabResult?
+}
+
+model LabResult {
+  id          String   @id @default(cuid())
+  orderItemId String   @unique
+  reportedAt  DateTime?
+  reportedBy  String?
+  comment     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  orderItem LabOrderItem    @relation(fields: [orderItemId], references: [id])
+  items     LabResultItem[]
+}
+
+model LabResultItem {
+  id               String   @id @default(cuid())
+  resultId         String
+  templateItemId   String?
+  paramNameSnapshot String
+  unitSnapshot     String?
+  refTextSnapshot  String?
+  refMinSnapshot   Float?
+  refMaxSnapshot   Float?
+  value            String
+  isOutOfRange     Boolean  @default(false)
+  order            Int
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  result       LabResult       @relation(fields: [resultId], references: [id])
+  templateItem LabTemplateItem? @relation(fields: [templateItemId], references: [id])
+}

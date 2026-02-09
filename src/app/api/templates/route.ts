@@ -1,0 +1,77 @@
+import { NextResponse } from "next/server";
+
+import { prisma } from "@/lib/prisma";
+import { templateSchema } from "@/features/lab/schemas";
+import { stringifySelectOptions } from "@/lib/json-helpers";
+
+export async function GET() {
+  try {
+    const items = await prisma.labTemplate.findMany({
+      include: { labTest: true, items: true },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return NextResponse.json({ items });
+  } catch (error) {
+    console.error("Error fetching templates:", error);
+    return NextResponse.json(
+      { error: "Error al obtener plantillas" },
+      { status: 500 },
+    );
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const payload = await request.json();
+    const parsed = templateSchema.parse(payload);
+
+    const existing = await prisma.labTemplate.findFirst({
+      where: { labTestId: parsed.labTestId },
+    });
+    if (existing) {
+      return NextResponse.json(
+        { error: "Ya existe una plantilla para este análisis." },
+        { status: 400 },
+      );
+    }
+
+    const item = await prisma.labTemplate.create({
+      data: {
+        labTestId: parsed.labTestId,
+        title: parsed.title,
+        notes: parsed.notes ?? null,
+        items: {
+          createMany: {
+            data: parsed.items.map((i) => ({
+              groupName: i.groupName ?? null,
+              paramName: i.paramName,
+              unit: i.unit ?? null,
+              refRangeText: i.refRangeText ?? null,
+              refMin: i.refMin ?? null,
+              refMax: i.refMax ?? null,
+              valueType: i.valueType,
+              selectOptions: stringifySelectOptions(i.selectOptions ?? []),
+              order: i.order,
+            })),
+          },
+        },
+      },
+      include: { items: true },
+    });
+
+    return NextResponse.json({ item });
+  } catch (error) {
+    console.error("Error creating template:", error);
+    if (error instanceof Error && error.name === "ZodError") {
+      return NextResponse.json(
+        { error: "Datos inválidos", details: error },
+        { status: 400 },
+      );
+    }
+    return NextResponse.json(
+      { error: "Error al crear plantilla" },
+      { status: 500 },
+    );
+  }
+}
