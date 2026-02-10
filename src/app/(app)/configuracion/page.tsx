@@ -14,7 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Pencil, Users, Shield, UserPlus, Trash2 } from "lucide-react";
+import { Pencil, Users, Shield, UserPlus, Trash2, Stamp } from "lucide-react";
 
 type Role = {
   id: string;
@@ -42,6 +42,8 @@ export default function ConfiguracionPage() {
   const [userEdit, setUserEdit] = useState<User | null>(null);
   const [userCreate, setUserCreate] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [printConfig, setPrintConfig] = useState<{ stampEnabled: boolean; stampImageUrl: string | null } | null>(null);
+  const [stampUploading, setStampUploading] = useState(false);
 
   const loadRoles = async () => {
     const res = await fetch("/api/roles");
@@ -59,8 +61,16 @@ export default function ConfiguracionPage() {
     }
   };
 
+  const loadPrintConfig = async () => {
+    const res = await fetch("/api/config/print");
+    if (res.ok) {
+      const data = await res.json();
+      setPrintConfig(data);
+    }
+  };
+
   useEffect(() => {
-    Promise.all([loadRoles(), loadUsers()]).finally(() => setLoading(false));
+    Promise.all([loadRoles(), loadUsers(), loadPrintConfig()]).finally(() => setLoading(false));
   }, []);
 
   const handleSaveRole = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -141,6 +151,68 @@ export default function ConfiguracionPage() {
     }
   };
 
+  const handleStampEnabledChange = async (enabled: boolean) => {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/config/print", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stampEnabled: enabled }),
+      });
+      if (!res.ok) throw new Error("Error al guardar");
+      const data = await res.json();
+      setPrintConfig(data);
+      toast.success(enabled ? "Sello activado en PDFs" : "Sello desactivado");
+    } catch {
+      toast.error("No se pudo actualizar");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleStampUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setStampUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("stamp", file);
+      const res = await fetch("/api/config/print/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Error al subir");
+      setPrintConfig((prev) => (prev ? { ...prev, stampImageUrl: data.stampImageUrl } : null));
+      toast.success("Sello subido correctamente");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al subir el sello");
+    } finally {
+      setStampUploading(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleRemoveStamp = async () => {
+    if (!confirm("¿Quitar el sello de los PDFs? Deberá subir uno nuevo para volver a usarlo.")) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/config/print", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stampImageUrl: null, stampEnabled: false }),
+      });
+      if (!res.ok) throw new Error("Error al guardar");
+      const data = await res.json();
+      setPrintConfig(data);
+      toast.success("Sello eliminado");
+    } catch {
+      toast.error("No se pudo eliminar");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleDeleteUser = async (user: User) => {
     if (!confirm(`¿Eliminar al usuario ${user.email}? No podrá iniciar sesión.`)) return;
     setSaving(true);
@@ -167,15 +239,15 @@ export default function ConfiguracionPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Configuración</h1>
-        <p className="text-slate-500 mt-1">
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Configuración</h1>
+        <p className="text-slate-500 dark:text-slate-400 mt-1">
           Roles y usuarios del sistema
         </p>
       </div>
 
       <Card>
         <CardHeader className="flex flex-row items-center gap-2">
-          <Shield className="h-5 w-5 text-slate-600" />
+          <Shield className="h-5 w-5 text-slate-600 dark:text-slate-400" />
           <CardTitle>Roles</CardTitle>
         </CardHeader>
         <CardContent>
@@ -230,9 +302,77 @@ export default function ConfiguracionPage() {
       </Card>
 
       <Card>
+        <CardHeader className="flex flex-row items-center gap-2">
+          <Stamp className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+          <CardTitle>Sello virtual para PDFs</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            Incluya un sello o firma digital en cada hoja de los informes de laboratorio exportados a PDF.
+          </p>
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="stampEnabled"
+              checked={printConfig?.stampEnabled ?? false}
+              disabled={!printConfig?.stampImageUrl || saving}
+              onChange={(e) => handleStampEnabledChange(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300"
+            />
+            <Label htmlFor="stampEnabled">
+              Incluir sello en los PDFs
+              {!printConfig?.stampImageUrl && (
+                <span className="ml-2 text-xs text-amber-600">(Suba una imagen primero)</span>
+              )}
+            </Label>
+          </div>
+          <div className="flex flex-wrap items-center gap-4 pt-2">
+            <div className="flex items-center gap-2">
+              <input
+                type="file"
+                id="stampFile"
+                accept="image/png,image/jpeg,image/jpg,image/webp"
+                onChange={handleStampUpload}
+                disabled={stampUploading}
+                className="hidden"
+              />
+              <Label htmlFor="stampFile" className="cursor-pointer">
+                <span
+                  className={`inline-flex items-center justify-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm font-medium hover:bg-slate-100 ${stampUploading ? "opacity-50 cursor-not-allowed" : ""}`}
+                >
+                  {stampUploading ? "Subiendo…" : printConfig?.stampImageUrl ? "Cambiar sello" : "Subir sello"}
+                </span>
+              </Label>
+            </div>
+            {printConfig?.stampImageUrl && (
+              <>
+                <div className="flex items-center gap-2">
+                  <img
+                    src={printConfig.stampImageUrl}
+                    alt="Vista previa del sello"
+                    className="h-16 w-auto max-w-32 object-contain border border-slate-200 rounded"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRemoveStamp}
+                  disabled={saving}
+                  className="text-slate-500 hover:text-red-600"
+                >
+                  Quitar sello
+                </Button>
+              </>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-slate-600" />
+            <Users className="h-5 w-5 text-slate-600 dark:text-slate-400" />
             <CardTitle>Usuarios</CardTitle>
           </div>
           <Button onClick={() => setUserCreate(true)} size="sm">

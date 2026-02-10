@@ -91,7 +91,7 @@ export function PatientForm({ patientId, defaultValues }: Props) {
         <div className="space-y-2">
           <Label>Sexo</Label>
           <select
-            className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"
+            className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             {...form.register("sex")}
           >
             <option value="M">M</option>

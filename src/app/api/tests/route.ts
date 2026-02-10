@@ -8,9 +8,11 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search")?.trim();
 
+    const activeOnly = searchParams.get("active") === "true";
     const items = await prisma.labTest.findMany({
       where: {
         deletedAt: null,
+        ...(activeOnly ? { isActive: true } : {}),
         ...(search
           ? {
               OR: [

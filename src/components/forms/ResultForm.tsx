@@ -8,6 +8,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
 import { resultSchema } from "@/features/lab/schemas";
+import { useAutosaveResults } from "@/hooks/useAutosaveResults";
+import { AutosaveIndicator } from "./AutosaveIndicator";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -95,6 +97,14 @@ export function ResultForm({
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "items",
+  });
+
+  const { status, savedAt, saveOnBlur, retry } = useAutosaveResults({
+    orderId,
+    itemId,
+    form,
+    debounceMs: 1000,
+    enabled: fields.length > 0,
   });
 
   // Rellenar "Reportado por" con el usuario en sesión cuando no hay valor previo
@@ -213,7 +223,14 @@ export function ResultForm({
   };
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+    <form
+      onSubmit={form.handleSubmit(onSubmit)}
+      onBlur={() => saveOnBlur()}
+      className="space-y-6"
+    >
+      <div className="flex items-center justify-between gap-4 min-h-6">
+        <AutosaveIndicator status={status} savedAt={savedAt} onRetry={retry} />
+      </div>
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <Label>Reportado por</Label>

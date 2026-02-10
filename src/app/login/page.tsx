@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 
 function LoginForm() {
   const router = useRouter();
@@ -37,13 +38,16 @@ function LoginForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
-      <div className="w-full max-w-sm space-y-8 rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
+    <div className="relative flex min-h-screen items-center justify-center bg-slate-100 px-4 dark:bg-slate-900">
+      <div className="absolute right-4 top-4">
+        <ThemeToggle />
+      </div>
+      <div className="w-full max-w-sm space-y-8 rounded-xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <div className="text-center">
-          <h1 className="text-2xl font-semibold text-slate-900">
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
             Sistema LIS
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             Inicia sesión para continuar
           </p>
         </div>
@@ -59,7 +63,6 @@ function LoginForm() {
               required
               autoComplete="email"
               disabled={loading}
-              className="bg-white"
             />
           </div>
           <div className="space-y-2">
@@ -73,7 +76,6 @@ function LoginForm() {
               required
               autoComplete="current-password"
               disabled={loading}
-              className="bg-white"
             />
           </div>
           <Button type="submit" className="w-full" disabled={loading}>
@@ -88,8 +90,8 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="flex min-h-screen items-center justify-center bg-slate-100">
-        <div className="text-slate-500">Cargando...</div>
+      <div className="flex min-h-screen items-center justify-center bg-slate-100 dark:bg-slate-900">
+        <div className="text-slate-500 dark:text-slate-400">Cargando...</div>
       </div>
     }>
       <LoginForm />

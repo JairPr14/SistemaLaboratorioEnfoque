@@ -1,0 +1,384 @@
+"use client";
+
+import { useState, useMemo, useEffect } from "react";
+import Link from "next/link";
+
+import { formatCurrency, formatDate } from "@/lib/format";
+import { parseSelectOptions } from "@/lib/json-helpers";
+import { getTemplateItemsForPatient } from "@/lib/template-helpers";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { OrderItemResultDialog } from "@/components/orders/OrderItemResultDialog";
+import { DeleteButton } from "@/components/common/DeleteButton";
+
+type OrderItem = {
+  id: string;
+  status: string;
+  priceSnapshot: number | { toString(): string };
+  templateSnapshot: unknown;
+  labTest: {
+    code: string;
+    name: string;
+    section: string;
+    template: {
+      items: Array<{
+        id: string;
+        groupName: string | null;
+        paramName: string;
+        unit: string | null;
+        refRangeText: string | null;
+        refMin: number | null;
+        refMax: number | null;
+        valueType: string;
+        selectOptions: string;
+        order: number;
+      }>;
+    } | null;
+  };
+  result: {
+    reportedBy: string | null;
+    comment: string | null;
+    items: Array<{
+      id: string;
+      templateItemId: string | null;
+      paramNameSnapshot: string;
+      unitSnapshot: string | null;
+      refTextSnapshot: string | null;
+      refMinSnapshot: number | null;
+      refMaxSnapshot: number | null;
+      value: string;
+      isOutOfRange: boolean;
+      order: number;
+    }>;
+  } | null;
+};
+
+type Order = {
+  id: string;
+  items: OrderItem[];
+};
+
+type Props = {
+  order: Order;
+  /** Abre automáticamente el diálogo de captura de este item (ej. desde worklist) */
+  defaultOpenItemId?: string;
+};
+
+export function OrderItemsTableWithPrint({ order, defaultOpenItemId }: Props) {
+  const [openItemId, setOpenItemId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (defaultOpenItemId) setOpenItemId(defaultOpenItemId);
+  }, [defaultOpenItemId]);
+
+  const printableItemIds = useMemo(
+    () =>
+      order.items
+        .filter((item) => item.result && item.result.items.length > 0)
+        .map((item) => item.id),
+    [order.items],
+  );
+
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(
+    () => new Set(printableItemIds),
+  );
+
+  const toggleItem = (itemId: string) => {
+    if (!printableItemIds.includes(itemId)) return;
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      return next;
+    });
+  };
+
+  const selectAll = () => setSelectedIds(new Set(printableItemIds));
+  const deselectAll = () => setSelectedIds(new Set());
+
+  const allSelected =
+    printableItemIds.length > 0 &&
+    printableItemIds.every((id) => selectedIds.has(id));
+  const someSelected = selectedIds.size > 0;
+
+  const printUrl =
+    selectedIds.size > 0
+      ? `/orders/${order.id}/print?items=${Array.from(selectedIds).join(",")}`
+      : `/orders/${order.id}/print`;
+
+  if (order.items.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Análisis solicitados</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="py-8 text-center text-slate-500">
+            <p>No hay análisis solicitados en esta orden.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <CardTitle>Análisis solicitados</CardTitle>
+        {printableItemIds.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={allSelected ? deselectAll : selectAll}
+              className="text-sm text-slate-600 hover:text-slate-900 hover:underline"
+            >
+              {allSelected ? "Deseleccionar todos" : "Seleccionar todos"}
+            </button>
+            <span className="text-slate-300">|</span>
+            <Link href={printUrl} target="_blank" rel="noopener noreferrer">
+              <Button size="sm" className="gap-2">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                Imprimir seleccionados en PDF
+                {someSelected && (
+                  <span className="ml-1 text-xs opacity-90">
+                    ({selectedIds.size})
+                  </span>
+                )}
+              </Button>
+            </Link>
+          </div>
+        )}
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              {printableItemIds.length > 0 && (
+                <TableHead className="w-10">Sel.</TableHead>
+              )}
+              <TableHead>Análisis</TableHead>
+              <TableHead>Sección</TableHead>
+              <TableHead>Estado</TableHead>
+              <TableHead>Resultados</TableHead>
+              <TableHead>Precio</TableHead>
+              <TableHead className="text-right">Acciones</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {order.items.map((item) => {
+              const hasResults =
+                item.result && (item.result.items?.length ?? 0) > 0;
+              const canSelect = printableItemIds.includes(item.id);
+              const isSelected = selectedIds.has(item.id);
+
+              const templateItems = item.result
+                ? (() => {
+                    const templateItemsFromSnapshot = getTemplateItemsForPatient(
+                      item.templateSnapshot,
+                      item.labTest.template
+                        ? {
+                            items: item.labTest.template.items.map((t) => ({
+                              id: t.id,
+                              groupName: t.groupName,
+                              paramName: t.paramName,
+                              unit: t.unit,
+                              refRangeText: t.refRangeText,
+                              refMin: t.refMin ? Number(t.refMin) : null,
+                              refMax: t.refMax ? Number(t.refMax) : null,
+                              valueType: t.valueType as "NUMBER" | "TEXT" | "SELECT",
+                              selectOptions: parseSelectOptions(t.selectOptions),
+                              order: t.order,
+                            })),
+                          }
+                        : null,
+                    );
+
+                    return item.result!.items.map((r, idx) => {
+                      const originalItem = templateItemsFromSnapshot.find(
+                        (t) => t.id === r.templateItemId,
+                      );
+                      return {
+                        id: r.templateItemId || `snapshot-${idx}`,
+                        groupName: originalItem?.groupName || null,
+                        paramName: r.paramNameSnapshot,
+                        unit: r.unitSnapshot,
+                        refRangeText: r.refTextSnapshot,
+                        refMin: r.refMinSnapshot ? Number(r.refMinSnapshot) : null,
+                        refMax: r.refMaxSnapshot ? Number(r.refMaxSnapshot) : null,
+                        valueType: (originalItem?.valueType || "NUMBER") as
+                          | "NUMBER"
+                          | "TEXT"
+                          | "SELECT",
+                        selectOptions: originalItem?.selectOptions || [],
+                        order: r.order,
+                      };
+                    });
+                  })()
+                : getTemplateItemsForPatient(
+                    item.templateSnapshot,
+                    item.labTest.template
+                      ? {
+                          items: item.labTest.template.items.map((t) => ({
+                            id: t.id,
+                            groupName: t.groupName,
+                            paramName: t.paramName,
+                            unit: t.unit,
+                            refRangeText: t.refRangeText,
+                            refMin: t.refMin ? Number(t.refMin) : null,
+                            refMax: t.refMax ? Number(t.refMax) : null,
+                            valueType: t.valueType as "NUMBER" | "TEXT" | "SELECT",
+                            selectOptions: parseSelectOptions(t.selectOptions),
+                            order: t.order,
+                          })),
+                        }
+                      : null,
+                  );
+
+              const originalTemplateItems = item.labTest.template
+                ? getTemplateItemsForPatient(null, {
+                    items: item.labTest.template.items.map((t) => ({
+                      id: t.id,
+                      groupName: t.groupName,
+                      paramName: t.paramName,
+                      unit: t.unit,
+                      refRangeText: t.refRangeText,
+                      refMin: t.refMin ? Number(t.refMin) : null,
+                      refMax: t.refMax ? Number(t.refMax) : null,
+                      valueType: t.valueType as "NUMBER" | "TEXT" | "SELECT",
+                      selectOptions: parseSelectOptions(t.selectOptions),
+                      order: t.order,
+                    })),
+                  })
+                : [];
+
+              const finalTemplateItems =
+                templateItems.length > 0 ? templateItems : originalTemplateItems;
+
+              return (
+                <TableRow key={item.id}>
+                  {printableItemIds.length > 0 && (
+                    <TableCell className="w-10">
+                      {canSelect ? (
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleItem(item.id)}
+                          className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400"
+                        />
+                      ) : (
+                        <span className="text-slate-300">-</span>
+                      )}
+                    </TableCell>
+                  )}
+                  <TableCell className="font-medium">
+                    {item.labTest.code} - {item.labTest.name}
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-xs text-slate-600">
+                      {item.labTest.section}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">{item.status}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    {hasResults ? (
+                      <Badge
+                        variant="success"
+                        className="bg-emerald-100 text-emerald-700"
+                      >
+                        {item.result!.items.length} parámetros
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant="warning"
+                        className="bg-amber-100 text-amber-700"
+                      >
+                        Pendiente
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {formatCurrency(Number(item.priceSnapshot))}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2 flex-wrap">
+                      {finalTemplateItems.length > 0 || item.labTest.template ? (
+                        <OrderItemResultDialog
+                          orderId={order.id}
+                          itemId={item.id}
+                          testName={item.labTest.name}
+                          testCode={item.labTest.code}
+                          templateItems={finalTemplateItems}
+                          open={openItemId === item.id}
+                          onOpenChange={(open) => setOpenItemId(open ? item.id : null)}
+                          existing={
+                            item.result
+                              ? {
+                                  reportedBy: item.result.reportedBy,
+                                  comment: item.result.comment,
+                                  items: item.result.items.map((r) => ({
+                                    templateItemId: r.templateItemId,
+                                    paramNameSnapshot: r.paramNameSnapshot,
+                                    unitSnapshot: r.unitSnapshot,
+                                    refTextSnapshot: r.refTextSnapshot,
+                                    refMinSnapshot: r.refMinSnapshot
+                                      ? Number(r.refMinSnapshot)
+                                      : null,
+                                    refMaxSnapshot: r.refMaxSnapshot
+                                      ? Number(r.refMaxSnapshot)
+                                      : null,
+                                    value: r.value,
+                                    isOutOfRange: r.isOutOfRange,
+                                    order: r.order,
+                                  })),
+                                }
+                              : undefined
+                          }
+                        />
+                      ) : (
+                        <span className="text-xs text-slate-400">
+                          Sin plantilla
+                        </span>
+                      )}
+                      <DeleteButton
+                        url={`/api/orders/${order.id}/items/${item.id}`}
+                        label="Quitar"
+                      />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}

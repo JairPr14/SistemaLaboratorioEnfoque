@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Dark mode: activar con clase .dark en html */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: 255 255 255;
   --foreground: 15 23 42;
@@ -9,6 +12,17 @@
   --primary: 15 23 42;
   --primary-foreground: 248 250 252;
   --danger: 220 38 38;
+}
+
+.dark {
+  --background: 15 23 42;
+  --foreground: 248 250 252;
+  --muted: 30 41 59;
+  --muted-foreground: 148 163 184;
+  --border: 51 65 85;
+  --primary: 248 250 252;
+  --primary-foreground: 15 23 42;
+  --danger: 239 68 68;
 }
 
 @theme inline {
@@ -26,6 +40,7 @@ body {
   background: rgb(var(--background));
   color: rgb(var(--foreground));
   font-family: "Inter", system-ui, sans-serif;
+  transition: background-color 0.2s, color 0.2s;
 }
 
 /* Sin encabezado ni pie de página del navegador (evita URL y "1/1") */
@@ -39,6 +54,13 @@ body {
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+  }
+
+  /* Evitar scroll al imprimir: ocultar overflow en html y body */
+  html,
+  body {
+    overflow: hidden !important;
+    height: auto !important;
   }
 
   aside,
@@ -56,6 +78,7 @@ body {
   main {
     padding: 0 !important;
     margin: 0 !important;
+    overflow: visible !important;
   }
 
   body {
@@ -81,6 +104,12 @@ body {
     min-height: 297mm !important;
     max-width: 210mm !important;
     box-sizing: border-box;
+  }
+
+  /* Sello virtual: incluir al imprimir */
+  .print-stamp img {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   /* Fondo de agua: ocupa toda la hoja en impresión (mismo que en PDF) */

@@ -1,3 +1,7 @@
+export function buildPatientCode() {
+  return `PAC-${String(Date.now()).slice(-8)}`;
+}
+
 export function buildOrderCode(sequence: number) {
   const date = new Date();
   const y = date.getFullYear();

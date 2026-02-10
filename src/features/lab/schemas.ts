@@ -70,6 +70,22 @@ export const orderCreateSchema = z.object({
   labTestIds: z.array(z.string().min(1)).min(1),
 });
 
+export const patientDraftSchema = z.object({
+  firstName: z.string().min(2),
+  lastName: z.string().min(2),
+  dni: z.string().min(6),
+  sex: z.enum(sexValues),
+  birthDate: z.string().min(1),
+});
+
+export const quickOrderSchema = z.object({
+  patientId: z.string().optional(),
+  patientDraft: patientDraftSchema.optional(),
+  doctorName: z.string().optional().nullable(),
+  indication: z.string().optional().nullable(),
+  tests: z.array(z.string().min(1)).min(1),
+});
+
 export const orderUpdateSchema = z.object({
   status: z.enum(orderStatusValues).optional(),
   deliveredAt: z.string().optional().nullable(),
@@ -92,4 +108,21 @@ export const resultSchema = z.object({
   reportedBy: z.string().optional().nullable(),
   comment: z.string().optional().nullable(),
   items: z.array(resultItemSchema).min(1),
+});
+
+export const resultDraftItemSchema = z.object({
+  templateItemId: z.string().optional().nullable(),
+  paramNameSnapshot: z.string(),
+  unitSnapshot: z.string().optional().nullable(),
+  refTextSnapshot: z.string().optional().nullable(),
+  refMinSnapshot: z.coerce.number().optional().nullable(),
+  refMaxSnapshot: z.coerce.number().optional().nullable(),
+  value: z.string(),
+  isOutOfRange: z.coerce.boolean().default(false),
+  order: z.coerce.number().int().min(0),
+});
+
+export const resultDraftSchema = z.object({
+  items: z.array(resultDraftItemSchema).min(1),
+  updatedAtClient: z.string().optional(),
 });

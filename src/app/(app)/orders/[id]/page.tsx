@@ -4,17 +4,18 @@ import { prisma } from "@/lib/prisma";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { OrderItemResultDialog } from "@/components/orders/OrderItemResultDialog";
 import { OrderStatusActions } from "@/components/orders/OrderStatusActions";
-import { DeleteButton } from "@/components/common/DeleteButton";
-import { parseSelectOptions } from "@/lib/json-helpers";
-import { getTemplateItemsForPatient } from "@/lib/template-helpers";
+import { OrderItemsTableWithPrint } from "@/components/orders/OrderItemsTableWithPrint";
+import { RepeatOrderButton } from "@/components/orders/RepeatOrderButton";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ captureItem?: string }>;
+};
 
-export default async function OrderDetailPage({ params }: Props) {
+export default async function OrderDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
+  const { captureItem } = await searchParams;
   const order = await prisma.labOrder.findFirst({
     where: { id },
     include: {
@@ -42,7 +43,10 @@ export default async function OrderDetailPage({ params }: Props) {
               Cambiar estado de la orden
             </p>
           </div>
-          <OrderStatusActions orderId={order.id} currentStatus={order.status} />
+          <div className="flex items-center gap-2">
+            <RepeatOrderButton orderId={order.id} />
+            <OrderStatusActions orderId={order.id} currentStatus={order.status} />
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-3">
@@ -80,196 +84,7 @@ export default async function OrderDetailPage({ params }: Props) {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Análisis solicitados</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {order.items.length === 0 ? (
-            <div className="py-8 text-center text-slate-500">
-              <p>No hay análisis solicitados en esta orden.</p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Análisis</TableHead>
-                  <TableHead>Sección</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Resultados</TableHead>
-                  <TableHead>Precio</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {order.items.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-medium">
-                    {item.labTest.code} - {item.labTest.name}
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-xs text-slate-600">{item.labTest.section}</span>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{item.status}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    {item.result ? (
-                      <Badge variant="success" className="bg-emerald-100 text-emerald-700">
-                        {item.result.items.length} parámetros
-                      </Badge>
-                    ) : (
-                      <Badge variant="warning" className="bg-amber-100 text-amber-700">
-                        Pendiente
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>{formatCurrency(Number(item.priceSnapshot))}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2 flex-wrap">
-                    {(() => {
-                      // Determinar qué plantilla usar
-                      const templateItems = item.result
-                        ? (() => {
-                            const templateItemsFromSnapshot = getTemplateItemsForPatient(
-                              item.templateSnapshot,
-                              item.labTest.template
-                                ? {
-                                    items: item.labTest.template.items.map((t) => ({
-                                      id: t.id,
-                                      groupName: t.groupName,
-                                      paramName: t.paramName,
-                                      unit: t.unit,
-                                      refRangeText: t.refRangeText,
-                                      refMin: t.refMin ? Number(t.refMin) : null,
-                                      refMax: t.refMax ? Number(t.refMax) : null,
-                                      valueType: t.valueType as "NUMBER" | "TEXT" | "SELECT",
-                                      selectOptions: parseSelectOptions(t.selectOptions),
-                                      order: t.order,
-                                    })),
-                                  }
-                                : null,
-                            );
-                            
-                            return item.result!.items.map((r, idx) => {
-                              const originalItem = templateItemsFromSnapshot.find(
-                                (t) => t.id === r.templateItemId,
-                              );
-                              
-                              return {
-                                id: r.templateItemId || `snapshot-${idx}`,
-                                groupName: originalItem?.groupName || null,
-                                paramName: r.paramNameSnapshot,
-                                unit: r.unitSnapshot,
-                                refRangeText: r.refTextSnapshot,
-                                refMin: r.refMinSnapshot ? Number(r.refMinSnapshot) : null,
-                                refMax: r.refMaxSnapshot ? Number(r.refMaxSnapshot) : null,
-                                valueType: (originalItem?.valueType || "NUMBER") as "NUMBER" | "TEXT" | "SELECT",
-                                selectOptions: originalItem?.selectOptions || [],
-                                order: r.order,
-                              };
-                            });
-                          })()
-                        : getTemplateItemsForPatient(
-                            item.templateSnapshot,
-                            item.labTest.template
-                              ? {
-                                  items: item.labTest.template.items.map((t) => ({
-                                    id: t.id,
-                                    groupName: t.groupName,
-                                    paramName: t.paramName,
-                                    unit: t.unit,
-                                    refRangeText: t.refRangeText,
-                                    refMin: t.refMin ? Number(t.refMin) : null,
-                                    refMax: t.refMax ? Number(t.refMax) : null,
-                                    valueType: t.valueType as "NUMBER" | "TEXT" | "SELECT",
-                                    selectOptions: parseSelectOptions(t.selectOptions),
-                                    order: t.order,
-                                  })),
-                                }
-                              : null,
-                          );
-
-                      // Obtener plantilla original como fallback (convertir selectOptions de string a string[])
-                      const originalTemplateItems = item.labTest.template
-                        ? getTemplateItemsForPatient(
-                            null,
-                            {
-                              items: item.labTest.template.items.map((t) => ({
-                                id: t.id,
-                                groupName: t.groupName,
-                                paramName: t.paramName,
-                                unit: t.unit,
-                                refRangeText: t.refRangeText,
-                                refMin: t.refMin ? Number(t.refMin) : null,
-                                refMax: t.refMax ? Number(t.refMax) : null,
-                                valueType: t.valueType as "NUMBER" | "TEXT" | "SELECT",
-                                selectOptions: parseSelectOptions(t.selectOptions),
-                                order: t.order,
-                              })),
-                            },
-                          )
-                        : [];
-
-                      // Usar templateItems si tiene datos, sino usar originalTemplateItems
-                      const finalTemplateItems =
-                        templateItems.length > 0 ? templateItems : originalTemplateItems;
-
-                      // Mostrar botón si hay plantilla disponible (original o snapshot)
-                      if (finalTemplateItems.length > 0 || item.labTest.template) {
-                        return (
-                          <OrderItemResultDialog
-                            orderId={order.id}
-                            itemId={item.id}
-                            testName={item.labTest.name}
-                            testCode={item.labTest.code}
-                            templateItems={finalTemplateItems}
-                            existing={
-                              item.result
-                                ? {
-                                    reportedBy: item.result.reportedBy,
-                                    comment: item.result.comment,
-                                    items: item.result.items.map((r) => ({
-                                      templateItemId: r.templateItemId,
-                                      paramNameSnapshot: r.paramNameSnapshot,
-                                      unitSnapshot: r.unitSnapshot,
-                                      refTextSnapshot: r.refTextSnapshot,
-                                      refMinSnapshot: r.refMinSnapshot
-                                        ? Number(r.refMinSnapshot)
-                                        : null,
-                                      refMaxSnapshot: r.refMaxSnapshot
-                                        ? Number(r.refMaxSnapshot)
-                                        : null,
-                                      value: r.value,
-                                      isOutOfRange: r.isOutOfRange,
-                                      order: r.order,
-                                    })),
-                                  }
-                                : undefined
-                            }
-                          />
-                        );
-                      }
-
-                      return (
-                        <span className="text-xs text-slate-400">
-                          Sin plantilla
-                        </span>
-                      );
-                    })()}
-                    <DeleteButton
-                      url={`/api/orders/${order.id}/items/${item.id}`}
-                      label="Quitar"
-                    />
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <OrderItemsTableWithPrint order={order} defaultOpenItemId={captureItem ?? undefined} />
     </div>
   );
 }

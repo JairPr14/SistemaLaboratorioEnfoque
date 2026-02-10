@@ -2,10 +2,14 @@ import { notFound } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/format";
+import { getPrintConfig } from "@/lib/print-config";
 import { PrintActions } from "@/components/orders/PrintActions";
 import { PrintFitToPage } from "@/components/orders/PrintFitToPage";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ items?: string }>;
+};
 
 function calculateAge(birthDate: Date): number {
   const today = new Date();
@@ -17,8 +21,13 @@ function calculateAge(birthDate: Date): number {
   return age;
 }
 
-export default async function OrderPrintPage({ params }: Props) {
+export default async function OrderPrintPage({ params, searchParams }: Props) {
   const { id } = await params;
+  const { items: itemsParam } = await searchParams;
+  const selectedItemIds = itemsParam
+    ? new Set(itemsParam.split(",").map((s) => s.trim()).filter(Boolean))
+    : null;
+
   const order = await prisma.labOrder.findFirst({
     where: { id },
     include: {
@@ -37,8 +46,14 @@ export default async function OrderPrintPage({ params }: Props) {
     notFound();
   }
 
+  // Filtrar items si se especificaron IDs seleccionados
+  const itemsToPrint =
+    selectedItemIds && selectedItemIds.size > 0
+      ? order.items.filter((item) => selectedItemIds.has(item.id))
+      : order.items;
+
   // Agrupar items por sección
-  const itemsBySection = order.items.reduce(
+  const itemsBySection = itemsToPrint.reduce(
     (acc, item) => {
       const section = item.labTest.section;
       if (!acc[section]) {
@@ -47,82 +62,118 @@ export default async function OrderPrintPage({ params }: Props) {
       acc[section].push(item);
       return acc;
     },
-    {} as Record<string, typeof order.items>,
+    {} as Record<string, typeof itemsToPrint>,
   );
 
   const age = calculateAge(order.patient.birthDate);
   const sexLabel = order.patient.sex === "M" ? "Masculino" : order.patient.sex === "F" ? "Femenino" : "Otro";
+  const sectionsEntries = Object.entries(itemsBySection);
+  const printConfig = await getPrintConfig();
+  const showStamp = printConfig.stampEnabled && printConfig.stampImageUrl;
+
+  // Si no hay secciones (sin items o items vacíos), mostramos una hoja con mensaje
+  const hasSections = sectionsEntries.length > 0;
+
+  /** Bloque de datos del paciente (común a todas las hojas) */
+  const PatientDataBlock = () => (
+    <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm mb-6">
+      <div className="flex gap-2">
+        <span className="text-slate-500 font-medium shrink-0">PACIENTE:</span>
+        <span className="font-semibold text-slate-900 uppercase">
+          {order.patient.lastName} {order.patient.firstName}
+        </span>
+      </div>
+      <div className="flex gap-2">
+        <span className="text-slate-500 font-medium shrink-0">EDAD:</span>
+        <span>{age} Años</span>
+      </div>
+      <div className="flex gap-2">
+        <span className="text-slate-500 font-medium shrink-0">DNI:</span>
+        <span>{order.patient.dni}</span>
+      </div>
+      <div className="flex gap-2">
+        <span className="text-slate-500 font-medium shrink-0">INDICACIÓN:</span>
+        <span>{order.requestedBy || "Médico tratante"}</span>
+      </div>
+      <div className="flex gap-2">
+        <span className="text-slate-500 font-medium shrink-0">SEXO:</span>
+        <span>{sexLabel}</span>
+      </div>
+      <div className="flex gap-2">
+        <span className="text-slate-500 font-medium shrink-0">FECHA:</span>
+        <span>{formatDate(order.createdAt)}</span>
+      </div>
+      <div className="flex gap-2">
+        <span className="text-slate-500 font-medium shrink-0">N° REGISTRO:</span>
+        <span className="font-mono">{order.orderCode}</span>
+      </div>
+    </div>
+  );
+
+  /** Pie de página (reportado por, firma y sello) */
+  const FooterBlock = ({ items }: { items: typeof itemsToPrint }) => (
+    <div className="mt-10 pt-6 border-t-2 border-slate-300 flex flex-wrap items-end justify-between gap-6">
+      <div className="text-xs text-slate-500">
+        {items[0]?.result?.reportedBy && (
+          <p>Reportado por: {items[0].result.reportedBy}</p>
+        )}
+        {order.deliveredAt && (
+          <p className="mt-1">Fecha de entrega: {formatDate(order.deliveredAt)}</p>
+        )}
+      </div>
+      <div className="text-center flex flex-col items-center gap-2">
+        {showStamp && printConfig.stampImageUrl && (
+          <img
+            src={printConfig.stampImageUrl}
+            alt=""
+            className="print-stamp h-20 w-auto object-contain opacity-90"
+            style={{ maxWidth: "140px" }}
+          />
+        )}
+        <div className="w-56 h-16 border-b-2 border-slate-400 mb-1" />
+        <p className="text-xs font-semibold text-slate-700">
+          T.M / Responsable técnico
+        </p>
+        <p className="text-xs text-slate-500">CTMP</p>
+      </div>
+    </div>
+  );
 
   return (
     <>
       <PrintActions />
       <PrintFitToPage />
-      {/* Contenedor A4: altura fija para que el contenido se escale y quepa en una hoja */}
-      <div
-        className="print-a4 relative mx-auto bg-white text-slate-900 print:mx-0 print:shadow-none overflow-hidden"
-        style={{ width: "210mm", height: "297mm" }}
-      >
-        {/* Fondo de agua: toda la hoja en pantalla e impresión */}
+      {hasSections ? sectionsEntries.map(([section, items], index) => (
         <div
-          className="print-watermark absolute inset-0 pointer-events-none z-0"
-          style={{
-            backgroundImage: "url(/watermark-clinica.png)",
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            backgroundRepeat: "no-repeat",
-          }}
-          aria-hidden
-        />
-        {/* Wrapper escalable: permite reducir el contenido para que quepa en una hoja */}
-        <div className="print-a4-scaler absolute top-0 left-0 w-full z-10" style={{ width: "210mm" }}>
+          key={section}
+          className={`print-a4 relative mx-auto bg-white text-slate-900 print:mx-0 print:shadow-none overflow-hidden ${index < sectionsEntries.length - 1 ? "print-page" : ""} ${index > 0 ? "mt-8 print:mt-0" : ""}`}
+          style={{ width: "210mm", height: "297mm" }}
+        >
+          {/* Fondo de agua: toda la hoja en pantalla e impresión */}
           <div
-            className="print-a4-content relative px-6 print:px-4"
-            style={{ paddingTop: "29.7mm", paddingBottom: "29.7mm" }}
-          >
-        {/* Espacio de encabezado (nombre y lema van en el fondo de agua) */}
-        <header className="flex items-start justify-between gap-4 mb-6 pb-4 border-b border-slate-300 min-h-[3.5rem]">
-          <div className="min-w-0 flex-1" aria-hidden />
-          <div className="min-w-0 flex-1" aria-hidden />
-        </header>
+            className="print-watermark absolute inset-0 pointer-events-none z-0"
+            style={{
+              backgroundImage: "url(/watermark-clinica.png)",
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              backgroundRepeat: "no-repeat",
+            }}
+            aria-hidden
+          />
+          {/* Wrapper escalable: permite reducir el contenido para que quepa en una hoja */}
+          <div className="print-a4-scaler absolute top-0 left-0 w-full z-10" style={{ width: "210mm" }}>
+            <div
+              className="print-a4-content relative px-6 print:px-4"
+              style={{ paddingTop: "29.7mm", paddingBottom: "29.7mm" }}
+            >
+              {/* Espacio de encabezado */}
+              <header className="flex items-start justify-between gap-4 mb-6 pb-4 border-b border-slate-300 min-h-[3.5rem]">
+                <div className="min-w-0 flex-1" aria-hidden />
+                <div className="min-w-0 flex-1" aria-hidden />
+              </header>
 
-        {/* Bloque de datos del paciente (estilo informe) */}
-        <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm mb-6">
-          <div className="flex gap-2">
-            <span className="text-slate-500 font-medium shrink-0">PACIENTE:</span>
-            <span className="font-semibold text-slate-900 uppercase">
-              {order.patient.lastName} {order.patient.firstName}
-            </span>
-          </div>
-          <div className="flex gap-2">
-            <span className="text-slate-500 font-medium shrink-0">EDAD:</span>
-            <span>{age} Años</span>
-          </div>
-          <div className="flex gap-2">
-            <span className="text-slate-500 font-medium shrink-0">DNI:</span>
-            <span>{order.patient.dni}</span>
-          </div>
-          <div className="flex gap-2">
-            <span className="text-slate-500 font-medium shrink-0">INDICACIÓN:</span>
-            <span>{order.requestedBy || "Médico tratante"}</span>
-          </div>
-          <div className="flex gap-2">
-            <span className="text-slate-500 font-medium shrink-0">SEXO:</span>
-            <span>{sexLabel}</span>
-          </div>
-          <div className="flex gap-2">
-            <span className="text-slate-500 font-medium shrink-0">FECHA:</span>
-            <span>{formatDate(order.createdAt)}</span>
-          </div>
-          <div className="flex gap-2">
-            <span className="text-slate-500 font-medium shrink-0">N° REGISTRO:</span>
-            <span className="font-mono">{order.orderCode}</span>
-          </div>
-        </div>
+              <PatientDataBlock />
 
-        {/* Análisis agrupados por sección */}
-        <div className="space-y-6">
-          {Object.entries(itemsBySection).map(([section, items]) => (
-            <div key={section} className="break-inside-avoid">
               {/* Barra negra con nombre de sección */}
               <div className="bg-slate-900 text-white py-2 px-4 mb-3">
                 <h2 className="text-center text-sm font-bold uppercase tracking-wide">
@@ -182,7 +233,6 @@ export default async function OrderPrintPage({ params }: Props) {
                             ))}
                           </tbody>
                         </table>
-                        {/* Descripción / notas del análisis si existen */}
                         {item.result?.comment && (
                           <p className="mt-2 text-xs text-slate-600 italic">
                             {item.result.comment}
@@ -197,33 +247,41 @@ export default async function OrderPrintPage({ params }: Props) {
                   </div>
                 );
               })}
+
+              <FooterBlock items={items} />
+
+              <div className="mt-6 pt-3 text-center text-xs min-h-[1.5rem]" aria-hidden />
             </div>
-          ))}
-        </div>
-
-        {/* Pie: reportado por y firma */}
-        <div className="mt-10 pt-6 border-t-2 border-slate-300 flex flex-wrap items-end justify-between gap-6">
-          <div className="text-xs text-slate-500">
-            {order.items[0]?.result?.reportedBy && (
-              <p>Reportado por: {order.items[0].result.reportedBy}</p>
-            )}
-            {order.deliveredAt && (
-              <p className="mt-1">Fecha de entrega: {formatDate(order.deliveredAt)}</p>
-            )}
-          </div>
-          <div className="text-center">
-            <div className="w-56 h-16 border-b-2 border-slate-400 mb-1" />
-            <p className="text-xs font-semibold text-slate-700">
-              T.M / Responsable técnico
-            </p>
-            <p className="text-xs text-slate-500">CTMP</p>
           </div>
         </div>
-
-        <div className="mt-6 pt-3 text-center text-xs min-h-[1.5rem]" aria-hidden />
+      )) : (
+        <div
+          className="print-a4 relative mx-auto bg-white text-slate-900 print:mx-0 print:shadow-none overflow-hidden"
+          style={{ width: "210mm", height: "297mm" }}
+        >
+          <div
+            className="print-watermark absolute inset-0 pointer-events-none z-0"
+            style={{
+              backgroundImage: "url(/watermark-clinica.png)",
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              backgroundRepeat: "no-repeat",
+            }}
+            aria-hidden
+          />
+          <div className="print-a4-scaler absolute top-0 left-0 w-full z-10" style={{ width: "210mm" }}>
+            <div
+              className="print-a4-content relative px-6 print:px-4"
+              style={{ paddingTop: "29.7mm", paddingBottom: "29.7mm" }}
+            >
+              <header className="flex items-start justify-between gap-4 mb-6 pb-4 border-b border-slate-300 min-h-[3.5rem]" />
+              <PatientDataBlock />
+              <p className="text-center text-slate-500 py-12">No hay análisis seleccionados para imprimir.</p>
+              <FooterBlock items={[]} />
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </>
   );
 }

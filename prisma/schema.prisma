@@ -30,9 +30,47 @@ model User {
   role         Role?    @relation(fields: [roleId], references: [id], onDelete: SetNull)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  favoriteTests UserFavoriteTest[]
 
   @@index([email])
   @@index([roleId])
+}
+
+model UserFavoriteTest {
+  id        String   @id @default(cuid())
+  userId    String
+  labTestId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  labTest LabTest @relation(fields: [labTestId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, labTestId])
+  @@index([userId])
+}
+
+model TestProfile {
+  id       String   @id @default(cuid())
+  name     String
+  isActive Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items TestProfileItem[]
+}
+
+model TestProfileItem {
+  id         String   @id @default(cuid())
+  profileId  String
+  labTestId  String
+  order      Int
+  createdAt  DateTime @default(now())
+
+  profile TestProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  labTest LabTest     @relation(fields: [labTestId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, labTestId])
+  @@index([profileId])
 }
 
 enum Sex {
@@ -103,8 +141,10 @@ model LabTest {
   updatedAt             DateTime @updatedAt
   deletedAt             DateTime?
 
-  template LabTemplate?
-  items    LabOrderItem[]
+  template       LabTemplate?
+  items          LabOrderItem[]
+  favoriteUsers  UserFavoriteTest[]
+  profileItems   TestProfileItem[]
 
   @@index([section])
   @@index([isActive])
@@ -182,11 +222,18 @@ model LabResult {
   reportedAt  DateTime?
   reportedBy  String?
   comment     String?
+  isDraft     Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   orderItem LabOrderItem    @relation(fields: [orderItemId], references: [id])
   items     LabResultItem[]
+}
+
+model AppConfig {
+  id    String   @id @default(cuid())
+  key   String   @unique
+  value String
 }
 
 model LabResultItem {

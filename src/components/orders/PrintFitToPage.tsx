@@ -8,12 +8,14 @@ import { useEffect } from "react";
  */
 export function PrintFitToPage() {
   useEffect(() => {
-    const container = document.querySelector(".print-a4");
-    const scaler = document.querySelector(".print-a4-scaler");
-    const content = document.querySelector(".print-a4-content");
-    if (!container || !scaler || !content) return;
+    const containers = document.querySelectorAll(".print-a4");
+    if (!containers.length) return;
 
-    const applyScale = () => {
+    const applyScale = (container: Element) => {
+      const scaler = container.querySelector(".print-a4-scaler");
+      const content = container.querySelector(".print-a4-content");
+      if (!scaler || !content) return;
+
       const containerRect = container.getBoundingClientRect();
       const containerHeight = containerRect.height;
       const contentHeight = (content as HTMLElement).scrollHeight;
@@ -33,12 +35,14 @@ export function PrintFitToPage() {
       }
     };
 
-    applyScale();
+    containers.forEach(applyScale);
 
-    const resizeObserver = new ResizeObserver(applyScale);
-    resizeObserver.observe(container);
+    const resizeObserver = new ResizeObserver(() => {
+      containers.forEach(applyScale);
+    });
+    containers.forEach((c) => resizeObserver.observe(c));
 
-    const timeout = window.setTimeout(applyScale, 400);
+    const timeout = window.setTimeout(() => containers.forEach(applyScale), 400);
 
     return () => {
       resizeObserver.disconnect();

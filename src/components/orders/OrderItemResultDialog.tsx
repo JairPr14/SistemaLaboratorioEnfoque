@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ResultForm } from "@/components/forms/ResultForm";
@@ -40,6 +41,9 @@ type Props = {
     comment: string | null;
     items: ResultItem[];
   };
+  /** Si se pasa, el diálogo se controla desde fuera (ej. abrir por defecto con ?captureItem=) */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 export function OrderItemResultDialog({
@@ -49,12 +53,19 @@ export function OrderItemResultDialog({
   testCode,
   templateItems,
   existing,
+  open: controlledOpen,
+  onOpenChange,
 }: Props) {
-  // Si no hay items en la plantilla pero hay resultados existentes, usar los resultados
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = isControlled ? (onOpenChange ?? (() => {})) : setInternalOpen;
+
+
   const hasItems = templateItems.length > 0 || (existing && existing.items.length > 0);
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm" variant={existing ? "secondary" : "default"}>
           {existing ? "Ver/Editar resultados" : "Capturar resultados"}

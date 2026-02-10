@@ -6,7 +6,7 @@ const Table = React.forwardRef<HTMLTableElement, React.ComponentProps<"table">>(
   ({ className, ...props }, ref) => (
     <table
       ref={ref}
-      className={cn("w-full text-sm text-slate-700", className)}
+      className={cn("w-full text-sm text-slate-700 dark:text-slate-300", className)}
       {...props}
     />
   ),
@@ -19,7 +19,7 @@ const TableHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <thead
     ref={ref}
-    className={cn("border-b border-slate-200 text-slate-500", className)}
+    className={cn("border-b border-slate-200 text-slate-500 dark:border-slate-700 dark:text-slate-300", className)}
     {...props}
   />
 ));
@@ -29,7 +29,7 @@ const TableBody = React.forwardRef<
   HTMLTableSectionElement,
   React.ComponentProps<"tbody">
 >(({ className, ...props }, ref) => (
-  <tbody ref={ref} className={cn("divide-y", className)} {...props} />
+  <tbody ref={ref} className={cn("divide-y divide-slate-200 dark:divide-slate-700", className)} {...props} />
 ));
 TableBody.displayName = "TableBody";
 
@@ -37,7 +37,7 @@ const TableRow = React.forwardRef<
   HTMLTableRowElement,
   React.ComponentProps<"tr">
 >(({ className, ...props }, ref) => (
-  <tr ref={ref} className={cn("hover:bg-slate-50", className)} {...props} />
+  <tr ref={ref} className={cn("hover:bg-slate-50 dark:hover:bg-slate-800", className)} {...props} />
 ));
 TableRow.displayName = "TableRow";
 

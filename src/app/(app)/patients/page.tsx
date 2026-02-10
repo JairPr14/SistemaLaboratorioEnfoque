@@ -35,23 +35,23 @@ export default async function PatientsPage({ searchParams }: Props) {
   return (
     <div className="space-y-8 min-w-0">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 tracking-tight">
           Pacientes
         </h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           Registre pacientes y consulte el listado.
         </p>
       </div>
 
       {/* 1. Registro de paciente (primero) */}
       <section className="min-w-0">
-        <h2 className="text-lg font-semibold text-slate-900 mb-3">
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">
           Nuevo paciente
         </h2>
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Registro de paciente</CardTitle>
-            <p className="text-sm text-slate-500 font-normal mt-0.5">
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-normal mt-0.5">
               Complete los datos para dar de alta un paciente.
             </p>
           </CardHeader>
@@ -63,7 +63,7 @@ export default async function PatientsPage({ searchParams }: Props) {
 
       {/* 2. Buscar paciente */}
       <section className="min-w-0">
-        <h2 className="text-lg font-semibold text-slate-900 mb-3">
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">
           Listado de pacientes
         </h2>
         <form method="GET" className="mb-4">
@@ -76,11 +76,11 @@ export default async function PatientsPage({ searchParams }: Props) {
             type="text"
             defaultValue={search}
             placeholder="Buscar paciente"
-            className="w-full min-w-0 rounded-lg border border-slate-200 px-4 py-3 text-sm placeholder:text-slate-400 focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400"
+            className="w-full min-w-0 rounded-lg border border-slate-200 px-4 py-3 text-sm placeholder:text-slate-400 focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-slate-500 dark:focus:ring-slate-500"
           />
           <button
             type="submit"
-            className="mt-2 w-full sm:w-auto rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400"
+            className="mt-2 w-full sm:w-auto rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200 dark:focus:ring-slate-500"
           >
             Buscar
           </button>
@@ -90,14 +90,14 @@ export default async function PatientsPage({ searchParams }: Props) {
         <Card className="overflow-hidden">
           <CardContent className="p-0">
             {patients.length === 0 ? (
-              <div className="py-12 text-center text-slate-500">
+              <div className="py-12 text-center text-slate-500 dark:text-slate-400">
                 <p className="text-sm">
                   {search
                     ? "Ningún paciente coincide con la búsqueda."
                     : "No hay pacientes registrados."}
                 </p>
                 {!search && (
-                  <p className="text-xs text-slate-400 mt-1">
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
                     Use el formulario de arriba para registrar uno.
                   </p>
                 )}
@@ -120,7 +120,7 @@ export default async function PatientsPage({ searchParams }: Props) {
                         <TableCell className="font-mono text-sm">{patient.code}</TableCell>
                         <TableCell>
                           <Link
-                            className="font-medium text-slate-900 hover:underline"
+                            className="font-medium text-slate-900 dark:text-slate-100 hover:underline"
                             href={`/patients/${patient.id}`}
                           >
                             {patient.firstName} {patient.lastName}
@@ -131,7 +131,7 @@ export default async function PatientsPage({ searchParams }: Props) {
                         <TableCell className="text-right">
                           <Link
                             href={`/patients/${patient.id}`}
-                            className="text-sm text-slate-600 hover:text-slate-900 hover:underline mr-2"
+                            className="text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:underline mr-2"
                           >
                             Editar
                           </Link>

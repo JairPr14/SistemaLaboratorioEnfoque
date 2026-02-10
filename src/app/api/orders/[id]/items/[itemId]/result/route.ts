@@ -62,6 +62,7 @@ async function upsertResult(request: Request, paramsPromise: Params["params"]) {
         reportedAt: new Date(),
         reportedBy: parsed.reportedBy ?? null,
         comment: parsed.comment ?? null,
+        isDraft: false,
       };
 
       const saved = existing
