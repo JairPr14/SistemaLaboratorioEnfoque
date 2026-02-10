@@ -4,11 +4,12 @@ import { prisma } from "@/lib/prisma";
 import { LabTestForm } from "@/components/forms/LabTestForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-type Props = { params: { id: string } };
+type Props = { params: Promise<{ id: string }> };
 
 export default async function TestDetailPage({ params }: Props) {
+  const { id } = await params;
   const test = await prisma.labTest.findFirst({
-    where: { id: params.id, deletedAt: null },
+    where: { id, deletedAt: null },
   });
 
   if (!test) {

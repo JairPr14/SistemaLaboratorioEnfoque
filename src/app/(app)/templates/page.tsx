@@ -1,10 +1,7 @@
-import Link from "next/link";
-
 import { prisma } from "@/lib/prisma";
-import { TemplateForm } from "@/components/forms/TemplateForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DeleteButton } from "@/components/common/DeleteButton";
+import { TemplateForm } from "@/components/forms/TemplateForm";
+import { TemplatesList } from "@/components/templates/TemplatesList";
 
 export default async function TemplatesPage() {
   const [templates, tests] = await Promise.all([
@@ -18,61 +15,52 @@ export default async function TemplatesPage() {
     }),
   ]);
 
-  return (
-    <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-      <Card>
-        <CardHeader>
-          <CardTitle>Plantillas de análisis</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Análisis</TableHead>
-                <TableHead>Título</TableHead>
-                <TableHead>Items</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {templates.map((template) => (
-                <TableRow key={template.id}>
-                  <TableCell>
-                    {template.labTest.code} - {template.labTest.name}
-                  </TableCell>
-                  <TableCell>
-                    <Link
-                      className="text-slate-900 hover:underline"
-                      href={`/templates/${template.id}`}
-                    >
-                      {template.title}
-                    </Link>
-                  </TableCell>
-                  <TableCell>{template.items.length}</TableCell>
-                  <TableCell className="text-right">
-                    <DeleteButton url={`/api/templates/${template.id}`} />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+  const templatesForClient = templates.map((t) => ({
+    id: t.id,
+    title: t.title,
+    testCode: t.labTest.code,
+    testName: t.labTest.name,
+    itemsCount: t.items.length,
+  }));
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Nueva plantilla</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <TemplateForm
-            labTests={tests.map((test) => ({
-              id: test.id,
-              name: test.name,
-              code: test.code,
-            }))}
-          />
-        </CardContent>
-      </Card>
+  return (
+    <div className="space-y-8 min-w-0">
+      {/* Encabezado */}
+      <div>
+        <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">
+          Plantillas
+        </h1>
+        <p className="mt-1 text-sm text-slate-500">
+          Define los parámetros de cada análisis para capturar resultados.
+        </p>
+      </div>
+
+      {/* 1. Catálogo de plantillas + buscador */}
+      <TemplatesList templates={templatesForClient} />
+
+      {/* 2. Nueva plantilla */}
+      <section className="min-w-0">
+        <h2 className="text-lg font-semibold text-slate-900 mb-3">
+          Nueva plantilla
+        </h2>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Agregar plantilla al catálogo</CardTitle>
+            <p className="text-sm text-slate-500 font-normal mt-0.5">
+              Elige un análisis y define sus parámetros.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <TemplateForm
+              labTests={tests.map((t) => ({
+                id: t.id,
+                name: t.name,
+                code: t.code,
+              }))}
+            />
+          </CardContent>
+        </Card>
+      </section>
     </div>
   );
 }

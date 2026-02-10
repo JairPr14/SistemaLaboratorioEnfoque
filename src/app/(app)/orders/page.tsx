@@ -5,6 +5,7 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { DeleteButton } from "@/components/common/DeleteButton";
 
 export default async function OrdersPage({
   searchParams,
@@ -105,7 +106,7 @@ export default async function OrdersPage({
               <TableHead>Fecha</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead>Total</TableHead>
-              <TableHead></TableHead>
+              <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -125,9 +126,10 @@ export default async function OrdersPage({
                 </TableCell>
                 <TableCell>{formatCurrency(Number(order.totalPrice))}</TableCell>
                 <TableCell className="text-right">
-                  <Link className="text-sm text-slate-600 hover:underline" href={`/orders/${order.id}/print`}>
+                  <Link className="text-sm text-slate-600 hover:underline mr-2" href={`/orders/${order.id}/print`}>
                     Imprimir
                   </Link>
+                  <DeleteButton url={`/api/orders/${order.id}`} label="Eliminar" />
                 </TableCell>
               </TableRow>
             ))}

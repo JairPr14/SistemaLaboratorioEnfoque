@@ -7,6 +7,34 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Role {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
+
+  @@index([code])
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  isActive     Boolean  @default(true)
+  roleId       String?
+  role         Role?    @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([email])
+  @@index([roleId])
+}
+
 enum Sex {
   M
   F
@@ -103,6 +131,7 @@ model LabTemplateItem {
   refRangeText String?
   refMin       Float?
   refMax       Float?
+  description  String?  // texto descriptivo del parámetro (desde JSON)
   valueType    ValueType
   selectOptions String   @default("[]")
   order        Int

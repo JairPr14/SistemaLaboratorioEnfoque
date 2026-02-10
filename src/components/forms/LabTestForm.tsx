@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
@@ -21,7 +21,7 @@ type Props = {
 export function LabTestForm({ testId, defaultValues }: Props) {
   const router = useRouter();
   const form = useForm<LabTestFormValues>({
-    resolver: zodResolver(labTestSchema),
+    resolver: zodResolver(labTestSchema) as Resolver<LabTestFormValues>,
     defaultValues: {
       code: "",
       name: "",

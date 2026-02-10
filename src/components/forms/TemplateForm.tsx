@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useFieldArray, useForm } from "react-hook-form";
+import { useFieldArray, useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
@@ -32,9 +32,9 @@ type Props = {
 
 export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
   const router = useRouter();
-  const [viewMode, setViewMode] = useState<"table" | "form">("table");
+  const [viewMode, setViewMode] = useState<"table" | "form">("form");
   const form = useForm<TemplateFormValues>({
-    resolver: zodResolver(templateSchema),
+    resolver: zodResolver(templateSchema) as Resolver<TemplateFormValues>,
     defaultValues: {
       labTestId: labTests[0]?.id ?? "",
       title: "",
@@ -56,10 +56,28 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, move } = useFieldArray({
     control: form.control,
     name: "items",
   });
+
+  const moveUp = (index: number) => {
+    if (index <= 0) return;
+    move(index, index - 1);
+    const items = form.getValues("items");
+    items.forEach((_, i) => {
+      form.setValue(`items.${i}.order`, i + 1);
+    });
+  };
+
+  const moveDown = (index: number) => {
+    if (index >= fields.length - 1) return;
+    move(index, index + 1);
+    const items = form.getValues("items");
+    items.forEach((_, i) => {
+      form.setValue(`items.${i}.order`, i + 1);
+    });
+  };
 
   const addMultipleRows = () => {
     const count = parseInt(prompt("¿Cuántas filas desea agregar?", "5") || "5");
@@ -99,9 +117,9 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
     
     // Limpiar items actuales y agregar los del preset
     const currentItems = form.getValues("items");
-    currentItems.forEach((_, idx) => remove(0));
+    currentItems.forEach(() => remove(0));
     
-    preset.items.forEach((item, idx) => {
+    preset.items.forEach((item) => {
       append({
         groupName: item.groupName || "",
         paramName: item.paramName,
@@ -145,40 +163,82 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label>Análisis</Label>
-          <select
-            className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"
-            {...form.register("labTestId")}
-          >
-            {labTests.map((test) => (
-              <option key={test.id} value={test.id}>
-                {test.code} - {test.name}
-              </option>
-            ))}
-          </select>
+      <section className="space-y-4 rounded-lg border border-slate-200/80 bg-slate-50/50 p-4">
+        <h3 className="text-sm font-medium text-slate-700">Datos de la plantilla</h3>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label className="text-slate-700">Análisis</Label>
+            <select
+              className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
+              {...form.register("labTestId")}
+            >
+              {labTests.map((test) => (
+                <option key={test.id} value={test.id}>
+                  {test.code} — {test.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-slate-700">Título</Label>
+            <Input
+              {...form.register("title")}
+              placeholder="Ej: Hemograma completo"
+              className="rounded-lg"
+            />
+          </div>
         </div>
         <div className="space-y-2">
-          <Label>Título</Label>
-          <Input {...form.register("title")} placeholder="Ej: Hemograma Completo" />
+          <Label className="text-slate-700">Notas (opcional)</Label>
+          <Textarea
+            {...form.register("notes")}
+            placeholder="Notas adicionales..."
+            className="min-h-[80px] rounded-lg resize-y"
+          />
         </div>
-      </div>
-      <div className="space-y-2">
-        <Label>Notas</Label>
-        <Textarea {...form.register("notes")} placeholder="Notas adicionales sobre la plantilla..." />
-      </div>
+      </section>
 
-      <div className="space-y-4">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <h3 className="text-sm font-semibold text-slate-700">
-            Parámetros ({fields.length})
+      <section className="space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h3 className="text-sm font-medium text-slate-700">
+            Parámetros <span className="text-slate-500 font-normal">({fields.length})</span>
           </h3>
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() =>
+                append({
+                  groupName: "",
+                  paramName: "",
+                  unit: "",
+                  refRangeText: "",
+                  refMin: undefined,
+                  refMax: undefined,
+                  valueType: "NUMBER",
+                  selectOptions: [],
+                  order: fields.length + 1,
+                })
+              }
+            >
+              + Añadir uno
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={addMultipleRows}>
+              + Varios
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setViewMode(viewMode === "table" ? "form" : "table")}
+            >
+              {viewMode === "table" ? "Vista tarjetas" : "Vista tabla"}
+            </Button>
             <Dialog>
               <DialogTrigger asChild>
                 <Button type="button" variant="outline" size="sm">
-                  📋 Plantillas Predefinidas
+                  Plantillas predefinidas
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -203,61 +263,25 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
                 </div>
               </DialogContent>
             </Dialog>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setViewMode(viewMode === "table" ? "form" : "table")}
-            >
-              {viewMode === "table" ? "Vista Formulario" : "Vista Tabla"}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() =>
-                append({
-                  groupName: "",
-                  paramName: "",
-                  unit: "",
-                  refRangeText: "",
-                  refMin: undefined,
-                  refMax: undefined,
-                  valueType: "NUMBER",
-                  selectOptions: [],
-                  order: fields.length + 1,
-                })
-              }
-            >
-              +1 Fila
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={addMultipleRows}
-            >
-              +Múltiples
-            </Button>
           </div>
         </div>
 
         {viewMode === "table" ? (
-          <div className="rounded-md border border-slate-200 overflow-hidden">
-            <div className="max-h-[600px] overflow-y-auto">
-              <Table>
-                <TableHeader className="sticky top-0 bg-slate-50 z-10">
-                  <TableRow>
-                    <TableHead className="w-12">#</TableHead>
-                    <TableHead>Grupo</TableHead>
-                    <TableHead>Parámetro</TableHead>
-                    <TableHead>Unidad</TableHead>
-                    <TableHead>Ref. Texto</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead className="w-20">Ref. Min</TableHead>
-                    <TableHead className="w-20">Ref. Max</TableHead>
-                    <TableHead className="w-16">Orden</TableHead>
-                    <TableHead className="w-24"></TableHead>
+          <div className="rounded-lg border border-slate-200 overflow-hidden">
+            <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
+              <Table className="min-w-[800px]">
+                <TableHeader className="sticky top-0 bg-slate-100/95 z-10">
+                  <TableRow className="border-slate-200">
+                    <TableHead className="w-10 text-slate-600">#</TableHead>
+                    <TableHead className="text-slate-600">Grupo</TableHead>
+                    <TableHead className="text-slate-600">Parámetro</TableHead>
+                    <TableHead className="text-slate-600 w-24">Unidad</TableHead>
+                    <TableHead className="text-slate-600 min-w-[100px]">Ref. texto</TableHead>
+                    <TableHead className="text-slate-600 w-24">Tipo</TableHead>
+                    <TableHead className="text-slate-600 w-20">Min</TableHead>
+                    <TableHead className="text-slate-600 w-20">Max</TableHead>
+                    <TableHead className="text-slate-600 w-14">Ord.</TableHead>
+                    <TableHead className="w-32">Ordenar</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -330,7 +354,29 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
                         />
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-1">
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            onClick={() => moveUp(index)}
+                            title="Subir"
+                            disabled={index === 0}
+                          >
+                            ↑
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            onClick={() => moveDown(index)}
+                            title="Bajar"
+                            disabled={index === fields.length - 1}
+                          >
+                            ↓
+                          </Button>
                           <Button
                             type="button"
                             variant="ghost"
@@ -360,102 +406,154 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
             </div>
           </div>
         ) : (
-          <div className="space-y-4">
+          <ul className="space-y-3">
             {fields.map((field, index) => (
-              <div
-                key={field.id}
-                className="rounded-md border border-slate-200 p-4"
-              >
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Grupo</Label>
-                    <Input {...form.register(`items.${index}.groupName`)} />
+              <li key={field.id}>
+                <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="text-xs font-medium text-slate-400">Parámetro {index + 1}</span>
+                    <div className="flex gap-2 flex-wrap">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs"
+                        onClick={() => moveUp(index)}
+                        disabled={index === 0}
+                        title="Subir"
+                      >
+                        ↑ Subir
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs"
+                        onClick={() => moveDown(index)}
+                        disabled={index === fields.length - 1}
+                        title="Bajar"
+                      >
+                        ↓ Bajar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-xs"
+                        onClick={() => duplicateRow(index)}
+                      >
+                        Duplicar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-xs text-red-600 hover:text-red-700"
+                        onClick={() => remove(index)}
+                      >
+                        Quitar
+                      </Button>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Parámetro</Label>
-                    <Input {...form.register(`items.${index}.paramName`)} />
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-slate-600">Parámetro</Label>
+                      <Input
+                        className="rounded-lg h-9"
+                        placeholder="Nombre"
+                        {...form.register(`items.${index}.paramName`)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-slate-600">Grupo (opcional)</Label>
+                      <Input
+                        className="rounded-lg h-9"
+                        placeholder="Grupo"
+                        {...form.register(`items.${index}.groupName`)}
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="mt-4 grid gap-4 md:grid-cols-3">
-                  <div className="space-y-2">
-                    <Label>Unidad</Label>
-                    <Input {...form.register(`items.${index}.unit`)} />
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-slate-600">Unidad</Label>
+                      <Input
+                        className="rounded-lg h-9"
+                        placeholder="mg/dL"
+                        {...form.register(`items.${index}.unit`)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-slate-600">Ref. texto</Label>
+                      <Input
+                        className="rounded-lg h-9"
+                        placeholder="12-16"
+                        {...form.register(`items.${index}.refRangeText`)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-slate-600">Tipo</Label>
+                      <select
+                        className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
+                        {...form.register(`items.${index}.valueType`)}
+                      >
+                        {valueTypeValues.map((v) => (
+                          <option key={v} value={v}>{v}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1.5 sm:col-span-2 lg:col-span-1 grid grid-cols-2 gap-2">
+                      <div>
+                        <Label className="text-xs text-slate-600">Min</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          className="rounded-lg h-9"
+                          {...form.register(`items.${index}.refMin`)}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-600">Max</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          className="rounded-lg h-9"
+                          {...form.register(`items.${index}.refMax`)}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Ref. Texto</Label>
-                    <Input {...form.register(`items.${index}.refRangeText`)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Tipo</Label>
-                    <select
-                      className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"
-                      {...form.register(`items.${index}.valueType`)}
-                    >
-                      {valueTypeValues.map((value) => (
-                        <option key={value} value={value}>
-                          {value}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div className="mt-4 grid gap-4 md:grid-cols-3">
-                  <div className="space-y-2">
-                    <Label>Ref. Min</Label>
-                    <Input type="number" step="0.01" {...form.register(`items.${index}.refMin`)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Ref. Max</Label>
-                    <Input type="number" step="0.01" {...form.register(`items.${index}.refMax`)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Orden</Label>
-                    <Input type="number" {...form.register(`items.${index}.order`)} />
-                  </div>
-                </div>
-                {form.watch(`items.${index}.valueType`) === "SELECT" && (
-                  <div className="mt-4 space-y-2">
-                    <Label>Opciones (separadas por coma)</Label>
+                  {form.watch(`items.${index}.valueType`) === "SELECT" && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-slate-600">Opciones (separadas por coma)</Label>
+                      <Input
+                        className="rounded-lg h-9"
+                        value={form.watch(`items.${index}.selectOptions`)?.join(", ") || ""}
+                        onChange={(e) =>
+                          form.setValue(
+                            `items.${index}.selectOptions`,
+                            e.target.value.split(",").map((o) => o.trim()).filter(Boolean),
+                          )
+                        }
+                      />
+                    </div>
+                  )}
+                  <div className="flex items-center justify-end gap-2">
+                    <Label className="text-xs text-slate-600">Orden</Label>
                     <Input
-                      value={form.watch(`items.${index}.selectOptions`)?.join(", ") || ""}
-                      onChange={(e) =>
-                        form.setValue(
-                          `items.${index}.selectOptions`,
-                          e.target.value
-                            .split(",")
-                            .map((opt) => opt.trim())
-                            .filter(Boolean),
-                        )
-                      }
+                      type="number"
+                      className="rounded-lg h-9 w-16 text-center"
+                      {...form.register(`items.${index}.order`)}
                     />
                   </div>
-                )}
-                <div className="mt-4 flex justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => duplicateRow(index)}
-                  >
-                    Duplicar
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => remove(index)}
-                  >
-                    Quitar
-                  </Button>
                 </div>
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
-      </div>
+      </section>
 
-      <div className="flex justify-end gap-3 pt-4 border-t">
-        <Button type="submit" className="min-w-[150px]">
+      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end pt-4 border-t border-slate-200">
+        <Button type="submit" className="w-full sm:w-auto sm:min-w-[180px]">
           Guardar plantilla
         </Button>
       </div>

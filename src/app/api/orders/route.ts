@@ -49,7 +49,7 @@ export async function POST(request: Request) {
 
     const tests = await prisma.labTest.findMany({
       where: { id: { in: parsed.labTestIds }, deletedAt: null, isActive: true },
-      include: { template: { include: { items: true } } },
+      include: { template: { include: { items: { orderBy: { order: "asc" } } } } },
     });
 
     if (!tests.length) {
@@ -66,6 +66,8 @@ export async function POST(request: Request) {
 
     const orderCode = buildOrderCode(todayCount + 1);
 
+    // Cada ítem de la orden guarda la plantilla del análisis seleccionado (templateSnapshot)
+    // para poder capturar resultados luego con los parámetros correctos.
     const order = await prisma.labOrder.create({
       data: {
         orderCode,
@@ -91,7 +93,7 @@ export async function POST(request: Request) {
                       refMin: item.refMin ? Number(item.refMin) : null,
                       refMax: item.refMax ? Number(item.refMax) : null,
                       valueType: item.valueType,
-                      selectOptions: item.selectOptions ?? [],
+                      selectOptions: item.selectOptions ?? "[]",
                       order: item.order,
                     })),
                   } as const)

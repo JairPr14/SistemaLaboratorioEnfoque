@@ -75,3 +75,40 @@ export async function PUT(request: Request, { params }: Params) {
     );
   }
 }
+
+export async function DELETE(_request: Request, { params }: Params) {
+  try {
+    const { id } = await params;
+
+    const order = await prisma.labOrder.findFirst({
+      where: { id },
+      include: { items: { include: { result: true } } },
+    });
+
+    if (!order) {
+      return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      for (const item of order.items) {
+        if (item.result) {
+          await tx.labResultItem.deleteMany({ where: { resultId: item.result.id } });
+          await tx.labResult.delete({ where: { id: item.result.id } });
+        }
+      }
+      await tx.labOrderItem.deleteMany({ where: { orderId: id } });
+      await tx.labOrder.delete({ where: { id } });
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting order:", error);
+    if (error instanceof Error && error.message.includes("Record to delete does not exist")) {
+      return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
+    }
+    return NextResponse.json(
+      { error: "Error al eliminar la orden" },
+      { status: 500 },
+    );
+  }
+}

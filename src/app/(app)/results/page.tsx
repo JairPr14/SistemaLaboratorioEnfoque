@@ -5,13 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/format";
+import { ResultActions } from "@/components/orders/ResultActions";
 
 export default async function ResultsPage({
   searchParams,
 }: {
-  searchParams: { search?: string };
+  searchParams: Promise<{ search?: string }>;
 }) {
-  const search = searchParams.search?.trim();
+  const params = await searchParams;
+  const search = params.search?.trim();
 
   const results = await prisma.labResult.findMany({
     where: search
@@ -115,12 +117,12 @@ export default async function ResultsPage({
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Link
-                      href={`/orders/${result.orderItem.orderId}`}
-                      className="text-sm text-slate-600 hover:text-slate-900 hover:underline"
-                    >
-                      Ver/Editar
-                    </Link>
+                    <ResultActions
+                      orderId={result.orderItem.orderId}
+                      orderCode={result.orderItem.order.orderCode}
+                      patientName={`${result.orderItem.order.patient.firstName} ${result.orderItem.order.patient.lastName}`}
+                      patientPhone={result.orderItem.order.patient.phone}
+                    />
                   </TableCell>
                 </TableRow>
               ))}

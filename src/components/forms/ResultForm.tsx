@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useSession } from "next-auth/react";
+import { useForm, useFieldArray, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
@@ -53,11 +54,12 @@ export function ResultForm({
   defaultValues,
 }: Props) {
   const router = useRouter();
+  const { data: session } = useSession();
   const [viewMode, setViewMode] = useState<"table" | "form">("table");
   const [editableRefs, setEditableRefs] = useState<Record<number, boolean>>({});
 
   const form = useForm<ResultFormValues>({
-    resolver: zodResolver(resultSchema),
+    resolver: zodResolver(resultSchema) as Resolver<ResultFormValues>,
     defaultValues: defaultValues ?? {
       reportedBy: "",
       comment: "",
@@ -95,6 +97,14 @@ export function ResultForm({
     name: "items",
   });
 
+  // Rellenar "Reportado por" con el usuario en sesión cuando no hay valor previo
+  useEffect(() => {
+    if (session?.user && !defaultValues?.reportedBy) {
+      const value = session.user.name ?? session.user.email ?? "";
+      if (value) form.setValue("reportedBy", value);
+    }
+  }, [session?.user, session?.user?.name, session?.user?.email, defaultValues?.reportedBy, form]);
+
   // Determinar automáticamente el modo según la cantidad de parámetros
   useEffect(() => {
     const itemCount = templateItems.length > 0 ? templateItems.length : fields.length;
@@ -104,9 +114,6 @@ export function ResultForm({
       setViewMode("table");
     }
   }, [templateItems.length, fields.length]);
-
-  // Observar valores para validar rangos
-  const watchedValues = form.watch("items");
 
   const addNewParameter = () => {
     append({
@@ -382,7 +389,11 @@ export function ResultForm({
                           <TableCell>
                             {item.valueType === "SELECT" ? (
                               <select
-                                className="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm"
+                                className={`h-9 w-full rounded-md border bg-white px-2 text-sm ${
+                                  hasValue && isOutOfRange
+                                    ? "border-red-500 bg-red-50 font-bold underline"
+                                    : "border-slate-200"
+                                }`}
                                 {...form.register(`items.${formIndex}.value`)}
                               >
                                 <option value="">-</option>
@@ -398,7 +409,7 @@ export function ResultForm({
                                 step={item.valueType === "NUMBER" ? "0.01" : undefined}
                                 className={`h-9 text-sm ${
                                   hasValue && isOutOfRange
-                                    ? "border-red-500 bg-red-50"
+                                    ? "border-red-500 bg-red-50 font-bold underline"
                                     : ""
                                 }`}
                                 placeholder="-"
@@ -470,7 +481,6 @@ export function ResultForm({
                   <TableBody>
                     {fields.slice(templateItems.length).map((field, idx) => {
                       const formIndex = templateItems.length + idx;
-                      const currentValue = form.watch(`items.${formIndex}.value`);
                       const currentRefText = form.watch(`items.${formIndex}.refTextSnapshot`);
                       const currentRefMin = form.watch(`items.${formIndex}.refMinSnapshot`);
                       const currentRefMax = form.watch(`items.${formIndex}.refMaxSnapshot`);
@@ -708,7 +718,11 @@ export function ResultForm({
                         <div className="col-span-8">
                           {item.valueType === "SELECT" ? (
                             <select
-                              className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"
+                              className={`h-10 w-full rounded-md border bg-white px-3 text-sm ${
+                                hasValue && isOutOfRange
+                                  ? "border-red-500 font-bold underline"
+                                  : "border-slate-200"
+                              }`}
                               {...form.register(`items.${formIndex}.value`)}
                             >
                               <option value="">Seleccionar</option>
@@ -723,7 +737,11 @@ export function ResultForm({
                               type={item.valueType === "NUMBER" ? "number" : "text"}
                               step={item.valueType === "NUMBER" ? "0.01" : undefined}
                               placeholder="Ingrese el resultado"
-                              className={hasValue && isOutOfRange ? "border-red-500" : ""}
+                              className={
+                                hasValue && isOutOfRange
+                                  ? "border-red-500 font-bold underline"
+                                  : ""
+                              }
                               {...form.register(`items.${formIndex}.value`)}
                             />
                           )}

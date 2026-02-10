@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { Sonner } from "@/components/ui/sonner";
+import { SessionProvider } from "@/components/providers/SessionProvider";
 import "./globals.css";
 
 const inter = Inter({
@@ -20,8 +21,10 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={`${inter.className} antialiased`}>
-        {children}
-        <Sonner />
+        <SessionProvider>
+          {children}
+          <Sonner />
+        </SessionProvider>
       </body>
     </html>
   );

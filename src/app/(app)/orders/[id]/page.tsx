@@ -7,14 +7,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { OrderItemResultDialog } from "@/components/orders/OrderItemResultDialog";
 import { OrderStatusActions } from "@/components/orders/OrderStatusActions";
+import { DeleteButton } from "@/components/common/DeleteButton";
 import { parseSelectOptions } from "@/lib/json-helpers";
 import { getTemplateItemsForPatient } from "@/lib/template-helpers";
 
-type Props = { params: { id: string } };
+type Props = { params: Promise<{ id: string }> };
 
 export default async function OrderDetailPage({ params }: Props) {
+  const { id } = await params;
   const order = await prisma.labOrder.findFirst({
-    where: { id: params.id },
+    where: { id },
     include: {
       patient: true,
       items: {
@@ -40,7 +42,7 @@ export default async function OrderDetailPage({ params }: Props) {
               Cambiar estado de la orden
             </p>
           </div>
-          <OrderStatusActions orderId={order.id} />
+          <OrderStatusActions orderId={order.id} currentStatus={order.status} />
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-3">
@@ -96,7 +98,7 @@ export default async function OrderDetailPage({ params }: Props) {
                   <TableHead>Estado</TableHead>
                   <TableHead>Resultados</TableHead>
                   <TableHead>Precio</TableHead>
-                  <TableHead></TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -124,6 +126,7 @@ export default async function OrderDetailPage({ params }: Props) {
                   </TableCell>
                   <TableCell>{formatCurrency(Number(item.priceSnapshot))}</TableCell>
                   <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2 flex-wrap">
                     {(() => {
                       // Determinar qué plantilla usar
                       const templateItems = item.result
@@ -254,6 +257,11 @@ export default async function OrderDetailPage({ params }: Props) {
                         </span>
                       );
                     })()}
+                    <DeleteButton
+                      url={`/api/orders/${order.id}/items/${item.id}`}
+                      label="Quitar"
+                    />
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

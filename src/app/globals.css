@@ -28,12 +28,29 @@ body {
   font-family: "Inter", system-ui, sans-serif;
 }
 
+/* Sin encabezado ni pie de página del navegador (evita URL y "1/1") */
+@page {
+  size: A4;
+  margin: 0;
+}
+
 @media print {
+  /* Incluir fondos e imágenes al imprimir/guardar como PDF */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
   aside,
   header,
   nav,
   button:not(.print-keep) {
     display: none !important;
+  }
+
+  /* Mantener el encabezado del informe (área en blanco) para que no se desencuadre */
+  .print-a4 header {
+    display: flex !important;
   }
 
   main {
@@ -45,6 +62,8 @@ body {
     background: white;
     color: black;
     font-size: 12pt;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .print-page {
@@ -52,6 +71,33 @@ body {
   }
 
   .print-avoid-break {
+    page-break-inside: avoid;
+  }
+
+  /* Hoja A4: altura fija para que el contenido escalado quepa en una hoja */
+  .print-a4 {
+    width: 210mm !important;
+    height: 297mm !important;
+    min-height: 297mm !important;
+    max-width: 210mm !important;
+    box-sizing: border-box;
+  }
+
+  /* Fondo de agua: ocupa toda la hoja en impresión (mismo que en PDF) */
+  .print-watermark {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    position: absolute !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* Evitar que el contenido del informe se parta en dos páginas */
+  .print-a4-content {
     page-break-inside: avoid;
   }
 

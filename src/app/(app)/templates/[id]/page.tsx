@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { notFound } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
@@ -5,13 +7,17 @@ import { TemplateForm } from "@/components/forms/TemplateForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { parseSelectOptions } from "@/lib/json-helpers";
 
-type Props = { params: { id: string } };
+type Props = { params: Promise<{ id: string }> };
 
 export default async function TemplateDetailPage({ params }: Props) {
+  const { id } = await params;
   const [template, tests] = await Promise.all([
     prisma.labTemplate.findFirst({
-      where: { id: params.id },
-      include: { items: { orderBy: { order: "asc" } } },
+      where: { id },
+      include: {
+        labTest: true,
+        items: { orderBy: { order: "asc" } },
+      },
     }),
     prisma.labTest.findMany({
       where: { deletedAt: null, isActive: true },
@@ -24,36 +30,54 @@ export default async function TemplateDetailPage({ params }: Props) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Editar plantilla</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <TemplateForm
-          templateId={template.id}
-          labTests={tests.map((test) => ({
-            id: test.id,
-            name: test.name,
-            code: test.code,
-          }))}
-          defaultValues={{
-            labTestId: template.labTestId,
-            title: template.title,
-            notes: template.notes ?? "",
-            items: template.items.map((item) => ({
-              groupName: item.groupName ?? "",
-              paramName: item.paramName,
-              unit: item.unit ?? "",
-              refRangeText: item.refRangeText ?? "",
-              refMin: item.refMin ? Number(item.refMin) : undefined,
-              refMax: item.refMax ? Number(item.refMax) : undefined,
-              valueType: item.valueType,
-              selectOptions: parseSelectOptions(item.selectOptions),
-              order: item.order,
-            })),
-          }}
-        />
-      </CardContent>
-    </Card>
+    <div className="space-y-6">
+      <nav className="flex items-center gap-2 text-sm text-slate-500">
+        <Link
+          href="/templates"
+          className="hover:text-slate-900 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 rounded"
+        >
+          Plantillas
+        </Link>
+        <span aria-hidden>/</span>
+        <span className="text-slate-900 font-medium truncate">
+          {template.title}
+        </span>
+      </nav>
+
+      <Card>
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-lg">Editar plantilla</CardTitle>
+          <p className="text-sm text-slate-500 font-normal">
+            {template.labTest.code} · {template.labTest.name}
+          </p>
+        </CardHeader>
+        <CardContent>
+          <TemplateForm
+            templateId={template.id}
+            labTests={tests.map((test) => ({
+              id: test.id,
+              name: test.name,
+              code: test.code,
+            }))}
+            defaultValues={{
+              labTestId: template.labTestId,
+              title: template.title,
+              notes: template.notes ?? "",
+              items: template.items.map((item) => ({
+                groupName: item.groupName ?? "",
+                paramName: item.paramName,
+                unit: item.unit ?? "",
+                refRangeText: item.refRangeText ?? "",
+                refMin: item.refMin ? Number(item.refMin) : undefined,
+                refMax: item.refMax ? Number(item.refMax) : undefined,
+                valueType: item.valueType,
+                selectOptions: parseSelectOptions(item.selectOptions),
+                order: item.order,
+              })),
+            }}
+          />
+        </CardContent>
+      </Card>
+    </div>
   );
 }

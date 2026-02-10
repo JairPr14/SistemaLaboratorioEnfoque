@@ -1,76 +1,44 @@
-import Link from "next/link";
-
 import { prisma } from "@/lib/prisma";
 import { LabTestForm } from "@/components/forms/LabTestForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DeleteButton } from "@/components/common/DeleteButton";
-import { formatCurrency } from "@/lib/format";
+import { CatalogTestsList } from "@/components/catalog/CatalogTestsList";
 
 export default async function TestsPage() {
   const tests = await prisma.labTest.findMany({
     where: { deletedAt: null },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ section: "asc" }, { name: "asc" }],
   });
-  const totalPrice = tests.reduce(
-    (acc, test) => acc + Number(test.price),
-    0,
-  );
+
+  const testsForClient = tests.map((t) => ({
+    id: t.id,
+    code: t.code,
+    name: t.name,
+    section: t.section,
+    price: Number(t.price),
+  }));
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Catálogo de análisis</CardTitle>
-            <span className="text-sm text-slate-500">
-              Total: {formatCurrency(totalPrice)}
-            </span>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Código</TableHead>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Sección</TableHead>
-                <TableHead>Precio</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tests.map((test) => (
-                <TableRow key={test.id}>
-                  <TableCell>{test.code}</TableCell>
-                  <TableCell>
-                    <Link
-                      className="text-slate-900 hover:underline"
-                      href={`/catalog/tests/${test.id}`}
-                    >
-                      {test.name}
-                    </Link>
-                  </TableCell>
-                  <TableCell>{test.section}</TableCell>
-                  <TableCell>{formatCurrency(Number(test.price))}</TableCell>
-                  <TableCell className="text-right">
-                    <DeleteButton url={`/api/tests/${test.id}`} />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+    <div className="space-y-8 min-w-0">
+      {/* 1. Catálogo de análisis + buscador */}
+      <CatalogTestsList tests={testsForClient} />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Nuevo análisis</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <LabTestForm />
-        </CardContent>
-      </Card>
+      {/* 2. Nuevo análisis */}
+      <section className="min-w-0">
+        <h2 className="text-lg font-semibold text-slate-900 mb-3">
+          Nuevo análisis
+        </h2>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Agregar análisis al catálogo</CardTitle>
+            <p className="text-sm text-slate-500 font-normal mt-0.5">
+              Código, nombre, sección y precio.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <LabTestForm />
+          </CardContent>
+        </Card>
+      </section>
     </div>
   );
 }

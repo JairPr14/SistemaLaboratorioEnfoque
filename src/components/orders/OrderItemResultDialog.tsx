@@ -106,7 +106,7 @@ export function OrderItemResultDialog({
             <div className="py-8 text-center text-slate-500">
               <p className="mb-2">No hay parámetros en la plantilla.</p>
               <p className="text-sm">
-                Puedes agregar parámetros usando el botón "+ Agregar parámetro adicional" una vez abierto el formulario.
+                Puedes agregar parámetros usando el botón &quot;+ Agregar parámetro adicional&quot; una vez abierto el formulario.
               </p>
             </div>
           )}

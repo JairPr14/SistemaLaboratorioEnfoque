@@ -1,0 +1,1914 @@
+[
+  {
+    "templateKey": "REACCION INFLAMATORIA",
+    "analysisName": "REACCION INFLAMATORIA",
+    "section": "SECCIÓN MICROBIOLOGIA",
+    "items": [
+      {
+        "name": "MUESTRA",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "COLOR",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "CONSISTENCIA",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "MUCUS",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "LEUCOCITOS",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "HEMATIES",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "PERFIL LIPIDICO",
+    "analysisName": "PERFIL LIPIDICO",
+    "section": "SECCIÓN BIOQUIMICA",
+    "items": [
+      {
+        "name": "TRIGLICERIDOS",
+        "unit": "mg/dl",
+        "ref": "35 - 150",
+        "description": "Evalúa el riesgo de enfermedad cardiaca y vascular; se emplea para el tratamiento y control de pacientes con diabetes mellitus, sindrome nefrótico, hepatitis viral, obstrucción hepática, pancreatitis, transtornos del metabolismo lipídico y numerosas enfermedades endocrinológicas.",
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "COLESTEROL TOTAL",
+        "unit": "mg/dl",
+        "ref": "140 - 200",
+        "description": "La determinación de Colesterol se emplea para la medición del riesgo de arterioesclerosis, así como para el diagnóstico y tratamiento de enfermedades con niveles elevados de Colesterol o trastornos del metabolismo lipídico y lipoproteíco.",
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "COLESTEROL HDL",
+        "unit": "mg/dl",
+        "ref": "40 - 60",
+        "description": "Valores elevados de Colesterol HDL protegen contra cardiopatías coronarias, mientras que valores disminuidos del Colesterol HDL especialmente en combinación con Trigicéridos elevados, implican un mayor riesgo coronario.",
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "COLESTEROL LDL",
+        "unit": "mg/dl",
+        "ref": "Hasta 140",
+        "description": "Niveles elevados se asocian a un aumento del riesgo de enfermedad cardíaca arteriosclerótica.",
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "COLESTEROL VLDL",
+        "unit": "mg/dl",
+        "ref": "Hasta 45",
+        "description": "Las VLDL transportan una pequeña cantidad de Colesterol, pero son las principales transportadoras de los Triglicéridos sanguíneos",
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "COLESTEROL TOTAL/COLESTEROL HDL",
+        "unit": null,
+        "ref": "Hombres : Menor de 5.0",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "COLESTEROL LDL/COLESTEROL HDL",
+        "unit": null,
+        "ref": "Hombres : Menor de 3.5",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "PERFIL HEPATICO",
+    "analysisName": "PERFIL HEPATICO",
+    "section": "SECCIÓN BIOQUIMICA",
+    "items": [
+      {
+        "name": "BILIRRUBINA TOTAL",
+        "unit": "mg/dl",
+        "ref": "0.0 - 1.2",
+        "description": "Se emplea para el diagnóstico de hepatopatías, anemia hemolítica y en la evaluación, clasificación y seguimiento de las ictericias.",
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "BILIRRUBINA DIRECTA",
+        "unit": "mg/dl",
+        "ref": "0.0 - 0.3",
+        "description": "Se eleva en las enfermedades biliares, lesiones intra y extra hepáticas . Las causas de elevación hepatocelular incluye: ictericia obstructiva, patología inflamatoria, cirrosis hepática y estados neoplásicos avanzados.",
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "BILIRRUBINA INDIRECTA",
+        "unit": "mg/dl",
+        "ref": "0.1 - 0.7",
+        "description": "Esta elevada en desordenes hemoliticos, patologias inflamatorias, hepatitis, sexis.",
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "PROTEINA TOTAL",
+        "unit": "g/dl",
+        "ref": "6.4 - 8.3",
+        "description": "Se utiliza principalmente para evaluar el estado nutricional, síntesis hepática y pérdida renal de proteínas.",
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "ALBUMINA SERICA",
+        "unit": "g/dl",
+        "ref": "3.5 - 5.2",
+        "description": "Evalúa los estados nutricionales, enfermedades hepáticas o renales y otras enfermedades cronicas .",
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "GLOBULINA SERICA",
+        "unit": "g/dl",
+        "ref": "2.0 - 3.5",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "FOSFATASA ALCALINA",
+        "unit": "U/L",
+        "ref": "Hombres :",
+        "description": "Esta enzima se encuentra en los Osteoblastos, hepatocitos, riñones, bazo, placenta, prostata y en el intestino delgado. Aumenta en toda la forma de colestasis y enfermedades del esqueleto (hipoparatiroidismo, raquitismo, osteomalacia, fracturas, tumores malignos). En niños y adolescentes se encuentra incrementado por el crecimiento óseo.",
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "GAMMA GLUTAMIL TRANSPEPTIDASA",
+        "unit": "U/L",
+        "ref": "Hombres :",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "(GGT)",
+        "unit": null,
+        "ref": "Mujeres :",
+        "description": "Esta prueba se emplea para detectar la disfunción de las células hepáticas e indica de forma precisa incluso el grado más leve de colestasia. Se trata de la enzima hepática más sensible en la detección de la obstrucción biliar, la colangitis y la colecistitis",
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "TRANSAMINASA GLUTAMICO PIRUVICA",
+        "unit": "U/L",
+        "ref": "Hombres :",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "(TGP)",
+        "unit": null,
+        "ref": "Mujeres :",
+        "description": "Ayuda diagnostica en enfermedad hepática (hepatitis aguda y crónica, cirrosis hepática), es más especifica que la TGO en daño hepático. También tiene actividad en los riñones, corazón, musculo esquelético, páncreas, bazo y pulmones",
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "TRANSAMINASA GLUTAMICO OXALACETICA",
+        "unit": "U/L",
+        "ref": "Hombres :",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "(TGO)",
+        "unit": null,
+        "ref": "Mujeres :",
+        "description": "Enzima que se encuentra en las células hepáticas, cardiacas, musculares en menor grado en células renales y pancreáticas. Su determinación está indicado en el diagnóstico, pronostico y valoración de distintas enfermedades en lo que se ven afectados los órganos mencionados, causados por diferentes infecciones y/o neoplasias",
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "PARASITOLOGICO SERIADO 3 MUESTR",
+    "analysisName": "PARASITOLOGICO SERIADO 3 MUESTR",
+    "section": "SECCIÓN MICROBIOLOGIA",
+    "items": [
+      {
+        "name": "ANÁLISIS",
+        "unit": null,
+        "ref": "MUESTRAS",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "PERFIL REUMATOIDEO",
+    "analysisName": "HEMOGRAMA AUTOMATIZADO",
+    "section": null,
+    "items": [
+      {
+        "name": "HEMATIES",
+        "unit": "mm3",
+        "ref": "3,500 000 - 5,500 000",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "PLAQUETAS",
+        "unit": "mm3",
+        "ref": "150 000 - 450 000",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "LEUCOCITOS",
+        "unit": "mm3",
+        "ref": "Adultos: 5 000 - 10 000 x mm3",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "HEMOGLOBINA",
+        "unit": "g/dl",
+        "ref": "Hombres : 14.0 - 16.0",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "HEMATOCRITO",
+        "unit": "%",
+        "ref": "Mujeres : 35 - 47%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "VCM",
+        "unit": "fl",
+        "ref": "80 - 92",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "HCM",
+        "unit": "pg",
+        "ref": "27 - 32",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "CCMH",
+        "unit": "g/dl",
+        "ref": "32.0 -36.0",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "RDW CV",
+        "unit": "%",
+        "ref": "11.5 - 14.5",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "RDW SD",
+        "unit": "fl",
+        "ref": "35.0 - 56.0",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "VPM",
+        "unit": "fl",
+        "ref": "7.0 - 11.0",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "ABASTONADOS",
+        "unit": "%",
+        "ref": "0 - 2%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "SEGMENTADOS",
+        "unit": "%",
+        "ref": "50 - 70%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "EOSINOFILOS",
+        "unit": "%",
+        "ref": "2 - 5%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "MONOCITOS",
+        "unit": "%",
+        "ref": "2 - 10%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "BASOFILOS",
+        "unit": "%",
+        "ref": "0 - 1%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "LINFOCITOS",
+        "unit": "%",
+        "ref": "25 - 40%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "PACIENTE:",
+        "unit": "SEXO:",
+        "ref": "Masculino",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "PCR",
+    "analysisName": "PCR",
+    "section": null,
+    "items": [
+      {
+        "name": "(TURBIDOMETRIA)",
+        "unit": "mg/L",
+        "ref": "Hasta 7.5 mg/L",
+        "description": "La PCR es una proteína producida por el hígado. Se envía al torrente sanguíneo en respuesta a una inflamación. La inflamación es la manera en que el cuerpo protege los tejidos cuando ocurre una lesión o una infección.",
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "HEMOGRAMA RN",
+    "analysisName": "HEMOGRAMA AUTOMATIZADO",
+    "section": "SECCIÓN BIOQUIMICA",
+    "items": [
+      {
+        "name": "HEMATIES",
+        "unit": "mm3",
+        "ref": "3,900 000 - 6,200 000",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "PLAQUETAS",
+        "unit": "mm3",
+        "ref": "150 000 - 450 000",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "LEUCOCITOS",
+        "unit": "mm3",
+        "ref": "9.500 - 33 000",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "HEMOGLOBINA",
+        "unit": "g/dl",
+        "ref": "14.50 - 21.50",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "HEMATOCRITO",
+        "unit": "%",
+        "ref": "44 - 65",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "VCM",
+        "unit": "fl",
+        "ref": "1 dia :",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "HCM",
+        "unit": "pg",
+        "ref": "2 - 6 dias:",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "CCMH",
+        "unit": "g/dl",
+        "ref": "2 - 6 dias:",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "RDW CV",
+        "unit": "%",
+        "ref": "11.5 - 14.5",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "RDW SD",
+        "unit": "fl",
+        "ref": "35.0 - 56.0",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "VPM",
+        "unit": "fl",
+        "ref": "7.0 - 11.0",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "ABASTONADOS",
+        "unit": "%",
+        "ref": "0 - 2%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "SEGMENTADOS",
+        "unit": "%",
+        "ref": "50 - 70%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "EOSINOFILOS",
+        "unit": "%",
+        "ref": "2 - 5%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "MONOCITOS",
+        "unit": "%",
+        "ref": "2 - 10%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "BASOFILOS",
+        "unit": "%",
+        "ref": "0 - 1%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "LINFOCITOS",
+        "unit": "%",
+        "ref": "25 - 40%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "HEMOGRAMA NIÑOS",
+    "analysisName": "HEMOGRAMA AUTOMATIZADO",
+    "section": "SECCIÓN HEMATOLOGIA",
+    "items": [
+      {
+        "name": "HEMATIES",
+        "unit": "mm3",
+        "ref": "3,500 000 - 5,500 000",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "PLAQUETAS",
+        "unit": "mm3",
+        "ref": "150 000 - 450 000",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "LEUCOCITOS",
+        "unit": "mm3",
+        "ref": "Adultos: 5 000 - 10 000 x mm3",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "HEMOGLOBINA",
+        "unit": "g/dl",
+        "ref": "1 - 5 Años: 10.5 - 13.5 g/dl",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "HEMATOCRITO",
+        "unit": "%",
+        "ref": "1 - 5 Años: 32 - 41 %",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "VCM",
+        "unit": "fl",
+        "ref": "1.5 - 3 Años: 73 - 101",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "HCM",
+        "unit": "pg",
+        "ref": "11 Meses - 5 Años: 23 -31",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "CCMH",
+        "unit": "g/dl",
+        "ref": "1.3 - 3 Años: 26 - 34",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "RDW CV",
+        "unit": "%",
+        "ref": "11.5 - 14.5",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "RDW SD",
+        "unit": "fl",
+        "ref": "35.0 - 56.0",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "VPM",
+        "unit": "fl",
+        "ref": "7.0 - 11.0",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "ABASTONADOS",
+        "unit": "%",
+        "ref": "0 - 2%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "SEGMENTADOS",
+        "unit": "%",
+        "ref": "50 - 70%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "EOSINOFILOS",
+        "unit": "%",
+        "ref": "0 - 5%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "MONOCITOS",
+        "unit": "%",
+        "ref": "2 - 10%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "BASOFILOS",
+        "unit": "%",
+        "ref": "0 - 1%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "LINFOCITOS",
+        "unit": "%",
+        "ref": "25 - 40%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "HEMOGRAMA  COMPLETO",
+    "analysisName": "HEMOGRAMA AUTOMATIZADO",
+    "section": "SECCIÓN HEMATOLOGIA",
+    "items": [
+      {
+        "name": "HEMATIES",
+        "unit": "mm3",
+        "ref": "3,500 000 - 5,500 000",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "PLAQUETAS",
+        "unit": "mm3",
+        "ref": "150 000 - 450 000",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "LEUCOCITOS",
+        "unit": "mm3",
+        "ref": "Adultos: 5 000 - 10 000 x mm3",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "HEMOGLOBINA",
+        "unit": "g/dl",
+        "ref": "Hombres : 14.0 - 16.0",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "HEMATOCRITO",
+        "unit": "%",
+        "ref": "Mujeres : 35 - 47%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "VCM",
+        "unit": "fl",
+        "ref": "80 - 92",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "HCM",
+        "unit": "pg",
+        "ref": "27 - 32",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "CCMH",
+        "unit": "g/dl",
+        "ref": "32.0 -36.0",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "RDW CV",
+        "unit": "%",
+        "ref": "11.5 - 14.5",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "RDW SD",
+        "unit": "fl",
+        "ref": "35.0 - 56.0",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "VPM",
+        "unit": "fl",
+        "ref": "7.0 - 11.0",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "ABASTONADOS",
+        "unit": "%",
+        "ref": "0 - 2%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "SEGMENTADOS",
+        "unit": "%",
+        "ref": "50 - 70%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "EOSINOFILOS",
+        "unit": "%",
+        "ref": "0 - 5%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "MONOCITOS",
+        "unit": "%",
+        "ref": "2 - 10%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "BASOFILOS",
+        "unit": "%",
+        "ref": "0 - 1%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "LINFOCITOS",
+        "unit": "%",
+        "ref": "25 - 40%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "COPROFUNCIONAL",
+    "analysisName": "COPROFUNCIONAL",
+    "section": "SECCIÓN MICROBIOLOGIA",
+    "items": [
+      {
+        "name": "MUESTRA",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "COLOR",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "CONSISTENCIA",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "MUCUS",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "BENEDICT",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "THEVENON",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "PH",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "LEUCOCITOS",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "HEMATIES",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "CALCIO",
+    "analysisName": "UNIDAD",
+    "section": "SECCIÓN BIOQUIMICA",
+    "items": [
+      {
+        "name": "CALCIO SERICO",
+        "unit": "mg/dl",
+        "ref": "8.8 - 10.5",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "ACIDO URICO SERICO",
+        "unit": "mg/dl",
+        "ref": "2.5 - 7.0",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "VOLUMEN EN ORINA DE 24 HORAS :",
+        "unit": "ml",
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "CALCIO EN ORINA DE 24 HORAS",
+        "unit": "mg/24h",
+        "ref": "100 - 300",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "ACIDO URICO EN ORINA DE 24 HORAS",
+        "unit": "mg/24h",
+        "ref": "250 - 750",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "VITAMINA B12",
+    "analysisName": "UNIDAD",
+    "section": "SECCIÓN BIOQUIMICA",
+    "items": [
+      {
+        "name": "B12 VITAMINA ECLIA",
+        "unit": "pg / ml",
+        "ref": "191.0 - 663.0",
+        "description": "La carencia de vitamina B12, como la del ácido fólico, produce anemia. Estos eritrocitos se caracterizan por ser grandes, megaloblásticos; no pueden adaptarse al tamaño de los pequeños capilares, se rompen y hemolizan. Su período acortado de vida finalmente conduce a un trastorno sanguíneo llamado anemia perniciosa o megaloblástica.",
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "BETA CUALI",
+    "analysisName": "BETA CUALI",
+    "section": "SECCIÓN INMUNOLOGIA",
+    "items": [
+      {
+        "name": "ANALISIS",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "KOH",
+    "analysisName": "KOH",
+    "section": "SECCIÓN MICROBIOLOGIA",
+    "items": [
+      {
+        "name": "MUESTRA",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "EXAMEN DIRECTO CON KOH",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "BILLIRRUBINAS RN",
+    "analysisName": "BILLIRRUBINAS RN",
+    "section": "SECCIÓN BIOQUIMICA",
+    "items": [
+      {
+        "name": "BILIRRUBINA TOTAL",
+        "unit": "mg/dl",
+        "ref": "24 horas : 2.0 - 6.0",
+        "description": "Se emplea para el diagnóstico de hepatopatías, anemia hemolítica y en la evaluación, clasificación y seguimiento de las ictericias.",
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "BILIRRUBINA DIRECTA",
+        "unit": "mg/dl",
+        "ref": "24 horas : 1.0 - 6.0",
+        "description": "Se eleva en las enfermedades biliares, lesiones intra y extra hepáticas . Las causas de elevación hepatocelular incluye: ictericia obstructiva, patología inflamatoria, cirrosis hepática y estados neoplásicos avanzados.",
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "BILIRRUBINA INDIRECTA",
+        "unit": "mg/dl",
+        "ref": null,
+        "description": "Esta elevada en desordenes hemoliticos, patologias inflamatorias, hepatitis, sexis.",
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "RETICULOCITOS",
+    "analysisName": "RESULTADO",
+    "section": "SECCIÓN HEMATOLOGIA",
+    "items": [
+      {
+        "name": "ANALISIS",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "BENEDICT",
+    "analysisName": "BENEDICT",
+    "section": "SECCIÓN MICROBIOLOGIA",
+    "items": [
+      {
+        "name": "MUESTRA",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "ANALISIS",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "VDRL,VIH",
+    "analysisName": "VDRL,VIH",
+    "section": "SECCIÓN INMUNOLOGIA",
+    "items": [
+      {
+        "name": "ANALISIS",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "FSH,LH,PROLACTINA",
+    "analysisName": "FSH,LH,PROLACTINA",
+    "section": "SECCIÓN INMUNOLOGIA",
+    "items": [
+      {
+        "name": "F.S.H.",
+        "unit": "mIU/ml.",
+        "ref": "1.70 - 134.80",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "L.H.",
+        "unit": "mIU/ml.",
+        "ref": "1.00 - 95.60",
+        "description": "Utilizada para determinar trastornos funcionales en el eje Hipotálamo-Hipófisis-Gónadal. La determinación de la hormona luteinizante (LH) y la hormona foliculoestimulante (FSH) estan indicadas en el estudio de enfermedades congénitas, ovarios poliquísticos, sindrome climatérico, y en diagnóstico diferencial de amenorrea",
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "T4 LIBRE",
+        "unit": "ng/dL",
+        "ref": "1.00 - 1.60",
+        "description": "Constituye el componente fisiológicamente activo de la tiroxina, es medido conjuntamete con la TSH frente a una sospecha de disfunción tiroidea y terapia tirosupresora",
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "TSH ULTRASENSIBLE",
+        "unit": "ulU/ml",
+        "ref": "0.27 - 4.20",
+        "description": "Esta hormona regula la producción de hormona tiroidea T3 y T4, por lo tanto es de gran utilidad en el diagnóstico diferencial de alteraciones en la función de la glándula tiroides, y como ayuda en el monitoreo de la terapia tiroidea.",
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "PROLACTINA",
+        "unit": "ng / ml",
+        "ref": "4.79 - 23.30",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "PRUEBA DE HELECHOS",
+    "analysisName": "RESULTADO",
+    "section": "SECCIÓN MICROBIOLOGIA",
+    "items": [
+      {
+        "name": "MUESTRA",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "ANALISIS",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "HELICOBACTER",
+    "analysisName": "HELICOBACTER",
+    "section": "SECCIÓN INMUNOLOGIA",
+    "items": [
+      {
+        "name": "HELICOBACTER PYLORI IGG",
+        "unit": "EIU",
+        "ref": "Negativo : < 20",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "ELISA automatizado Analizador Alegria - ORGENTEC",
+        "unit": null,
+        "ref": "Límite : 20 - 30",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "HELICOBACTER PYLORI IGM",
+        "unit": "U/mL",
+        "ref": "Negativo : < 1",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "Quimioluminiscencia Analizador Maglumi 800 - SNIBE",
+        "unit": null,
+        "ref": "Positivo : >= 1",
+        "description": "El Helicobacter Pylori es una bacteria que se encuentra en la mucosa que recubre el interior del estómago. Esta bacteria es responsable principalmente de gastritis, úlcera péptica y posterior si no es erradica, cáncer de estómago. El mecanismo de estas bacterias es disminuir la producción de moco en el estómago, exponiéndolo a sufrir daños por el ácido gástrico (inflamación y ulceras). Esta prueba se solicita para ayudar al diagnóstico de una infección por Helicobacter Pylori y evaluar la eficacia del tratamiento. Un resultado positivo indica que los síntomas gastrointestinales se asocian a la presencia crónica de la bacteria. Un resultado negativo indica que la persona no se ha infectado por la bacteria, sin embargo, si los síntomas persisten es posible descartar con una biopsia o con otras pruebas para detectar la bacteria. La prueba de Helicobacter pylori IgM detecta enfermedad en fase aguda mientras que el Helicobacter pylori IgG detecta una fase crónica o pasada de la enfermedad.",
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "PAPILOMA",
+    "analysisName": "PAPILOMA",
+    "section": "SECCIÓN BIOLOGIA MOLECULAR",
+    "items": [
+      {
+        "name": "ANALISIS",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "Tipo de muestra",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "METODOLOGÍA",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "ANÁLISIS",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "Nota",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "REGISTRO LAB",
+    "analysisName": "REGISTRO LAB",
+    "section": null,
+    "items": [
+      {
+        "name": "REGISTRO LAB",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "BHCG CUANTITATIVO",
+    "analysisName": "UNIDAD",
+    "section": "SECCIÓN INMUNOLOGIA",
+    "items": [
+      {
+        "name": "HCG SUB UNIDAD BETA",
+        "unit": "mIU/mL",
+        "ref": "VARONES :",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "B - HCG (CUANTITATIVO)",
+        "unit": null,
+        "ref": "< 1 - 2.484 mIU/mL",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "GRUPO Y FACTOR",
+    "analysisName": "GRUPO Y FACTOR",
+    "section": "SECCIÓN HEMATOLOGIA",
+    "items": [
+      {
+        "name": "ANALISIS",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "ANALISIS",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "GLUCOSA",
+    "analysisName": "GLUCOSA",
+    "section": "SECCIÓN BIOQUIMICA",
+    "items": [
+      {
+        "name": "GLUCOSA BASAL",
+        "unit": "mg/dl",
+        "ref": "70 - 110",
+        "description": "El estudio de la Glucosa Basal se emplea en el diagnóstico y seguimiento de trastornos del metabolismo de los hidratos de carbono (diabetes mellitus, hipoglicemia neonatal, hipoglicemia idiopática)",
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "TRANSAMINASA GLUTAMICO OXALACETICA",
+        "unit": "U/L",
+        "ref": "Hombres : ≤ 37",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "(TGO)",
+        "unit": null,
+        "ref": "Mujeres : ≤ 31",
+        "description": "Enzima que se encuentra en las células hepáticas, cardiacas, musculares en menor grado en células renales y pancreáticas. Su determinación está indicado en el diagnóstico, pronostico y valoración de distintas enfermedades en lo que se ven afectados los órganos mencionados, causados por diferentes infecciones y/o neoplasias",
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "TRANSAMINASA GLUTAMICO PIRUVICA",
+        "unit": "U/L",
+        "ref": "Hombres : ≤ 45",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "(TGP)",
+        "unit": null,
+        "ref": "Mujeres : ≤ 34",
+        "description": "Ayuda diagnostica en enfermedad hepática (hepatitis aguda y crónica, cirrosis hepática), es más especifica que la TGO en daño hepático. También tiene actividad en los riñones, corazón, musculo esquelético, páncreas, bazo y pulmones",
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "GLU+UREA+CREA",
+    "analysisName": "GLU+UREA+CREA",
+    "section": "SECCIÓN BIOQUIMICA",
+    "items": [
+      {
+        "name": "CREATININA",
+        "unit": "mg/dl",
+        "ref": "Hombres : 0.7 - 1.4",
+        "description": "La Creatinina es un producto de deshecho que se genera a partir del metabolismo múscular, la cual es transportada por medio de la sangre hacia los riñones para su eliminación. El estudio de su concentración en la sangre nos indica el estado de la función renal excretora.",
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "UREA",
+        "unit": "mg/dl",
+        "ref": "13 - 50",
+        "description": "El examen de nitrógeno ureico en sangre brinda información importante sobre el funcionamiento de los riñones. La función principal de los riñones es eliminar los productos de desecho y el exceso de líquido del cuerpo.",
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "GLUCOSA BASAL",
+        "unit": "mg/dl",
+        "ref": "70 - 110",
+        "description": "El estudio de la Glucosa Basal se emplea en el diagnóstico y seguimiento de trastornos del metabolismo de los hidratos de carbono (diabetes mellitus, hipoglicemia neonatal, hipoglicemia idiopática)",
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "PACIENTE :",
+        "unit": null,
+        "ref": "SEXO :",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "TIEMPO DE COAGULACION",
+    "analysisName": "TIEMPO DE COAGULACION",
+    "section": null,
+    "items": [
+      {
+        "name": "TIEMPO DE COAGULACION",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "TIEMPO DE PROTROMBINA+TTPA",
+    "analysisName": "TIEMPO DE PROTROMBINA+TTPA",
+    "section": "SECCIÓN HEMATOLOGIA",
+    "items": [
+      {
+        "name": "TIEMPO DE PROTROMBINA",
+        "unit": "segundos",
+        "ref": "12. 0 - 16. 0",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "TIEMPO DE TROMBOPLASTINA PARCIAL (TTPA)",
+        "unit": "segundos",
+        "ref": "26 - 48",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "EXAMEN DE ORINA",
+    "analysisName": "HEMOGRAMA AUTOMATIZADO",
+    "section": "SECCIÓN HEMATOLOGIA",
+    "items": [
+      {
+        "name": "HEMATIES",
+        "unit": "mm3",
+        "ref": "3,500 000 - 5,500 000",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "PLAQUETAS",
+        "unit": "mm3",
+        "ref": "150 000 - 450 000",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "LEUCOCITOS",
+        "unit": "mm3",
+        "ref": "Adultos: 5 000 - 10 000 x mm3",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "HEMOGLOBINA",
+        "unit": "g/dl",
+        "ref": "Hombres : 14.0 - 16.0",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "HEMATOCRITO",
+        "unit": "%",
+        "ref": "Mujeres : 35 - 47%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "VCM",
+        "unit": "fl",
+        "ref": "80 - 92",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "HCM",
+        "unit": "pg",
+        "ref": "27 - 32",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "CCMH",
+        "unit": "g/dl",
+        "ref": "32.0 -36.0",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "RDW CV",
+        "unit": "%",
+        "ref": "11.5 - 14.5",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "RDW SD",
+        "unit": "fl",
+        "ref": "35.0 - 56.0",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "VPM",
+        "unit": "fl",
+        "ref": "7.0 - 11.0",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "ABASTONADOS",
+        "unit": "%",
+        "ref": "0 - 2%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "SEGMENTADOS",
+        "unit": "%",
+        "ref": "50 - 70%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "EOSINOFILOS",
+        "unit": "%",
+        "ref": "0 - 5%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "MONOCITOS",
+        "unit": "%",
+        "ref": "2 - 10%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "BASOFILOS",
+        "unit": "%",
+        "ref": "0 - 1%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "LINFOCITOS",
+        "unit": "%",
+        "ref": "25 - 40%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "PACIENTE :",
+        "unit": null,
+        "ref": "SEXO :",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "E.O MARRUFO",
+    "analysisName": "E.O MARRUFO",
+    "section": null,
+    "items": [
+      {
+        "name": "EXAMEN FISICO",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "COLOR",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "EXAMEN QUIMICO",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "DENSIDAD",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "PH",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "REACCION",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "LEUCOCITOS",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "NITRITOS",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "GLUCOSA",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "PROTEINAS",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "CETONAS",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "BILIRRUBINAS",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "SANGRE",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "UROBILINOGENO",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "EXAMEN QUIMICO",
+        "unit": null,
+        "ref": "VALORES NORMALES",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "CULTIVO S.V.G",
+    "analysisName": "CULTIVO S.V.G",
+    "section": null,
+    "items": [
+      {
+        "name": "MICROORGANISMO AISLADO",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "HEMOGLOBINA GLICOSILADA - CLLAB",
+    "analysisName": "HEMOGLOBINA GLICOSILADA - CLLAB",
+    "section": "SECCIÓN BIOQUIMICA",
+    "items": [
+      {
+        "name": "HEMOGLOBINA GLICOSILADA ( HBA1C )",
+        "unit": "%",
+        "ref": "4.8 - 6.0",
+        "description": "La cantidad de Hemoglobina Glucosilada depende de la cantidad de Glucosa disponible en el torrente sanguíneo a lo largo del periodo de vida de 120 días del hematíe.La ADA (Asociación Americana de Diabetes) recomienda incluir la Hemoglobina Glucosilada como prueba con valor diagnóstico para la diabetes mellitus.Suministra un índice preciso a mediano y largo plazo de la media de la glucemia del paciente, por lo tanto útil en el control del tratamiento de la diabetes.",
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "LAMINA PERIFERICA",
+    "analysisName": "LAMINA PERIFERICA",
+    "section": "SECCIÓN HEMATOLOGIA",
+    "items": [
+      {
+        "name": "LAMINA PERIFERICA",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "PCR CUANTITATIVO",
+    "analysisName": "UNIDAD",
+    "section": null,
+    "items": [
+      {
+        "name": "(PCR CUANTITATIVA)",
+        "unit": "mg/L",
+        "ref": "< 6. 0",
+        "description": "La PCR es una proteína producida por el hígado. Se envía al torrente sanguíneo en respuesta a una inflamación. La inflamación es la manera en que el cuerpo protege los tejidos cuando ocurre una lesión o una infección.",
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "HB GLICOSILDADA",
+    "analysisName": "HB GLICOSILDADA",
+    "section": "SECCIÓN BIOQUIMICA",
+    "items": [
+      {
+        "name": "HEMOGLOBINA GLICOSILDADA",
+        "unit": "%",
+        "ref": "NORMAL : 4.8 % - 5.9%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "(HBA1C)",
+        "unit": null,
+        "ref": "OBJ. TERAPEUTICO : 6.0 % - 7.0%",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "UROCULTIVO",
+    "analysisName": "UROCULTIVO",
+    "section": null,
+    "items": [
+      {
+        "name": "LEUCOCITOS",
+        "unit": null,
+        "ref": "2 (+)",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "HEMATIES",
+        "unit": null,
+        "ref": "------",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "C. EPITELIALES",
+        "unit": null,
+        "ref": "------",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "BACTERIAS",
+        "unit": null,
+        "ref": "------",
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "INTERPRETACION",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "GLU+COL+TG",
+    "analysisName": "GLU+COL+TG",
+    "section": "SECCIÓN BIOQUIMICA",
+    "items": [
+      {
+        "name": "TRIGLICERIDOS",
+        "unit": "mg/dl",
+        "ref": "35 - 150",
+        "description": "Evalúa el riesgo de enfermedad cardiaca y vascular; se emplea para el tratamiento y control de pacientes con diabetes mellitus, sindrome nefrótico, hepatitis viral, obstrucción hepática, pancreatitis, transtornos del metabolismo lipídico y numerosas enfermedades endocrinológicas.",
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "COLESTEROL TOTAL",
+        "unit": "mg/dl",
+        "ref": "140 - 200",
+        "description": "La determinación de Colesterol se emplea para la medición del riesgo de arterioesclerosis, así como para el diagnóstico y tratamiento de enfermedades con niveles elevados de Colesterol o trastornos del metabolismo lipídico y lipoproteíco.",
+        "valueType": "TEXT",
+        "selectOptions": []
+      },
+      {
+        "name": "GLUCOSA BASAL",
+        "unit": "mg/dl",
+        "ref": "70 - 110",
+        "description": "El estudio de la Glucosa Basal se emplea en el diagnóstico y seguimiento de trastornos del metabolismo de los hidratos de carbono (diabetes mellitus, hipoglicemia neonatal, hipoglicemia idiopática)",
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "DENGUE",
+    "analysisName": "DENGUE",
+    "section": null,
+    "items": [
+      {
+        "name": "ANALSIS",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  },
+  {
+    "templateKey": "PAPA NICOLAU",
+    "analysisName": "PAPA NICOLAU",
+    "section": null,
+    "items": [
+      {
+        "name": "ANALISIS",
+        "unit": null,
+        "ref": null,
+        "description": null,
+        "valueType": "TEXT",
+        "selectOptions": []
+      }
+    ]
+  }
+]
