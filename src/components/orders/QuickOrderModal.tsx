@@ -43,6 +43,7 @@ export function QuickOrderModal({ open, onOpenChange }: Props) {
   const [selectedTestIds, setSelectedTestIds] = useState<Set<string>>(new Set());
   const [doctorName, setDoctorName] = useState("");
   const [indication, setIndication] = useState("");
+  const [patientType, setPatientType] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -164,6 +165,7 @@ export function QuickOrderModal({ open, onOpenChange }: Props) {
           patientDraft: patientDraftPayload,
           doctorName: doctorName || null,
           indication: indication || null,
+          patientType: patientType || null,
           tests: Array.from(selectedTestIds),
         }),
       });

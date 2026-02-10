@@ -25,6 +25,21 @@ export async function POST(request: Request, { params }: Params) {
     const body = await request.json().catch(() => ({}));
     const doctorName = body.doctorName ?? sourceOrder.requestedBy ?? null;
     const indication = body.indication ?? sourceOrder.notes ?? null;
+    const patientIdOverride = body.patientId as string | undefined;
+
+    let patientId = sourceOrder.patientId;
+    if (patientIdOverride) {
+      const patient = await prisma.patient.findFirst({
+        where: { id: patientIdOverride, deletedAt: null },
+      });
+      if (!patient) {
+        return NextResponse.json(
+          { error: "Paciente no encontrado" },
+          { status: 400 }
+        );
+      }
+      patientId = patient.id;
+    }
 
     const items = sourceOrder.items;
 
@@ -46,9 +61,10 @@ export async function POST(request: Request, { params }: Params) {
     const order = await prisma.labOrder.create({
       data: {
         orderCode,
-        patientId: sourceOrder.patientId,
+        patientId,
         requestedBy: doctorName,
         notes: indication,
+        patientType: sourceOrder.patientType ?? null,
         totalPrice,
         items: {
           createMany: {

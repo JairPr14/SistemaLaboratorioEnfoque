@@ -51,7 +51,7 @@ export default async function ReportesPage({
   const params = await searchParams;
   const { dateFrom, dateTo } = parseDateRange(params);
 
-  const [orderItems, ordersSummary, revenueResult] = await Promise.all([
+  const [orderItems, ordersSummary, revenueResult, byPatientType, ordersList] = await Promise.all([
     prisma.labOrderItem.findMany({
       where: {
         order: {
@@ -73,6 +73,24 @@ export default async function ReportesPage({
         createdAt: { gte: dateFrom, lte: dateTo },
         status: { not: "ANULADO" },
       },
+    }),
+    prisma.labOrder.groupBy({
+      by: ["patientType"],
+      where: {
+        createdAt: { gte: dateFrom, lte: dateTo },
+        status: { not: "ANULADO" },
+      },
+      _count: { id: true },
+      _sum: { totalPrice: true },
+    }),
+    prisma.labOrder.findMany({
+      where: {
+        createdAt: { gte: dateFrom, lte: dateTo },
+        status: { not: "ANULADO" },
+      },
+      include: { patient: true },
+      orderBy: { createdAt: "desc" },
+      take: 500,
     }),
   ]);
 
@@ -109,6 +127,15 @@ export default async function ReportesPage({
     ENTREGADO: "Entregados",
     ANULADO: "Anulados",
   };
+
+  const sedeLabels: Record<string, string> = {
+    CLINICA: "Paciente Clínica",
+    EXTERNO: "Paciente Externo",
+    IZAGA: "Paciente Izaga",
+  };
+  function getSedeLabel(type: string | null): string {
+    return type ? (sedeLabels[type] ?? type) : "Sin especificar";
+  }
 
   return (
     <div className="space-y-6">
@@ -176,6 +203,107 @@ export default async function ReportesPage({
               ))
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Por sede / Tipo de paciente */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Por sede (tipo de paciente)</CardTitle>
+          <p className="text-sm text-slate-500 mt-1">
+            Órdenes e ingresos según tipo: Clínica, Externo, Izaga.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {byPatientType.length === 0 ? (
+            <p className="text-sm text-slate-500">Sin órdenes en el período</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Sede / Tipo</TableHead>
+                    <TableHead className="text-right w-28">Órdenes</TableHead>
+                    <TableHead className="text-right w-32">Ingresos</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {byPatientType.map((row) => {
+                    const label = getSedeLabel(row.patientType);
+                    const sum = Number(row._sum.totalPrice ?? 0);
+                    return (
+                      <TableRow key={row.patientType ?? "_sin_especificar"}>
+                        <TableCell className="font-medium">{label}</TableCell>
+                        <TableCell className="text-right">{row._count.id}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(sum)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Órdenes del período (con sede) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Órdenes del período</CardTitle>
+          <p className="text-sm text-slate-500 mt-1">
+            Listado con sede asignada. Máximo 500 órdenes.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {ordersList.length === 0 ? (
+            <p className="text-sm text-slate-500">No hay órdenes en el período.</p>
+          ) : (
+            <div className="overflow-x-auto max-h-[420px] overflow-y-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Orden</TableHead>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Paciente</TableHead>
+                    <TableHead>Sede</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {ordersList.map((order) => (
+                    <TableRow key={order.id}>
+                      <TableCell>
+                        <Link
+                          href={`/orders/${order.id}`}
+                          className="font-medium text-slate-900 hover:underline"
+                        >
+                          {order.orderCode}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-slate-600">{formatDate(order.createdAt)}</TableCell>
+                      <TableCell>
+                        {order.patient.lastName} {order.patient.firstName}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="text-xs">
+                          {getSedeLabel(order.patientType)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="text-xs">
+                          {statusLabels[order.status] ?? order.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {formatCurrency(Number(order.totalPrice))}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
 

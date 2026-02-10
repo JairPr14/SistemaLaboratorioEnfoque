@@ -1,11 +1,16 @@
 import Link from "next/link";
 
 import { prisma } from "@/lib/prisma";
+import { formatDate, formatDateTime } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { formatDate } from "@/lib/format";
-import { ResultActions } from "@/components/orders/ResultActions";
+
+function getOrderDateKey(order: { createdAt: Date }) {
+  const d = order.createdAt;
+  const date = typeof d === "string" ? new Date(d) : d;
+  return date.toISOString().slice(0, 10);
+}
 
 export default async function ResultsPage({
   searchParams,
@@ -15,119 +20,180 @@ export default async function ResultsPage({
   const params = await searchParams;
   const search = params.search?.trim();
 
-  const results = await prisma.labResult.findMany({
-    where: search
-      ? {
-          OR: [
-            { orderItem: { order: { orderCode: { contains: search } } } },
-            {
-              orderItem: {
-                order: {
-                  patient: {
-                    OR: [
-                      { firstName: { contains: search } },
-                      { lastName: { contains: search } },
-                      { dni: { contains: search } },
-                    ],
-                  },
+  const orders = await prisma.labOrder.findMany({
+    where: {
+      items: { some: { result: { isNot: null } } },
+      ...(search
+        ? {
+            OR: [
+              { orderCode: { contains: search } },
+              {
+                patient: {
+                  OR: [
+                    { firstName: { contains: search } },
+                    { lastName: { contains: search } },
+                    { dni: { contains: search } },
+                  ],
                 },
               },
-            },
-          ],
-        }
-      : undefined,
+            ],
+          }
+        : undefined),
+    },
     include: {
-      orderItem: {
+      patient: true,
+      items: {
         include: {
-          order: { include: { patient: true } },
           labTest: true,
+          result: { include: { items: true } },
         },
       },
-      items: true,
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ createdAt: "desc" }, { updatedAt: "desc" }],
+  });
+
+  const grouped = new Map<string, typeof orders>();
+  for (const order of orders) {
+    const key = `${order.patientId}-${getOrderDateKey(order)}`;
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key)!.push(order);
+  }
+
+  const groups = Array.from(grouped.entries()).map(([key, ordersInGroup]) => {
+    const patient = ordersInGroup[0]!.patient;
+    const dateKey = getOrderDateKey(ordersInGroup[0]!);
+    const displayDate = formatDate(ordersInGroup[0]!.createdAt);
+    return {
+      key,
+      patientName: `${patient.lastName} ${patient.firstName}`,
+      patientDni: patient.dni,
+      displayDate,
+      dateKey,
+      orders: ordersInGroup,
+    };
+  });
+
+  groups.sort((a, b) => {
+    const d = b.dateKey.localeCompare(a.dateKey);
+    if (d !== 0) return d;
+    return a.patientName.localeCompare(b.patientName);
   });
 
   return (
     <Card>
       <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <CardTitle>Resultados registrados</CardTitle>
+        <div>
+          <CardTitle>Resultados registrados</CardTitle>
+          <p className="text-sm text-slate-500 mt-1">
+            Órdenes con resultados capturados, agrupadas por paciente y día (más recientes primero).
+          </p>
+        </div>
         <form className="flex items-center gap-2" method="GET">
           <input
             name="search"
             defaultValue={search}
             placeholder="Buscar por paciente u orden..."
-            className="h-9 rounded-md border border-slate-200 px-3 text-sm"
+            className="h-9 rounded-md border border-slate-200 px-3 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
           />
-          <button className="rounded-md bg-slate-900 px-3 py-2 text-xs font-semibold text-white">
+          <button
+            type="submit"
+            className="rounded-md bg-slate-900 px-3 py-2 text-xs font-semibold text-white dark:bg-slate-100 dark:text-slate-900"
+          >
             Buscar
           </button>
         </form>
       </CardHeader>
       <CardContent>
-        {results.length === 0 ? (
-          <div className="py-8 text-center text-slate-500">
+        {orders.length === 0 ? (
+          <div className="py-12 text-center text-slate-500">
             <p>No se encontraron resultados registrados.</p>
             <p className="text-sm mt-2">
-              Ve a <Link href="/orders" className="text-slate-900 hover:underline">Órdenes</Link> para capturar resultados.
+              Ve a <Link href="/orders" className="text-slate-900 dark:text-slate-100 hover:underline">Órdenes</Link> para capturar resultados.
             </p>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Orden</TableHead>
-                <TableHead>Paciente</TableHead>
-                <TableHead>DNI</TableHead>
-                <TableHead>Análisis</TableHead>
-                <TableHead>Sección</TableHead>
-                <TableHead>Reportado</TableHead>
-                <TableHead>Parámetros</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {results.map((result) => (
-                <TableRow key={result.id}>
-                  <TableCell>
-                    <Link
-                      href={`/orders/${result.orderItem.orderId}`}
-                      className="text-slate-900 hover:underline font-medium"
-                    >
-                      {result.orderItem.order.orderCode}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {result.orderItem.order.patient.firstName}{" "}
-                    {result.orderItem.order.patient.lastName}
-                  </TableCell>
-                  <TableCell>{result.orderItem.order.patient.dni}</TableCell>
-                  <TableCell>
-                    {result.orderItem.labTest.code} - {result.orderItem.labTest.name}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className="text-xs">
-                      {result.orderItem.labTest.section}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{formatDate(result.reportedAt)}</TableCell>
-                  <TableCell>
-                    <Badge variant="success" className="bg-emerald-100 text-emerald-700">
-                      {result.items.length} parámetros
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <ResultActions
-                      orderId={result.orderItem.orderId}
-                      orderCode={result.orderItem.order.orderCode}
-                      patientName={`${result.orderItem.order.patient.firstName} ${result.orderItem.order.patient.lastName}`}
-                      patientPhone={result.orderItem.order.patient.phone}
-                    />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <div className="space-y-6">
+            {groups.map((group) => (
+              <div
+                key={group.key}
+                className="rounded-lg border border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700 overflow-hidden"
+              >
+                <div className="flex flex-wrap items-center gap-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3">
+                  <span className="font-semibold text-slate-900 dark:text-slate-100">
+                    {group.patientName}
+                  </span>
+                  <span className="text-sm text-slate-600 dark:text-slate-400">DNI {group.patientDni}</span>
+                  <Badge variant="secondary" className="text-xs">
+                    {group.displayDate}
+                  </Badge>
+                  {group.orders.length > 1 && (
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      {group.orders.length} órdenes en este día
+                    </span>
+                  )}
+                </div>
+                <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                  {group.orders.map((order) => (
+                    <div key={order.id}>
+                      <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/50 px-4 py-2">
+                        <Link
+                          href={`/orders/${order.id}`}
+                          className="font-medium text-slate-900 dark:text-slate-100 hover:underline"
+                        >
+                          Orden {order.orderCode}
+                        </Link>
+                        <span className="text-xs text-slate-500 dark:text-slate-400">
+                          Creada: {formatDateTime(order.createdAt)}
+                        </span>
+                        <Link
+                          href={`/orders/${order.id}/print`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:underline"
+                        >
+                          Ver PDF
+                        </Link>
+                      </div>
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-slate-50/50 dark:bg-slate-800/50">
+                            <TableHead className="w-12">#</TableHead>
+                            <TableHead>Código</TableHead>
+                            <TableHead>Análisis</TableHead>
+                            <TableHead>Sección</TableHead>
+                            <TableHead>Resultado</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {order.items.map((item, idx) => (
+                            <TableRow key={item.id}>
+                              <TableCell className="text-slate-500 dark:text-slate-400 text-sm">{idx + 1}</TableCell>
+                              <TableCell className="font-mono text-sm">{item.labTest.code}</TableCell>
+                              <TableCell className="font-medium">{item.labTest.name}</TableCell>
+                              <TableCell>
+                                <Badge variant="secondary" className="text-xs">
+                                  {item.labTest.section}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {item.result && (item.result.items?.length ?? 0) > 0 ? (
+                                  <Badge variant="success" className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 text-xs">
+                                    {item.result.items?.length ?? 0} parámetros
+                                  </Badge>
+                                ) : (
+                                  <span className="text-xs text-slate-400">Sin resultados</span>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </CardContent>
     </Card>

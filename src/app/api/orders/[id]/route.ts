@@ -46,6 +46,7 @@ export async function PUT(request: Request, { params }: Params) {
       data: {
         status: parsed.status,
         notes: parsed.notes ?? undefined,
+        patientType: parsed.patientType !== undefined ? parsed.patientType : undefined,
         deliveredAt:
           parsed.deliveredAt !== undefined
             ? parsed.deliveredAt

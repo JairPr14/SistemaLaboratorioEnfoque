@@ -23,6 +23,7 @@ export const orderItemStatusValues = [
   "EN_PROCESO",
   "COMPLETADO",
 ] as const;
+export const orderPatientTypeValues = ["CLINICA", "EXTERNO", "IZAGA"] as const;
 
 export const patientSchema = z.object({
   code: z.string().min(3).optional(),
@@ -106,6 +107,11 @@ export const orderCreateSchema = z.object({
   patientId: z.string().min(1),
   requestedBy: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  orderDate: z.string().optional(),
+  patientType: z.preprocess(
+    (v) => (v === "" || v === undefined ? null : v),
+    z.enum(orderPatientTypeValues).nullable()
+  ).optional(),
   labTestIds: z.array(z.string().min(1)).min(1),
 });
 
@@ -126,6 +132,10 @@ export const quickOrderSchema = z.object({
   patientDraft: patientDraftSchema.optional(),
   doctorName: z.string().optional().nullable(),
   indication: z.string().optional().nullable(),
+  patientType: z.preprocess(
+    (v) => (v === "" || v === undefined ? null : v),
+    z.enum(orderPatientTypeValues).nullable()
+  ).optional(),
   tests: z.array(z.string().min(1)).min(1),
 });
 
@@ -133,6 +143,10 @@ export const orderUpdateSchema = z.object({
   status: z.enum(orderStatusValues).optional(),
   deliveredAt: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  patientType: z.preprocess(
+    (v) => (v === "" || v === undefined ? null : v),
+    z.enum(orderPatientTypeValues).nullable()
+  ).optional(),
 });
 
 export const resultItemSchema = z.object({

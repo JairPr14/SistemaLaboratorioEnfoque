@@ -67,13 +67,19 @@ export async function POST(request: Request) {
 
     const totalPrice = tests.reduce((acc, t) => acc + Number(t.price), 0);
 
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const todayCount = await prisma.labOrder.count({
-      where: { createdAt: { gte: todayStart } },
+    const orderDate = parsed.orderDate
+      ? new Date(parsed.orderDate + "T00:00:00")
+      : new Date();
+    const dayStart = new Date(orderDate);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayEnd.getDate() + 1);
+    const sameDayCount = await prisma.labOrder.count({
+      where: {
+        createdAt: { gte: dayStart, lt: dayEnd },
+      },
     });
-
-    const orderCode = buildOrderCode(todayCount + 1);
+    const orderCode = buildOrderCode(sameDayCount + 1, dayStart);
 
     // Cada ítem de la orden guarda la plantilla del análisis seleccionado (templateSnapshot)
     // para poder capturar resultados luego con los parámetros correctos.
@@ -83,7 +89,9 @@ export async function POST(request: Request) {
         patientId: parsed.patientId,
         requestedBy: parsed.requestedBy ?? null,
         notes: parsed.notes ?? null,
+        patientType: parsed.patientType ?? null,
         totalPrice,
+        createdAt: dayStart,
         items: {
           createMany: {
             data: tests.map((test) => ({

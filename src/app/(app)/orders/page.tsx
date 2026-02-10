@@ -110,19 +110,38 @@ export default async function OrdersPage({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {orders.map((order) => (
-              <TableRow key={order.id}>
+            {orders.map((order) => {
+              const isPendiente = order.status === "PENDIENTE";
+              const isEntregado = order.status === "ENTREGADO";
+              const rowClass = isPendiente
+                ? "border-l-4 border-l-amber-500 bg-amber-50/50 dark:bg-amber-950/20"
+                : isEntregado
+                  ? "border-l-4 border-l-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20"
+                  : "";
+              const statusVariant =
+                order.status === "PENDIENTE"
+                  ? "warning"
+                  : order.status === "ENTREGADO"
+                    ? "success"
+                    : "secondary";
+              return (
+              <TableRow key={order.id} className={rowClass}>
                 <TableCell>
-                  <Link className="hover:underline" href={`/orders/${order.id}`}>
+                  <Link
+                    className={`hover:underline font-medium ${isPendiente ? "text-amber-800 dark:text-amber-200" : isEntregado ? "text-emerald-800 dark:text-emerald-200" : ""}`}
+                    href={`/orders/${order.id}`}
+                  >
                     {order.orderCode}
                   </Link>
                 </TableCell>
-                <TableCell>
+                <TableCell className={isPendiente ? "text-amber-800 dark:text-amber-200" : isEntregado ? "text-emerald-800 dark:text-emerald-200" : ""}>
                   {order.patient.firstName} {order.patient.lastName}
                 </TableCell>
-                <TableCell>{formatDate(order.createdAt)}</TableCell>
+                <TableCell className={isPendiente ? "text-amber-700 dark:text-amber-300" : isEntregado ? "text-emerald-700 dark:text-emerald-300" : ""}>
+                  {formatDate(order.createdAt)}
+                </TableCell>
                 <TableCell>
-                  <Badge variant="secondary">{order.status}</Badge>
+                  <Badge variant={statusVariant}>{order.status}</Badge>
                 </TableCell>
                 <TableCell>{formatCurrency(Number(order.totalPrice))}</TableCell>
                 <TableCell className="text-right">
@@ -132,7 +151,8 @@ export default async function OrdersPage({
                   <DeleteButton url={`/api/orders/${order.id}`} label="Eliminar" />
                 </TableCell>
               </TableRow>
-            ))}
+              );
+            })}
           </TableBody>
         </Table>
       </CardContent>

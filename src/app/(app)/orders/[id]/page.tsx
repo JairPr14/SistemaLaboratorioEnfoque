@@ -56,7 +56,10 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <RepeatOrderButton orderId={order.id} />
+            <RepeatOrderButton
+              orderId={order.id}
+              patientName={`${order.patient.firstName} ${order.patient.lastName}`}
+            />
             <OrderStatusActions orderId={order.id} currentStatus={order.status} />
           </div>
         </CardHeader>

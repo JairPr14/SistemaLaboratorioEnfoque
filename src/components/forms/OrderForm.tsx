@@ -51,6 +51,8 @@ export function OrderForm({ patients, recentPatients = [], tests }: Props) {
       patientId: "",
       requestedBy: "",
       notes: "",
+      orderDate: new Date().toISOString().slice(0, 10),
+      patientType: null as string | null,
       labTestIds: [],
     },
   });
@@ -228,6 +230,27 @@ export function OrderForm({ patients, recentPatients = [], tests }: Props) {
                 </div>
               </div>
             )}
+          </div>
+          <div className="space-y-2">
+            <Label className="text-slate-700">Fecha de la orden</Label>
+            <Input
+              type="date"
+              {...form.register("orderDate")}
+              className="rounded-lg"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-slate-700">Tipo de paciente (sede)</Label>
+            <select
+              {...form.register("patientType")}
+              className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            >
+              <option value="">Sin especificar</option>
+              <option value="CLINICA">Paciente Clínica</option>
+              <option value="EXTERNO">Paciente Externo</option>
+              <option value="IZAGA">Paciente Izaga</option>
+            </select>
+            <p className="text-xs text-slate-500">Solo para reportes; no se muestra en PDF.</p>
           </div>
           <div className="space-y-2">
             <Label className="text-slate-700">Médico solicitante</Label>

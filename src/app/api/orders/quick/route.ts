@@ -86,6 +86,7 @@ export async function POST(request: Request) {
         patientId,
         requestedBy: parsed.doctorName ?? null,
         notes: parsed.indication ?? null,
+        patientType: parsed.patientType ?? null,
         totalPrice,
         items: {
           createMany: {
