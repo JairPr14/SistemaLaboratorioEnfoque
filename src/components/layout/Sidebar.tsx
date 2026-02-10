@@ -15,6 +15,7 @@ const navItems = [
   { href: "/results", label: "Resultados" },
   { href: "/pending", label: "Pendientes" },
   { href: "/delivered", label: "Entregados" },
+  { href: "/reportes", label: "Reportes" },
 ];
 
 export function Sidebar() {
