@@ -59,12 +59,12 @@ export default async function OrdersPage({
               name="search"
               defaultValue={search}
               placeholder="Buscar por paciente u orden..."
-              className="h-9 rounded-md border border-slate-200 px-3 text-sm"
+              className="h-9 rounded-md border border-slate-200 px-3 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
             />
             <select
               name="status"
               defaultValue={status || ""}
-              className="h-9 rounded-md border border-slate-200 px-2 text-sm"
+              className="h-9 rounded-md border border-slate-200 px-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             >
               <option value="">Todos</option>
               <option value="PENDIENTE">PENDIENTE</option>
@@ -77,13 +77,13 @@ export default async function OrdersPage({
               type="date"
               name="from"
               defaultValue={from}
-              className="h-9 rounded-md border border-slate-200 px-2 text-sm"
+              className="h-9 rounded-md border border-slate-200 px-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             />
             <input
               type="date"
               name="to"
               defaultValue={to}
-              className="h-9 rounded-md border border-slate-200 px-2 text-sm"
+              className="h-9 rounded-md border border-slate-200 px-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             />
             <button className="rounded-md bg-slate-900 px-3 py-2 text-xs font-semibold text-white">
               Filtrar

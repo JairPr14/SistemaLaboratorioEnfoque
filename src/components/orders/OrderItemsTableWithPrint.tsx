@@ -18,7 +18,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { OrderItemResultDialog } from "@/components/orders/OrderItemResultDialog";
+import { AddAnalysisToOrderDialog } from "@/components/orders/AddAnalysisToOrderDialog";
 import { DeleteButton } from "@/components/common/DeleteButton";
+import { Plus } from "lucide-react";
 
 type OrderItem = {
   id: string;
@@ -26,6 +28,7 @@ type OrderItem = {
   priceSnapshot: number | { toString(): string };
   templateSnapshot: unknown;
   labTest: {
+    id: string;
     code: string;
     name: string;
     section: string;
@@ -64,7 +67,12 @@ type OrderItem = {
 
 type Order = {
   id: string;
+  status?: string;
   items: OrderItem[];
+  patient?: {
+    birthDate: Date | string;
+    sex: "M" | "F" | "O";
+  };
 };
 
 type Props = {
@@ -75,6 +83,13 @@ type Props = {
 
 export function OrderItemsTableWithPrint({ order, defaultOpenItemId }: Props) {
   const [openItemId, setOpenItemId] = useState<string | null>(null);
+  const [addAnalysisOpen, setAddAnalysisOpen] = useState(false);
+
+  const existingLabTestIds = useMemo(
+    () => order.items.map((i) => i.labTest.id),
+    [order.items],
+  );
+  const canAddAnalysis = order.status !== "ANULADO";
 
   useEffect(() => {
     if (defaultOpenItemId) setOpenItemId(defaultOpenItemId);
@@ -119,16 +134,42 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId }: Props) {
       : `/orders/${order.id}/print`;
 
   if (order.items.length === 0) {
+    const canAddAnalysis = order.status !== "ANULADO";
     return (
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-2">
           <CardTitle>Análisis solicitados</CardTitle>
+          {canAddAnalysis && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setAddAnalysisOpen(true)}
+            >
+              <Plus className="h-4 w-4" />
+              Añadir análisis
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <div className="py-8 text-center text-slate-500">
             <p>No hay análisis solicitados en esta orden.</p>
+            {canAddAnalysis && (
+              <p className="mt-1 text-sm">
+                Usa el botón &quot;Añadir análisis&quot; para agregar análisis del catálogo.
+              </p>
+            )}
           </div>
         </CardContent>
+        {canAddAnalysis && (
+          <AddAnalysisToOrderDialog
+            orderId={order.id}
+            existingLabTestIds={[]}
+            open={addAnalysisOpen}
+            onOpenChange={setAddAnalysisOpen}
+          />
+        )}
       </Card>
     );
   }
@@ -136,7 +177,29 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId }: Props) {
   return (
     <Card>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <CardTitle>Análisis solicitados</CardTitle>
+        <div className="flex flex-wrap items-center gap-2">
+          <CardTitle className="mb-0">Análisis solicitados</CardTitle>
+          {canAddAnalysis && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => setAddAnalysisOpen(true)}
+              >
+                <Plus className="h-4 w-4" />
+                Añadir análisis
+              </Button>
+              <AddAnalysisToOrderDialog
+                orderId={order.id}
+                existingLabTestIds={existingLabTestIds}
+                open={addAnalysisOpen}
+                onOpenChange={setAddAnalysisOpen}
+              />
+            </>
+          )}
+        </div>
         {printableItemIds.length > 0 && (
           <div className="flex flex-wrap items-center gap-2">
             <button
@@ -199,6 +262,13 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId }: Props) {
 
               const templateItems = item.result
                 ? (() => {
+                    const patientBirthDate = order.patient?.birthDate 
+                      ? (typeof order.patient.birthDate === "string" 
+                          ? new Date(order.patient.birthDate) 
+                          : order.patient.birthDate)
+                      : undefined;
+                    const patientSex = order.patient?.sex;
+
                     const templateItemsFromSnapshot = getTemplateItemsForPatient(
                       item.templateSnapshot,
                       item.labTest.template
@@ -214,13 +284,20 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId }: Props) {
                               valueType: t.valueType as "NUMBER" | "TEXT" | "SELECT",
                               selectOptions: parseSelectOptions(t.selectOptions),
                               order: t.order,
+                              refRanges: (t as any).refRanges || [],
                             })),
                           }
                         : null,
+                      patientBirthDate,
+                      patientSex,
                     );
 
                     return item.result!.items.map((r, idx) => {
                       const originalItem = templateItemsFromSnapshot.find(
+                        (t) => t.id === r.templateItemId,
+                      );
+                      // Buscar el item original en la plantilla para obtener refRanges
+                      const originalTemplateItem = item.labTest.template?.items.find(
                         (t) => t.id === r.templateItemId,
                       );
                       return {
@@ -237,12 +314,19 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId }: Props) {
                           | "SELECT",
                         selectOptions: originalItem?.selectOptions || [],
                         order: r.order,
+                        refRanges: (originalTemplateItem as any)?.refRanges || [],
                       };
                     });
                   })()
-                : getTemplateItemsForPatient(
-                    item.templateSnapshot,
-                    item.labTest.template
+                : (() => {
+                    const patientBirthDate = order.patient?.birthDate 
+                      ? (typeof order.patient.birthDate === "string" 
+                          ? new Date(order.patient.birthDate) 
+                          : order.patient.birthDate)
+                      : undefined;
+                    const patientSex = order.patient?.sex;
+
+                    const itemsWithRefRanges = item.labTest.template
                       ? {
                           items: item.labTest.template.items.map((t) => ({
                             id: t.id,
@@ -255,14 +339,38 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId }: Props) {
                             valueType: t.valueType as "NUMBER" | "TEXT" | "SELECT",
                             selectOptions: parseSelectOptions(t.selectOptions),
                             order: t.order,
+                            refRanges: (t as any).refRanges || [],
                           })),
                         }
-                      : null,
-                  );
+                      : null;
+                    
+                    const processedItems = getTemplateItemsForPatient(
+                      item.templateSnapshot,
+                      itemsWithRefRanges,
+                      patientBirthDate,
+                      patientSex,
+                    );
+                    
+                    // Restaurar los refRanges originales para mostrar todos
+                    return processedItems.map((processedItem) => {
+                      const originalItem = itemsWithRefRanges?.items.find((t) => t.id === processedItem.id);
+                      return {
+                        ...processedItem,
+                        refRanges: originalItem?.refRanges || [],
+                      };
+                    });
+                  })();
+
+              const patientBirthDate = order.patient?.birthDate 
+                ? (typeof order.patient.birthDate === "string" 
+                    ? new Date(order.patient.birthDate) 
+                    : order.patient.birthDate)
+                : undefined;
+              const patientSex = order.patient?.sex;
 
               const originalTemplateItems = item.labTest.template
-                ? getTemplateItemsForPatient(null, {
-                    items: item.labTest.template.items.map((t) => ({
+                ? (() => {
+                    const itemsWithRefRanges = item.labTest.template.items.map((t) => ({
                       id: t.id,
                       groupName: t.groupName,
                       paramName: t.paramName,
@@ -273,8 +381,25 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId }: Props) {
                       valueType: t.valueType as "NUMBER" | "TEXT" | "SELECT",
                       selectOptions: parseSelectOptions(t.selectOptions),
                       order: t.order,
-                    })),
-                  })
+                      refRanges: (t as any).refRanges || [],
+                    }));
+                    
+                    const processedItems = getTemplateItemsForPatient(
+                      null,
+                      { items: itemsWithRefRanges },
+                      patientBirthDate,
+                      patientSex,
+                    );
+                    
+                    // Restaurar los refRanges originales (no filtrados) para mostrar todos
+                    return processedItems.map((processedItem) => {
+                      const originalItem = itemsWithRefRanges.find((t) => t.id === processedItem.id);
+                      return {
+                        ...processedItem,
+                        refRanges: originalItem?.refRanges || [],
+                      };
+                    });
+                  })()
                 : [];
 
               const finalTemplateItems =

@@ -49,7 +49,16 @@ export async function POST(request: Request) {
 
     const tests = await prisma.labTest.findMany({
       where: { id: { in: parsed.labTestIds }, deletedAt: null, isActive: true },
-      include: { template: { include: { items: { orderBy: { order: "asc" } } } } },
+      include: {
+        template: {
+          include: {
+            items: {
+              include: { refRanges: { orderBy: { order: "asc" } } },
+              orderBy: { order: "asc" },
+            },
+          },
+        },
+      },
     });
 
     if (!tests.length) {
@@ -95,6 +104,14 @@ export async function POST(request: Request) {
                       valueType: item.valueType,
                       selectOptions: item.selectOptions ?? "[]",
                       order: item.order,
+                      refRanges: (item.refRanges ?? []).map((r) => ({
+                        ageGroup: r.ageGroup,
+                        sex: r.sex,
+                        refRangeText: r.refRangeText,
+                        refMin: r.refMin,
+                        refMax: r.refMax,
+                        order: r.order ?? 0,
+                      })),
                     })),
                   } as const)
                 : undefined,

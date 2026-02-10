@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useFieldArray, useForm, type Resolver } from "react-hook-form";
+import { useFieldArray, useForm, type Resolver, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { templatePresets } from "@/lib/template-presets";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { RefRangesManager } from "./RefRangesManager";
 
 type TemplateFormValues = z.infer<typeof templateSchema>;
 
@@ -44,12 +45,13 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
           groupName: "",
           paramName: "",
           unit: "",
-          refRangeText: "",
-          refMin: undefined,
-          refMax: undefined,
-          valueType: "NUMBER",
-          selectOptions: [],
-          order: 1,
+                  refRangeText: "",
+                  refMin: undefined,
+                  refMax: undefined,
+                  valueType: "NUMBER",
+                  selectOptions: [],
+                  order: 1,
+                  refRanges: [],
         },
       ],
       ...defaultValues,
@@ -87,12 +89,13 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
           groupName: "",
           paramName: "",
           unit: "",
-          refRangeText: "",
-          refMin: undefined,
-          refMax: undefined,
-          valueType: "NUMBER",
-          selectOptions: [],
-          order: fields.length + i + 1,
+                  refRangeText: "",
+                  refMin: undefined,
+                  refMax: undefined,
+                  valueType: "NUMBER",
+                  selectOptions: [],
+                  order: fields.length + i + 1,
+                  refRanges: [],
         });
       }
     }
@@ -104,6 +107,7 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
       ...currentItem,
       paramName: `${currentItem.paramName} (copia)`,
       order: fields.length + 1,
+      refRanges: currentItem.refRanges ? [...currentItem.refRanges] : [],
     });
   };
 
@@ -130,6 +134,7 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
         valueType: item.valueType,
         selectOptions: item.selectOptions || [],
         order: item.order,
+        refRanges: item.refRanges || [],
       });
     });
     
@@ -161,15 +166,76 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
     }
   };
 
+  const onError = () => {
+    // Usar form.formState.errors directamente ya que el parámetro puede estar vacío
+    const errors = form.formState.errors;
+    
+    // Debug: mostrar errores en consola solo en desarrollo
+    if (process.env.NODE_ENV === 'development') {
+      console.log("Form validation errors:", errors);
+    }
+    
+    // Buscar errores en los items
+    if (errors.items) {
+      const itemErrors = errors.items;
+      const firstErrorIndex = itemErrors.findIndex((err) => err !== undefined);
+      
+      if (firstErrorIndex !== -1) {
+        const firstError = itemErrors[firstErrorIndex];
+        
+        if (firstError?.paramName) {
+          const message = firstError.paramName.message || "requiere un nombre de al menos 2 caracteres";
+          toast.error(`Parámetro ${firstErrorIndex + 1}: ${message}`);
+          return;
+        } else if (firstError?.valueType) {
+          toast.error(`El parámetro ${firstErrorIndex + 1} requiere un tipo válido.`);
+          return;
+        } else if (firstError?.order) {
+          toast.error(`El parámetro ${firstErrorIndex + 1} requiere un orden válido.`);
+          return;
+        } else {
+          // Mostrar el primer error encontrado
+          const errorKeys = Object.keys(firstError);
+          if (errorKeys.length > 0) {
+            toast.error(`Error en el parámetro ${firstErrorIndex + 1}, campo: ${errorKeys[0]}`);
+          } else {
+            toast.error(`Error en el parámetro ${firstErrorIndex + 1}. Verifica los datos.`);
+          }
+          return;
+        }
+      }
+    }
+    
+    // Verificar otros campos
+    if (errors.title) {
+      const message = errors.title.message || "debe tener al menos 2 caracteres";
+      toast.error(`Título: ${message}`);
+      return;
+    }
+    
+    if (errors.labTestId) {
+      toast.error("Debes seleccionar un análisis.");
+      return;
+    }
+    
+    // Si hay errores pero no los identificamos específicamente
+    if (Object.keys(errors).length > 0) {
+      toast.error("Por favor, completa todos los campos requeridos correctamente.");
+    } else {
+      toast.error("Por favor, completa todos los campos requeridos.");
+    }
+  };
+
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+    <FormProvider {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit, onError)} className="space-y-6">
       <section className="space-y-4 rounded-lg border border-slate-200/80 bg-slate-50/50 p-4">
         <h3 className="text-sm font-medium text-slate-700">Datos de la plantilla</h3>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label className="text-slate-700">Análisis</Label>
+            <Label className="text-slate-700 dark:text-slate-300">Análisis</Label>
             <select
-              className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
+              className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-slate-400 focus:ring-1 focus:ring-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-500"
               {...form.register("labTestId")}
             >
               {labTests.map((test) => (
@@ -186,6 +252,11 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
               placeholder="Ej: Hemograma completo"
               className="rounded-lg"
             />
+            {form.formState.errors.title && (
+              <p className="text-xs text-red-500 mt-0.5">
+                El título debe tener al menos 2 caracteres
+              </p>
+            )}
           </div>
         </div>
         <div className="space-y-2">
@@ -219,6 +290,7 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
                   valueType: "NUMBER",
                   selectOptions: [],
                   order: fields.length + 1,
+                  refRanges: [],
                 })
               }
             >
@@ -281,6 +353,7 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
                     <TableHead className="text-slate-600 w-20">Min</TableHead>
                     <TableHead className="text-slate-600 w-20">Max</TableHead>
                     <TableHead className="text-slate-600 w-14">Ord.</TableHead>
+                    <TableHead className="text-slate-600 w-32">Rangos</TableHead>
                     <TableHead className="w-32">Ordenar</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -301,6 +374,11 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
                           placeholder="Nombre parámetro"
                           {...form.register(`items.${index}.paramName`)}
                         />
+                        {form.formState.errors.items?.[index]?.paramName && (
+                          <p className="text-[10px] text-red-500 mt-0.5">
+                            Mínimo 2 caracteres
+                          </p>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Input
@@ -334,7 +412,9 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
                           step="0.01"
                           className="h-8 text-xs w-20"
                           placeholder="Min"
-                          {...form.register(`items.${index}.refMin`)}
+                          {...form.register(`items.${index}.refMin`, {
+                            setValueAs: (v) => v === "" || v === null || v === undefined ? undefined : Number(v),
+                          })}
                         />
                       </TableCell>
                       <TableCell>
@@ -343,7 +423,9 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
                           step="0.01"
                           className="h-8 text-xs w-20"
                           placeholder="Max"
-                          {...form.register(`items.${index}.refMax`)}
+                          {...form.register(`items.${index}.refMax`, {
+                            setValueAs: (v) => v === "" || v === null || v === undefined ? undefined : Number(v),
+                          })}
                         />
                       </TableCell>
                       <TableCell>
@@ -352,6 +434,9 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
                           className="h-8 text-xs w-16"
                           {...form.register(`items.${index}.order`)}
                         />
+                      </TableCell>
+                      <TableCell>
+                        <RefRangesManager itemIndex={index} />
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1 flex-wrap">
@@ -463,6 +548,11 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
                         placeholder="Nombre"
                         {...form.register(`items.${index}.paramName`)}
                       />
+                      {form.formState.errors.items?.[index]?.paramName && (
+                        <p className="text-[10px] text-red-500 mt-0.5">
+                          Mínimo 2 caracteres
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs text-slate-600">Grupo (opcional)</Label>
@@ -508,7 +598,9 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
                           type="number"
                           step="0.01"
                           className="rounded-lg h-9"
-                          {...form.register(`items.${index}.refMin`)}
+                          {...form.register(`items.${index}.refMin`, {
+                            setValueAs: (v) => v === "" || v === null || v === undefined ? undefined : Number(v),
+                          })}
                         />
                       </div>
                       <div>
@@ -517,7 +609,9 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
                           type="number"
                           step="0.01"
                           className="rounded-lg h-9"
-                          {...form.register(`items.${index}.refMax`)}
+                          {...form.register(`items.${index}.refMax`, {
+                            setValueAs: (v) => v === "" || v === null || v === undefined ? undefined : Number(v),
+                          })}
                         />
                       </div>
                     </div>
@@ -537,6 +631,10 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
                       />
                     </div>
                   )}
+                  <div className="space-y-2 border-t pt-3">
+                    <Label className="text-xs text-slate-600 font-medium">Valores Referenciales</Label>
+                    <RefRangesManager itemIndex={index} />
+                  </div>
                   <div className="flex items-center justify-end gap-2">
                     <Label className="text-xs text-slate-600">Orden</Label>
                     <Input
@@ -557,6 +655,7 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
           Guardar plantilla
         </Button>
       </div>
-    </form>
+      </form>
+    </FormProvider>
   );
 }

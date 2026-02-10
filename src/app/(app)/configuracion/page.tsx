@@ -14,7 +14,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Pencil, Users, Shield, UserPlus, Trash2, Stamp } from "lucide-react";
+import { Pencil, Users, Shield, UserPlus, Trash2, Stamp, FlaskConical, Plus } from "lucide-react";
+import Link from "next/link";
 
 type Role = {
   id: string;
@@ -39,6 +40,7 @@ export default function ConfiguracionPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [roleEdit, setRoleEdit] = useState<Role | null>(null);
+  const [roleCreate, setRoleCreate] = useState(false);
   const [userEdit, setUserEdit] = useState<User | null>(null);
   const [userCreate, setUserCreate] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -87,12 +89,68 @@ export default function ConfiguracionPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, description, isActive }),
       });
-      if (!res.ok) throw new Error("Error al guardar");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.error ?? "Error al guardar");
+        return;
+      }
       toast.success("Rol actualizado");
       setRoleEdit(null);
       await loadRoles();
     } catch {
       toast.error("No se pudo actualizar el rol");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCreateRole = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setSaving(true);
+    const form = e.currentTarget;
+    const code = (form.elements.namedItem("newRoleCode") as HTMLInputElement).value.trim().toUpperCase();
+    const name = (form.elements.namedItem("newRoleName") as HTMLInputElement).value.trim();
+    const description = (form.elements.namedItem("newRoleDescription") as HTMLInputElement).value.trim() || null;
+    const isActive = (form.elements.namedItem("newRoleActive") as HTMLInputElement).checked;
+    try {
+      const res = await fetch("/api/roles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, name, description, isActive }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.error ?? "Error al crear el rol");
+        return;
+      }
+      toast.success("Rol creado");
+      setRoleCreate(false);
+      await loadRoles();
+    } catch {
+      toast.error("Error de conexión");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteRole = async (role: Role) => {
+    if (role._count.users > 0) {
+      toast.error(`No se puede eliminar el rol. Tiene ${role._count.users} usuario(s) asignado(s)`);
+      return;
+    }
+    if (!confirm(`¿Eliminar el rol "${role.name}" (${role.code})?`)) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/roles/${role.id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.error ?? "Error al eliminar");
+        return;
+      }
+      toast.success("Rol eliminado");
+      await loadRoles();
+    } catch {
+      toast.error("No se pudo eliminar el rol");
     } finally {
       setSaving(false);
     }
@@ -238,17 +296,31 @@ export default function ConfiguracionPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Configuración</h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1">
-          Roles y usuarios del sistema
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Configuración</h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">
+            Roles, usuarios y gestión administrativa
+          </p>
+        </div>
+        <Link href="/configuracion/secciones">
+          <Button variant="outline" size="sm">
+            <FlaskConical className="h-4 w-4 mr-2" />
+            Gestión de Secciones
+          </Button>
+        </Link>
       </div>
 
       <Card>
-        <CardHeader className="flex flex-row items-center gap-2">
-          <Shield className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-          <CardTitle>Roles</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Shield className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+            <CardTitle>Roles</CardTitle>
+          </div>
+          <Button onClick={() => setRoleCreate(true)} size="sm">
+            <Plus className="h-4 w-4 mr-2" />
+            Nuevo rol
+          </Button>
         </CardHeader>
         <CardContent>
           <Table>
@@ -284,14 +356,26 @@ export default function ConfiguracionPage() {
                     </TableCell>
                     <TableCell>{role._count.users}</TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setRoleEdit(role)}
-                        title="Editar rol"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setRoleEdit(role)}
+                          title="Editar rol"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteRole(role)}
+                          disabled={saving || role._count.users > 0}
+                          title={role._count.users > 0 ? "No se puede eliminar: tiene usuarios asignados" : "Eliminar rol"}
+                          className="text-slate-500 hover:text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -445,6 +529,63 @@ export default function ConfiguracionPage() {
         </CardContent>
       </Card>
 
+      {/* Diálogo nuevo rol */}
+      <Dialog open={roleCreate} onOpenChange={(open) => !open && setRoleCreate(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nuevo rol</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreateRole} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="newRoleCode">Código</Label>
+              <Input
+                id="newRoleCode"
+                name="newRoleCode"
+                placeholder="Ej: ADMIN, LAB, RECEPTION"
+                required
+                pattern="[A-Z0-9_]+"
+                title="Solo letras mayúsculas, números y guiones bajos"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="newRoleName">Nombre</Label>
+              <Input
+                id="newRoleName"
+                name="newRoleName"
+                placeholder="Ej: Administrador"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="newRoleDescription">Descripción (opcional)</Label>
+              <Input
+                id="newRoleDescription"
+                name="newRoleDescription"
+                placeholder="Ej: Acceso completo al sistema"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="newRoleActive"
+                name="newRoleActive"
+                defaultChecked={true}
+                className="h-4 w-4 rounded border-slate-300"
+              />
+              <Label htmlFor="newRoleActive">Activo</Label>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => setRoleCreate(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={saving}>
+                {saving ? "Creando..." : "Crear rol"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       {/* Diálogo editar rol */}
       <Dialog open={!!roleEdit} onOpenChange={(open) => !open && setRoleEdit(null)}>
         <DialogContent>
@@ -535,7 +676,7 @@ export default function ConfiguracionPage() {
               <select
                 id="newRoleId"
                 name="newRoleId"
-                className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 py-1 text-sm"
+                className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 py-1 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
               >
                 <option value="">Sin rol</option>
                 {roles.map((r) => (
@@ -572,7 +713,7 @@ export default function ConfiguracionPage() {
                   id="userRoleId"
                   name="userRoleId"
                   defaultValue={userEdit.roleId ?? ""}
-                  className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 py-1 text-sm"
+                  className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 py-1 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                 >
                   <option value="">Sin rol</option>
                   {roles.map((r) => (

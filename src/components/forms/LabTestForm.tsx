@@ -68,7 +68,7 @@ export function LabTestForm({ testId, defaultValues }: Props) {
         <div className="space-y-2">
           <Label>Sección</Label>
           <select
-            className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"
+            className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             {...form.register("section")}
           >
             {sectionValues.map((section) => (

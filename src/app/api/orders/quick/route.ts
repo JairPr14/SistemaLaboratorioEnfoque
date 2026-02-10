@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { quickOrderSchema } from "@/features/lab/schemas";
-import { buildOrderCode, buildPatientCode } from "@/features/lab/order-utils";
+import { buildOrderCode } from "@/features/lab/order-utils";
+import { generateNextPatientCode } from "@/lib/patient-code";
 
 export async function POST(request: Request) {
   try {
@@ -24,13 +25,16 @@ export async function POST(request: Request) {
       patientId = existing.id;
     } else if (parsed.patientDraft) {
       const draft = parsed.patientDraft;
-      const code = buildPatientCode();
+      const code = await generateNextPatientCode();
+      const firstName = draft.firstName.trim().toUpperCase();
+      const lastName = draft.lastName.trim().toUpperCase();
+
       const patient = await prisma.patient.create({
         data: {
           code,
-          dni: draft.dni,
-          firstName: draft.firstName,
-          lastName: draft.lastName,
+          dni: draft.dni.trim(),
+          firstName,
+          lastName,
           birthDate: new Date(draft.birthDate),
           sex: draft.sex,
         },
@@ -50,7 +54,14 @@ export async function POST(request: Request) {
         isActive: true,
       },
       include: {
-        template: { include: { items: { orderBy: { order: "asc" } } } },
+        template: {
+          include: {
+            items: {
+              include: { refRanges: { orderBy: { order: "asc" } } },
+              orderBy: { order: "asc" },
+            },
+          },
+        },
       },
     });
 
@@ -96,6 +107,14 @@ export async function POST(request: Request) {
                       valueType: item.valueType,
                       selectOptions: item.selectOptions ?? "[]",
                       order: item.order,
+                      refRanges: (item.refRanges ?? []).map((r) => ({
+                        ageGroup: r.ageGroup,
+                        sex: r.sex,
+                        refRangeText: r.refRangeText,
+                        refMin: r.refMin,
+                        refMax: r.refMax,
+                        order: r.order ?? 0,
+                      })),
                     })),
                   } as const)
                 : undefined,

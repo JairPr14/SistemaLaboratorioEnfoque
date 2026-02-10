@@ -11,7 +11,17 @@ export async function GET(_request: Request, { params }: Params) {
     const { id } = await params;
     const item = await prisma.labTemplate.findFirst({
       where: { id },
-      include: { labTest: true, items: { orderBy: { order: "asc" } } },
+      include: { 
+        labTest: true, 
+        items: { 
+          orderBy: { order: "asc" },
+          include: {
+            refRanges: {
+              orderBy: { order: "asc" }
+            }
+          }
+        } 
+      },
     });
 
     if (!item) {
@@ -44,22 +54,36 @@ export async function PUT(request: Request, { params }: Params) {
           title: parsed.title,
           notes: parsed.notes ?? null,
           items: {
-            createMany: {
-              data: parsed.items.map((i) => ({
-                groupName: i.groupName ?? null,
-                paramName: i.paramName,
-                unit: i.unit ?? null,
-                refRangeText: i.refRangeText ?? null,
-                refMin: i.refMin ?? null,
-                refMax: i.refMax ?? null,
-                valueType: i.valueType,
-                selectOptions: stringifySelectOptions(i.selectOptions ?? []),
-                order: i.order,
-              })),
-            },
+            create: parsed.items.map((i) => ({
+              groupName: i.groupName ?? null,
+              paramName: i.paramName,
+              unit: i.unit ?? null,
+              refRangeText: i.refRangeText ?? null,
+              refMin: i.refMin ?? null,
+              refMax: i.refMax ?? null,
+              valueType: i.valueType,
+              selectOptions: stringifySelectOptions(i.selectOptions ?? []),
+              order: i.order,
+              refRanges: {
+                create: (i.refRanges ?? []).map((r) => ({
+                  ageGroup: r.ageGroup ?? null,
+                  sex: r.sex ?? null,
+                  refRangeText: r.refRangeText ?? null,
+                  refMin: r.refMin ?? null,
+                  refMax: r.refMax ?? null,
+                  order: r.order ?? 0,
+                })),
+              },
+            })),
           },
         },
-        include: { items: true },
+        include: { 
+          items: { 
+            include: { 
+              refRanges: true 
+            } 
+          } 
+        },
       });
     });
 

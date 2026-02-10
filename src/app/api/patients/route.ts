@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { patientSchema } from "@/features/lab/schemas";
+import { generateNextPatientCode } from "@/lib/patient-code";
 
 export async function GET(request: Request) {
   try {
@@ -40,10 +41,18 @@ export async function POST(request: Request) {
     const payload = await request.json();
     const parsed = patientSchema.parse(payload);
 
+    const code = await generateNextPatientCode();
+    const firstName = parsed.firstName.trim().toUpperCase();
+    const lastName = parsed.lastName.trim().toUpperCase();
+
     const item = await prisma.patient.create({
       data: {
-        ...parsed,
+        code,
+        dni: parsed.dni.trim(),
+        firstName,
+        lastName,
         birthDate: new Date(parsed.birthDate),
+        sex: parsed.sex,
         phone: parsed.phone || null,
         address: parsed.address || null,
         email: parsed.email || null,
@@ -59,9 +68,20 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
-    return NextResponse.json(
-      { error: "Error al crear paciente" },
-      { status: 500 },
-    );
+    // Prisma: clave única (por ejemplo, DNI duplicado)
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error as any).code === "P2002"
+    ) {
+      return NextResponse.json(
+        { error: "Ya existe un paciente registrado con ese DNI." },
+        { status: 409 },
+      );
+    }
+    const message =
+      error instanceof Error ? error.message : "Error al crear paciente";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

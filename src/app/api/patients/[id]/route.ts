@@ -31,15 +31,20 @@ export async function PUT(request: Request, { params }: Params) {
     const { id } = await params;
     const payload = await request.json();
     const parsed = patientSchema.parse(payload);
+    const { code: _code, ...rest } = parsed;
+    const firstName = rest.firstName.trim().toUpperCase();
+    const lastName = rest.lastName.trim().toUpperCase();
 
     const item = await prisma.patient.update({
       where: { id },
       data: {
-        ...parsed,
-        birthDate: new Date(parsed.birthDate),
-        phone: parsed.phone || null,
-        address: parsed.address || null,
-        email: parsed.email || null,
+        ...rest,
+        firstName,
+        lastName,
+        birthDate: new Date(rest.birthDate),
+        phone: rest.phone || null,
+        address: rest.address || null,
+        email: rest.email || null,
       },
     });
 

@@ -20,6 +20,16 @@ import { Badge } from "@/components/ui/badge";
 
 type ResultFormValues = z.infer<typeof resultSchema>;
 
+type RefRange = {
+  id?: string;
+  ageGroup: string | null;
+  sex: "M" | "F" | "O" | null;
+  refRangeText: string | null;
+  refMin: number | null;
+  refMax: number | null;
+  order: number;
+};
+
 type TemplateItem = {
   id: string;
   groupName: string | null;
@@ -31,6 +41,7 @@ type TemplateItem = {
   valueType: "NUMBER" | "TEXT" | "SELECT";
   selectOptions: string[];
   order: number;
+  refRanges?: RefRange[];
 };
 
 type Props = {
@@ -295,8 +306,9 @@ export function ResultForm({
                       <TableHead className="w-12">#</TableHead>
                       <TableHead>Parámetro</TableHead>
                       <TableHead className="w-24">Unidad</TableHead>
-                      <TableHead className="w-40">Valor Referencial</TableHead>
+                      <TableHead className="w-32">Valor Referencial</TableHead>
                       <TableHead className="w-40">Resultado</TableHead>
+                      <TableHead className="w-32">Rangos Adicionales</TableHead>
                       <TableHead className="w-20">Estado</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -403,13 +415,13 @@ export function ResultForm({
                               )}
                             </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="w-40 align-top">
                             {item.valueType === "SELECT" ? (
                               <select
-                                className={`h-9 w-full rounded-md border bg-white px-2 text-sm ${
+                                className={`h-9 w-full rounded-md border px-2 text-sm ${
                                   hasValue && isOutOfRange
-                                    ? "border-red-500 bg-red-50 font-bold underline"
-                                    : "border-slate-200"
+                                    ? "border-red-500 bg-red-50 font-bold underline dark:bg-red-900/20 dark:text-red-200"
+                                    : "border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                                 }`}
                                 {...form.register(`items.${formIndex}.value`)}
                               >
@@ -424,7 +436,7 @@ export function ResultForm({
                               <Input
                                 type={item.valueType === "NUMBER" ? "number" : "text"}
                                 step={item.valueType === "NUMBER" ? "0.01" : undefined}
-                                className={`h-9 text-sm ${
+                                className={`h-9 w-full text-sm ${
                                   hasValue && isOutOfRange
                                     ? "border-red-500 bg-red-50 font-bold underline"
                                     : ""
@@ -444,6 +456,50 @@ export function ResultForm({
                                   }
                                 }}
                               />
+                            )}
+                          </TableCell>
+                          <TableCell className="w-32 align-top">
+                            {item.refRanges && item.refRanges.length > 0 ? (
+                              <div className="bg-slate-50 rounded-md p-2 border border-slate-200 space-y-1.5">
+                                {item.refRanges.map((range, rangeIdx) => {
+                                  const ageGroupLabels: Record<string, string> = {
+                                    NIÑOS: "Niños",
+                                    JOVENES: "Jóvenes",
+                                    ADULTOS: "Adultos",
+                                  };
+                                  const sexLabels: Record<string, string> = {
+                                    M: "Hombres",
+                                    F: "Mujeres",
+                                    O: "Otros",
+                                  };
+                                  const criteria = [
+                                    range.ageGroup ? ageGroupLabels[range.ageGroup] || range.ageGroup : null,
+                                    range.sex ? sexLabels[range.sex] || range.sex : null,
+                                  ].filter(Boolean);
+                                  
+                                  const rangeDisplay = range.refRangeText 
+                                    || (range.refMin !== null && range.refMax !== null 
+                                      ? `${range.refMin} - ${range.refMax}` 
+                                      : "");
+                                  
+                                  return (
+                                    <div key={rangeIdx} className="text-[10px] text-slate-700 leading-tight">
+                                      {criteria.length > 0 ? (
+                                        <div>
+                                          <span className="font-semibold text-slate-800">
+                                            {criteria.join(" + ")}:
+                                          </span>
+                                          <span className="text-slate-600 ml-1">{rangeDisplay}</span>
+                                        </div>
+                                      ) : (
+                                        <span className="text-slate-600">{rangeDisplay}</span>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-slate-400 italic">-</span>
                             )}
                           </TableCell>
                           <TableCell>
@@ -490,8 +546,9 @@ export function ResultForm({
                       <TableHead className="w-12">#</TableHead>
                       <TableHead>Parámetro</TableHead>
                       <TableHead className="w-24">Unidad</TableHead>
-                      <TableHead className="w-40">Valor Referencial</TableHead>
+                      <TableHead className="w-32">Valor Referencial</TableHead>
                       <TableHead className="w-40">Resultado</TableHead>
+                      <TableHead className="w-32">Rangos Adicionales</TableHead>
                       <TableHead className="w-20"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -588,13 +645,63 @@ export function ResultForm({
                               )}
                             </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="w-40 align-top">
                             <Input
                               type="text"
-                              className="h-9 text-sm"
+                              className="h-9 w-full text-sm"
                               placeholder="Resultado"
                               {...form.register(`items.${formIndex}.value`)}
                             />
+                          </TableCell>
+                          <TableCell className="w-32 align-top">
+                            {(() => {
+                              // Buscar el templateItem original si existe
+                              const originalItem = templateItems.find((t) => t.id === form.watch(`items.${formIndex}.templateItemId`));
+                              const refRanges = originalItem?.refRanges || [];
+                              
+                              return refRanges.length > 0 ? (
+                                <div className="bg-slate-50 rounded-md p-2 border border-slate-200 space-y-1.5">
+                                  {refRanges.map((range, rangeIdx) => {
+                                    const ageGroupLabels: Record<string, string> = {
+                                      NIÑOS: "Niños",
+                                      JOVENES: "Jóvenes",
+                                      ADULTOS: "Adultos",
+                                    };
+                                    const sexLabels: Record<string, string> = {
+                                      M: "Hombres",
+                                      F: "Mujeres",
+                                      O: "Otros",
+                                    };
+                                    const criteria = [
+                                      range.ageGroup ? ageGroupLabels[range.ageGroup] || range.ageGroup : null,
+                                      range.sex ? sexLabels[range.sex] || range.sex : null,
+                                    ].filter(Boolean);
+                                    
+                                    const rangeDisplay = range.refRangeText 
+                                      || (range.refMin !== null && range.refMax !== null 
+                                        ? `${range.refMin} - ${range.refMax}` 
+                                        : "");
+                                    
+                                    return (
+                                      <div key={rangeIdx} className="text-[10px] text-slate-700 leading-tight">
+                                        {criteria.length > 0 ? (
+                                          <div>
+                                            <span className="font-semibold text-slate-800">
+                                              {criteria.join(" + ")}:
+                                            </span>
+                                            <span className="text-slate-600 ml-1">{rangeDisplay}</span>
+                                          </div>
+                                        ) : (
+                                          <span className="text-slate-600">{rangeDisplay}</span>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <span className="text-[10px] text-slate-400 italic">-</span>
+                              );
+                            })()}
                           </TableCell>
                           <TableCell>
                             <Button
@@ -706,24 +813,26 @@ export function ResultForm({
                                 </button>
                               </div>
                             ) : (
-                              <div className="flex gap-1 items-center">
-                                <Input
-                                  className="text-xs w-32"
-                                  placeholder="Ref: 12-16"
-                                  value={currentRefText || ""}
-                                  onChange={(e) =>
-                                    form.setValue(`items.${formIndex}.refTextSnapshot`, e.target.value)
-                                  }
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => toggleEditRefs(formIndex)}
-                                  className="text-xs text-slate-500"
-                                  title="Editar rangos"
-                                >
-                                  ✏️
-                                </button>
-                              </div>
+                              <>
+                                <div className="flex gap-1 items-center">
+                                  <Input
+                                    className="text-xs w-32"
+                                    placeholder="Ref: 12-16"
+                                    value={currentRefText || ""}
+                                    onChange={(e) =>
+                                      form.setValue(`items.${formIndex}.refTextSnapshot`, e.target.value)
+                                    }
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleEditRefs(formIndex)}
+                                    className="text-xs text-slate-500"
+                                    title="Editar rangos"
+                                  >
+                                    ✏️
+                                  </button>
+                                </div>
+                              </>
                             )}
                           </div>
                           {hasValue && isOutOfRange && (
@@ -733,35 +842,84 @@ export function ResultForm({
                           )}
                         </div>
                         <div className="col-span-8">
-                          {item.valueType === "SELECT" ? (
-                            <select
-                              className={`h-10 w-full rounded-md border bg-white px-3 text-sm ${
-                                hasValue && isOutOfRange
-                                  ? "border-red-500 font-bold underline"
-                                  : "border-slate-200"
-                              }`}
-                              {...form.register(`items.${formIndex}.value`)}
-                            >
-                              <option value="">Seleccionar</option>
-                              {item.selectOptions.map((opt) => (
-                                <option key={opt} value={opt}>
-                                  {opt}
-                                </option>
-                              ))}
-                            </select>
-                          ) : (
-                            <Input
-                              type={item.valueType === "NUMBER" ? "number" : "text"}
-                              step={item.valueType === "NUMBER" ? "0.01" : undefined}
-                              placeholder="Ingrese el resultado"
-                              className={
-                                hasValue && isOutOfRange
-                                  ? "border-red-500 font-bold underline"
-                                  : ""
-                              }
-                              {...form.register(`items.${formIndex}.value`)}
-                            />
-                          )}
+                          <div className="space-y-2">
+                            {/* Campo de resultado */}
+                            <div>
+                              {item.valueType === "SELECT" ? (
+                                <select
+                                  className={`h-10 w-full rounded-md border bg-white px-3 text-sm ${
+                                    hasValue && isOutOfRange
+                                      ? "border-red-500 font-bold underline"
+                                      : "border-slate-200"
+                                  }`}
+                                  {...form.register(`items.${formIndex}.value`)}
+                                >
+                                  <option value="">Seleccionar</option>
+                                  {item.selectOptions.map((opt) => (
+                                    <option key={opt} value={opt}>
+                                      {opt}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <Input
+                                  type={item.valueType === "NUMBER" ? "number" : "text"}
+                                  step={item.valueType === "NUMBER" ? "0.01" : undefined}
+                                  placeholder="Ingrese el resultado"
+                                  className={
+                                    hasValue && isOutOfRange
+                                      ? "border-red-500 font-bold underline"
+                                      : ""
+                                  }
+                                  {...form.register(`items.${formIndex}.value`)}
+                                />
+                              )}
+                            </div>
+                            {/* Rangos referenciales adicionales debajo del resultado */}
+                            {item.refRanges && item.refRanges.length > 0 && (
+                              <div className="bg-slate-50 rounded-md p-3 border border-slate-200 space-y-2 min-h-[80px] w-full">
+                                <div className="text-[10px] font-semibold text-slate-700 uppercase tracking-wide mb-1">
+                                  Rangos referenciales:
+                                </div>
+                                {item.refRanges.map((range, rangeIdx) => {
+                                  const ageGroupLabels: Record<string, string> = {
+                                    NIÑOS: "Niños",
+                                    JOVENES: "Jóvenes",
+                                    ADULTOS: "Adultos",
+                                  };
+                                  const sexLabels: Record<string, string> = {
+                                    M: "Hombres",
+                                    F: "Mujeres",
+                                    O: "Otros",
+                                  };
+                                  const criteria = [
+                                    range.ageGroup ? ageGroupLabels[range.ageGroup] || range.ageGroup : null,
+                                    range.sex ? sexLabels[range.sex] || range.sex : null,
+                                  ].filter(Boolean);
+                                  
+                                  const rangeDisplay = range.refRangeText 
+                                    || (range.refMin !== null && range.refMax !== null 
+                                      ? `${range.refMin} - ${range.refMax}` 
+                                      : "");
+                                  
+                                  return (
+                                    <div key={rangeIdx} className="text-xs text-slate-700 leading-relaxed">
+                                      {criteria.length > 0 ? (
+                                        <div className="flex flex-col gap-0.5">
+                                          <span className="font-semibold text-slate-800 text-[11px]">
+                                            {criteria.join(" + ")}:
+                                          </span>
+                                          <span className="text-slate-600 text-[11px] pl-1">{rangeDisplay}</span>
+                                        </div>
+                                      ) : (
+                                        <span className="text-slate-600 text-[11px]">{rangeDisplay}</span>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>

@@ -22,7 +22,19 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
       patient: true,
       items: {
         include: {
-          labTest: { include: { template: { include: { items: true } } } },
+          labTest: { 
+            include: { 
+              template: { 
+                include: { 
+                  items: {
+                    include: {
+                      refRanges: true
+                    }
+                  }
+                } 
+              } 
+            } 
+          },
           result: { include: { items: { orderBy: { order: "asc" } } } },
         },
       },

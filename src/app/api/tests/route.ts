@@ -57,6 +57,18 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+    // Prisma: clave única (por ejemplo, código de análisis duplicado)
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error as any).code === "P2002"
+    ) {
+      return NextResponse.json(
+        { error: "Ya existe un análisis con ese código." },
+        { status: 409 },
+      );
+    }
     return NextResponse.json(
       { error: "Error al crear análisis" },
       { status: 500 },

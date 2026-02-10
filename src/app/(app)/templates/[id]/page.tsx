@@ -16,7 +16,10 @@ export default async function TemplateDetailPage({ params }: Props) {
       where: { id },
       include: {
         labTest: true,
-        items: { orderBy: { order: "asc" } },
+        items: {
+          include: { refRanges: { orderBy: { order: "asc" } } },
+          orderBy: { order: "asc" },
+        },
       },
     }),
     prisma.labTest.findMany({
@@ -73,6 +76,15 @@ export default async function TemplateDetailPage({ params }: Props) {
                 valueType: item.valueType,
                 selectOptions: parseSelectOptions(item.selectOptions),
                 order: item.order,
+                refRanges: (item.refRanges ?? []).map((r) => ({
+                  id: r.id,
+                  ageGroup: r.ageGroup,
+                  sex: r.sex,
+                  refRangeText: r.refRangeText ?? "",
+                  refMin: r.refMin ?? undefined,
+                  refMax: r.refMax ?? undefined,
+                  order: r.order ?? 0,
+                })),
               })),
             }}
           />

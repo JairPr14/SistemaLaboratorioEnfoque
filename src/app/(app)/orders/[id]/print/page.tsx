@@ -34,7 +34,21 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
       patient: true,
       items: {
         include: {
-          labTest: { include: { template: true } },
+          labTest: { 
+            include: { 
+              template: { 
+                include: { 
+                  items: {
+                    include: {
+                      refRanges: {
+                        orderBy: { order: "asc" }
+                      }
+                    }
+                  }
+                } 
+              } 
+            } 
+          },
           result: { include: { items: { orderBy: { order: "asc" } } } },
         },
         orderBy: { createdAt: "asc" },
@@ -205,32 +219,89 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                               <th className="text-left py-2 px-3 font-semibold text-slate-900">
                                 UNIDAD
                               </th>
-                              <th className="text-left py-2 px-3 font-semibold text-slate-900">
+                              <th className="text-left py-2 px-3 font-semibold text-slate-900 w-[180px]">
                                 VALOR REFERENCIAL
                               </th>
                             </tr>
                           </thead>
                           <tbody>
-                            {item.result!.items.map((res) => (
-                              <tr key={res.id} className="border-b border-slate-200 last:border-b-0">
-                                <td className="py-2 px-3 font-medium text-slate-900">
-                                  {res.paramNameSnapshot}
-                                </td>
-                                <td
-                                  className={`py-2 px-3 font-semibold text-slate-900 ${
-                                    res.isOutOfRange ? "font-bold underline" : ""
-                                  }`}
-                                >
-                                  {res.value}
-                                </td>
-                                <td className="py-2 px-3 text-slate-700">
-                                  {res.unitSnapshot || "-"}
-                                </td>
-                                <td className="py-2 px-3 text-slate-700">
-                                  {res.refTextSnapshot || "-"}
-                                </td>
-                              </tr>
-                            ))}
+                            {item.result!.items.map((res) => {
+                              // Buscar el templateItem original para obtener refRanges
+                              const templateItem = res.templateItemId 
+                                ? item.labTest.template?.items.find((t) => t.id === res.templateItemId)
+                                : null;
+                              const refRanges = (templateItem as any)?.refRanges || [];
+                              
+                              return (
+                                <tr key={res.id} className="border-b border-slate-200 last:border-b-0">
+                                  <td className="py-2 px-3 font-medium text-slate-900 align-top">
+                                    {res.paramNameSnapshot}
+                                  </td>
+                                  <td
+                                    className={`py-2 px-3 font-semibold text-slate-900 align-top ${
+                                      res.isOutOfRange ? "font-bold underline" : ""
+                                    }`}
+                                  >
+                                    {res.value}
+                                  </td>
+                                  <td className="py-2 px-3 text-slate-700 align-top">
+                                    {res.unitSnapshot || "-"}
+                                  </td>
+                                  <td className="py-2 px-3 text-slate-700 w-[180px] align-top">
+                                    <div className="space-y-1">
+                                      {res.refTextSnapshot && (
+                                        <div className="font-medium">
+                                          {res.refTextSnapshot}
+                                        </div>
+                                      )}
+                                      {refRanges.length > 0 && (
+                                        <div className="space-y-0.5 text-[10px]">
+                                          {refRanges.map((range: any, rangeIdx: number) => {
+                                            const ageGroupLabels: Record<string, string> = {
+                                              NIÑOS: "Niños",
+                                              JOVENES: "Jóvenes",
+                                              ADULTOS: "Adultos",
+                                            };
+                                            const sexLabels: Record<string, string> = {
+                                              M: "Hombres",
+                                              F: "Mujeres",
+                                              O: "Otros",
+                                            };
+                                            const criteria = [
+                                              range.ageGroup ? ageGroupLabels[range.ageGroup] || range.ageGroup : null,
+                                              range.sex ? sexLabels[range.sex] || range.sex : null,
+                                            ].filter(Boolean);
+                                            
+                                            const rangeDisplay = range.refRangeText 
+                                              || (range.refMin !== null && range.refMax !== null 
+                                                ? `${range.refMin} - ${range.refMax}` 
+                                                : "");
+                                            
+                                            return (
+                                              <div key={rangeIdx} className="leading-tight">
+                                                {criteria.length > 0 ? (
+                                                  <span>
+                                                    <span className="font-semibold text-slate-800">
+                                                      {criteria.join(" + ")}:
+                                                    </span>
+                                                    <span className="text-slate-600 ml-1">{rangeDisplay}</span>
+                                                  </span>
+                                                ) : (
+                                                  <span className="text-slate-600">{rangeDisplay}</span>
+                                                )}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+                                      {!res.refTextSnapshot && refRanges.length === 0 ? (
+                                        <span className="font-medium">-</span>
+                                      ) : null}
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                         {item.result?.comment && (

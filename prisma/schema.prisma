@@ -168,9 +168,9 @@ model LabTemplateItem {
   groupName    String?
   paramName    String
   unit         String?
-  refRangeText String?
-  refMin       Float?
-  refMax       Float?
+  refRangeText String?  // Mantener para compatibilidad con valores simples
+  refMin       Float?   // Mantener para compatibilidad con valores simples
+  refMax       Float?   // Mantener para compatibilidad con valores simples
   description  String?  // texto descriptivo del parámetro (desde JSON)
   valueType    ValueType
   selectOptions String   @default("[]")
@@ -178,8 +178,26 @@ model LabTemplateItem {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  template LabTemplate        @relation(fields: [templateId], references: [id])
+  template LabTemplate              @relation(fields: [templateId], references: [id])
   resultItems LabResultItem[]
+  refRanges   LabTemplateItemRefRange[]
+}
+
+model LabTemplateItemRefRange {
+  id              String   @id @default(cuid())
+  templateItemId  String
+  ageGroup        String?  // "NIÑOS", "JOVENES", "ADULTOS", null = todos
+  sex             Sex?     // M, F, O, null = todos
+  refRangeText    String?  // Texto descriptivo del rango
+  refMin          Float?
+  refMax          Float?
+  order           Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  templateItem LabTemplateItem @relation(fields: [templateItemId], references: [id], onDelete: Cascade)
+
+  @@index([templateItemId])
 }
 
 model LabOrder {

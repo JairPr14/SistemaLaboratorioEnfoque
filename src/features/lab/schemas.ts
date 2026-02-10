@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const sexValues = ["M", "F", "O"] as const;
+export const ageGroupValues = ["NIÑOS", "JOVENES", "ADULTOS"] as const;
 export const sectionValues = [
   "BIOQUIMICA",
   "HEMATOLOGIA",
@@ -24,7 +25,7 @@ export const orderItemStatusValues = [
 ] as const;
 
 export const patientSchema = z.object({
-  code: z.string().min(3),
+  code: z.string().min(3).optional(),
   dni: z.string().min(6),
   firstName: z.string().min(2),
   lastName: z.string().min(2),
@@ -44,16 +45,54 @@ export const labTestSchema = z.object({
   isActive: z.coerce.boolean().default(true),
 });
 
+export const templateItemRefRangeSchema = z.object({
+  id: z.string().optional(),
+  ageGroup: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? null : val),
+    z.enum(ageGroupValues).optional().nullable()
+  ),
+  sex: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? null : val),
+    z.enum(sexValues).optional().nullable()
+  ),
+  refRangeText: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? null : String(val)),
+    z.string().optional().nullable()
+  ),
+  refMin: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? null : Number(val)),
+    z.number().optional().nullable()
+  ),
+  refMax: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? null : Number(val)),
+    z.number().optional().nullable()
+  ),
+  order: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? 0 : Number(val)),
+    z.coerce.number().int().min(0).default(0)
+  ),
+});
+
 export const templateItemSchema = z.object({
   groupName: z.string().optional().nullable(),
   paramName: z.string().min(2),
   unit: z.string().optional().nullable(),
-  refRangeText: z.string().optional().nullable(),
-  refMin: z.coerce.number().optional().nullable(),
-  refMax: z.coerce.number().optional().nullable(),
+  refRangeText: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? null : String(val)),
+    z.string().optional().nullable()
+  ), // Mantener para compatibilidad
+  refMin: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? null : Number(val)),
+    z.number().optional().nullable()
+  ), // Mantener para compatibilidad
+  refMax: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? null : Number(val)),
+    z.number().optional().nullable()
+  ), // Mantener para compatibilidad
   valueType: z.enum(valueTypeValues),
   selectOptions: z.array(z.string()).default([]),
   order: z.coerce.number().int().min(0),
+  refRanges: z.array(templateItemRefRangeSchema).optional().default([]),
 });
 
 export const templateSchema = z.object({
@@ -67,6 +106,10 @@ export const orderCreateSchema = z.object({
   patientId: z.string().min(1),
   requestedBy: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  labTestIds: z.array(z.string().min(1)).min(1),
+});
+
+export const orderAddItemsSchema = z.object({
   labTestIds: z.array(z.string().min(1)).min(1),
 });
 

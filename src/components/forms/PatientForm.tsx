@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,10 +21,12 @@ type Props = {
 
 export function PatientForm({ patientId, defaultValues }: Props) {
   const router = useRouter();
+  const [nextCode, setNextCode] = useState<string | null>(null);
+  const [loadingCode, setLoadingCode] = useState(false);
+
   const form = useForm<PatientFormValues>({
     resolver: zodResolver(patientSchema),
     defaultValues: {
-      code: "",
       dni: "",
       firstName: "",
       lastName: "",
@@ -35,6 +38,26 @@ export function PatientForm({ patientId, defaultValues }: Props) {
       ...defaultValues,
     },
   });
+
+  // Cargar el próximo código disponible cuando es un nuevo paciente
+  useEffect(() => {
+    if (!patientId) {
+      setLoadingCode(true);
+      fetch("/api/patients/next-code")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.code) {
+            setNextCode(data.code);
+          }
+        })
+        .catch(() => {
+          // Silencioso: si falla, simplemente no mostramos el código
+        })
+        .finally(() => {
+          setLoadingCode(false);
+        });
+    }
+  }, [patientId]);
 
   const onSubmit = async (values: PatientFormValues) => {
     try {
@@ -53,7 +76,13 @@ export function PatientForm({ patientId, defaultValues }: Props) {
         return;
       }
 
-      toast.success("Paciente guardado correctamente.");
+      const data = await res.json().catch(() => ({}));
+      const code = data?.item?.code as string | undefined;
+      toast.success(
+        code
+          ? `Paciente guardado correctamente. Código: ${code}`
+          : "Paciente guardado correctamente.",
+      );
       router.refresh();
     } catch (error) {
       console.error("Error submitting patient form:", error);
@@ -66,7 +95,23 @@ export function PatientForm({ patientId, defaultValues }: Props) {
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <Label>Código</Label>
-          <Input {...form.register("code")} />
+          {patientId ? (
+            <p className="h-10 flex items-center rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-600">
+              {defaultValues?.code ?? "-"}
+            </p>
+          ) : loadingCode ? (
+            <p className="h-10 flex items-center rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 text-xs text-slate-500 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-600">
+              Cargando...
+            </p>
+          ) : nextCode ? (
+            <p className="h-10 flex items-center rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-mono font-medium text-slate-900 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-600">
+              {nextCode}
+            </p>
+          ) : (
+            <p className="h-10 flex items-center rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 text-xs text-slate-500 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-600">
+              Se generará automáticamente
+            </p>
+          )}
         </div>
         <div className="space-y-2">
           <Label>DNI</Label>

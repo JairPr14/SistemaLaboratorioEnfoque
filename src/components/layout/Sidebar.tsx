@@ -36,7 +36,7 @@ export function Sidebar() {
               href={item.href}
               className={cn(
                 "block rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700",
-                active && "bg-slate-900 text-white hover:bg-slate-900 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-100",
+                active && "bg-slate-900 text-white hover:bg-slate-900 dark:bg-slate-700 dark:text-white dark:hover:bg-slate-700",
               )}
             >
               {item.label}
@@ -49,7 +49,7 @@ export function Sidebar() {
           href="/configuracion"
           className={cn(
             "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700",
-            pathname.startsWith("/configuracion") && "bg-slate-900 text-white hover:bg-slate-900 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-100",
+            pathname.startsWith("/configuracion") && "bg-slate-900 text-white hover:bg-slate-900 dark:bg-slate-700 dark:text-white dark:hover:bg-slate-700",
           )}
         >
           <Settings className="h-4 w-4 shrink-0" />
