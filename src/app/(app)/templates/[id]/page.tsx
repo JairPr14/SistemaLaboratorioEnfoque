@@ -78,7 +78,9 @@ export default async function TemplateDetailPage({ params }: Props) {
                 order: item.order,
                 refRanges: (item.refRanges ?? []).map((r) => ({
                   id: r.id,
-                  ageGroup: r.ageGroup,
+                  ageGroup: (r.ageGroup === "NIÑOS" || r.ageGroup === "JOVENES" || r.ageGroup === "ADULTOS") 
+                    ? r.ageGroup 
+                    : null,
                   sex: r.sex,
                   refRangeText: r.refRangeText ?? "",
                   refMin: r.refMin ?? undefined,

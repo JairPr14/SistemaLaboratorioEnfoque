@@ -176,7 +176,7 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
     }
     
     // Buscar errores en los items
-    if (errors.items) {
+    if (errors.items && Array.isArray(errors.items)) {
       const itemErrors = errors.items;
       const firstErrorIndex = itemErrors.findIndex((err) => err !== undefined);
       

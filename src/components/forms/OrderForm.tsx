@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
@@ -46,13 +46,13 @@ export function OrderForm({ patients, recentPatients = [], tests }: Props) {
   const [testSearch, setTestSearch] = useState("");
 
   const form = useForm<OrderFormValues>({
-    resolver: zodResolver(orderCreateSchema),
+    resolver: zodResolver(orderCreateSchema) as Resolver<OrderFormValues>,
     defaultValues: {
       patientId: "",
       requestedBy: "",
       notes: "",
       orderDate: new Date().toISOString().slice(0, 10),
-      patientType: null as string | null,
+      patientType: null,
       labTestIds: [],
     },
   });

@@ -13,6 +13,15 @@ export type TemplatePreset = {
     valueType: "NUMBER" | "TEXT" | "SELECT";
     selectOptions?: string[];
     order: number;
+    refRanges?: Array<{
+      id?: string;
+      ageGroup?: "NIÑOS" | "JOVENES" | "ADULTOS" | null;
+      sex?: "M" | "F" | "O" | null;
+      refRangeText?: string | null;
+      refMin?: number | null;
+      refMax?: number | null;
+      order: number;
+    }>;
   }>;
 };
 
