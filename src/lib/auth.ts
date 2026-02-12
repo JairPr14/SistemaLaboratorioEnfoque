@@ -1,9 +1,14 @@
 import type { NextAuthOptions, Session } from "next-auth";
-import { getServerSession } from "next-auth";
+import { getServerSession as nextAuthGetServerSession } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+
+// Re-exportar getServerSession con authOptions pre-configurado
+export async function getServerSession() {
+  return nextAuthGetServerSession(authOptions);
+}
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -113,7 +118,7 @@ export async function requirePermission(
 ): Promise<
   { session: Session; response?: never } | { session?: never; response: NextResponse }
 > {
-  const session = await getServerSession(authOptions);
+  const session = await nextAuthGetServerSession(authOptions);
   if (!session?.user) {
     return { response: NextResponse.json({ error: "No autorizado" }, { status: 401 }) };
   }

@@ -7,14 +7,13 @@ import {
   PERMISSION_EDITAR_PACIENTES,
   PERMISSION_ELIMINAR_REGISTROS,
   getServerSession,
-  authOptions,
 } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function GET(_request: Request, { params }: Params) {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   if (!session?.user) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
