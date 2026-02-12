@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
 
+import { authOptions, hasPermission, PERMISSION_REPORTES } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { ReportesFilterForm } from "./ReportesFilterForm";
 
-type SearchParams = { dateFrom?: string; dateTo?: string };
+type SearchParams = { dateFrom?: string; dateTo?: string; status?: string };
 
 function toYYYYMMDD(d: Date): string {
   const y = d.getFullYear();
@@ -32,8 +35,17 @@ function parseDateRange(params: SearchParams) {
     dateFrom.setHours(0, 0, 0, 0);
     dateTo.setHours(23, 59, 59, 999);
     if (dateFrom.getTime() > dateTo.getTime()) [dateFrom, dateTo] = [dateTo, dateFrom];
+  } else if (fromParam) {
+    dateFrom = new Date(fromParam);
+    dateFrom.setHours(0, 0, 0, 0);
+    dateTo = new Date(today);
+  } else if (toParam) {
+    dateTo = new Date(toParam);
+    dateTo.setHours(23, 59, 59, 999);
+    dateFrom = new Date(dateTo);
+    dateFrom.setDate(dateFrom.getDate() - 30);
+    dateFrom.setHours(0, 0, 0, 0);
   } else {
-    // Por defecto: último mes
     dateTo = new Date(today);
     dateFrom = new Date(today);
     dateFrom.setDate(dateFrom.getDate() - 30);
@@ -48,48 +60,52 @@ export default async function ReportesPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
+  const session = await getServerSession(authOptions);
+  if (!hasPermission(session, PERMISSION_REPORTES)) redirect("/dashboard");
+
   const params = await searchParams;
   const { dateFrom, dateTo } = parseDateRange(params);
+  const statusFilter = params.status?.trim() || undefined;
+
+  // Para "Entregados" usamos fecha de entrega (deliveredAt); para el resto, fecha de creación (createdAt)
+  const useDeliveredDate = statusFilter === "ENTREGADO";
+  const orderWhereWithDate = useDeliveredDate
+    ? {
+        status: "ENTREGADO" as const,
+        deliveredAt: { not: null, gte: dateFrom, lte: dateTo },
+      }
+    : {
+        ...(statusFilter ? { status: statusFilter } : { status: { not: "ANULADO" } }),
+        createdAt: { gte: dateFrom, lte: dateTo },
+      };
 
   const [orderItems, ordersSummary, revenueResult, byPatientType, ordersList] = await Promise.all([
     prisma.labOrderItem.findMany({
-      where: {
-        order: {
-          createdAt: { gte: dateFrom, lte: dateTo },
-          status: { not: "ANULADO" },
-        },
-      },
+      where: { order: orderWhereWithDate },
       include: { labTest: true },
     }),
     prisma.labOrder.groupBy({
       by: ["status"],
-      where: { createdAt: { gte: dateFrom, lte: dateTo } },
+      where: orderWhereWithDate,
       _count: { id: true },
     }),
     prisma.labOrder.aggregate({
       _sum: { totalPrice: true },
       _count: { id: true },
-      where: {
-        createdAt: { gte: dateFrom, lte: dateTo },
-        status: { not: "ANULADO" },
-      },
+      where: orderWhereWithDate,
     }),
     prisma.labOrder.groupBy({
       by: ["patientType"],
-      where: {
-        createdAt: { gte: dateFrom, lte: dateTo },
-        status: { not: "ANULADO" },
-      },
+      where: orderWhereWithDate,
       _count: { id: true },
       _sum: { totalPrice: true },
     }),
     prisma.labOrder.findMany({
-      where: {
-        createdAt: { gte: dateFrom, lte: dateTo },
-        status: { not: "ANULADO" },
-      },
+      where: orderWhereWithDate,
       include: { patient: true },
-      orderBy: { createdAt: "desc" },
+      orderBy: useDeliveredDate
+        ? [{ deliveredAt: "desc" }, { updatedAt: "desc" }]
+        : { createdAt: "desc" },
       take: 500,
     }),
   ]);
@@ -148,8 +164,10 @@ export default async function ReportesPage({
         </div>
         <Suspense fallback={<div className="h-10 w-48 rounded-md bg-slate-100" />}>
           <ReportesFilterForm
+            key={`${params.dateFrom ?? ""}-${params.dateTo ?? ""}-${params.status ?? ""}`}
             defaultDateFrom={params.dateFrom ?? toYYYYMMDD(dateFrom)}
             defaultDateTo={params.dateTo ?? toYYYYMMDD(dateTo)}
+            defaultStatus={statusFilter ?? ""}
           />
         </Suspense>
       </div>
@@ -163,6 +181,9 @@ export default async function ReportesPage({
           <CardContent>
             <p className="text-sm text-slate-600">
               {formatDate(dateFrom)} — {formatDate(dateTo)}
+              {statusFilter === "ENTREGADO" && (
+                <span className="ml-2 text-slate-500">(por fecha de entrega)</span>
+              )}
             </p>
           </CardContent>
         </Card>
@@ -251,7 +272,9 @@ export default async function ReportesPage({
         <CardHeader>
           <CardTitle className="text-base">Órdenes del período</CardTitle>
           <p className="text-sm text-slate-500 mt-1">
-            Listado con sede asignada. Máximo 500 órdenes.
+            {statusFilter === "ENTREGADO"
+              ? "Órdenes entregadas en el rango de fechas (por fecha de entrega). Máximo 500."
+              : "Listado con sede asignada. Máximo 500 órdenes."}
           </p>
         </CardHeader>
         <CardContent>
@@ -260,10 +283,10 @@ export default async function ReportesPage({
           ) : (
             <div className="overflow-x-auto max-h-[420px] overflow-y-auto">
               <Table>
-                <TableHeader>
-                  <TableRow>
+<TableHeader>
+                <TableRow>
                     <TableHead>Orden</TableHead>
-                    <TableHead>Fecha</TableHead>
+                    <TableHead>{statusFilter === "ENTREGADO" ? "Fecha entrega" : "Fecha"}</TableHead>
                     <TableHead>Paciente</TableHead>
                     <TableHead>Sede</TableHead>
                     <TableHead>Estado</TableHead>
@@ -281,7 +304,13 @@ export default async function ReportesPage({
                           {order.orderCode}
                         </Link>
                       </TableCell>
-                      <TableCell className="text-slate-600">{formatDate(order.createdAt)}</TableCell>
+                      <TableCell className="text-slate-600">
+                        {formatDate(
+                          statusFilter === "ENTREGADO" && order.deliveredAt
+                            ? order.deliveredAt
+                            : order.createdAt,
+                        )}
+                      </TableCell>
                       <TableCell>
                         {order.patient.lastName} {order.patient.firstName}
                       </TableCell>
@@ -312,7 +341,9 @@ export default async function ReportesPage({
         <CardHeader>
           <CardTitle className="text-base">Análisis más solicitados</CardTitle>
           <p className="text-sm text-slate-500 mt-1">
-            Ordenados por cantidad. Filtrado por fechas seleccionadas.
+            {statusFilter === "ENTREGADO"
+              ? "Análisis de órdenes entregadas en el período (por fecha de entrega)."
+              : "Ordenados por cantidad. Filtrado por fechas seleccionadas."}
           </p>
         </CardHeader>
         <CardContent>

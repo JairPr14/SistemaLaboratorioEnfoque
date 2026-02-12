@@ -17,7 +17,7 @@ import { Search, Star, X } from "lucide-react";
 
 type PatientResult = { id: string; label: string; sublabel: string };
 type TestItem = { id: string; code: string; name: string; section: string; price: number };
-type Profile = { id: string; name: string; tests: TestItem[] };
+type Profile = { id: string; name: string; packagePrice: number | null; tests: TestItem[] };
 
 type Props = {
   open: boolean;
@@ -41,6 +41,7 @@ export function QuickOrderModal({ open, onOpenChange }: Props) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [selectedTestIds, setSelectedTestIds] = useState<Set<string>>(new Set());
+  const [selectedProfileIds, setSelectedProfileIds] = useState<Set<string>>(new Set());
   const [doctorName, setDoctorName] = useState("");
   const [indication, setIndication] = useState("");
   const [patientType, setPatientType] = useState<string>("");
@@ -104,6 +105,10 @@ export function QuickOrderModal({ open, onOpenChange }: Props) {
   }, [patientQuery]);
 
   const toggleTest = (id: string) => {
+    if (testIdsInPromos.has(id)) {
+      toast.info("Este análisis ya está incluido en una promoción seleccionada.");
+      return;
+    }
     setSelectedTestIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -113,12 +118,29 @@ export function QuickOrderModal({ open, onOpenChange }: Props) {
   };
 
   const addProfile = (profile: Profile) => {
+    setSelectedProfileIds((prev) => new Set(prev).add(profile.id));
+    const profileTestIds = new Set(profile.tests.map((t) => t.id));
     setSelectedTestIds((prev) => {
       const next = new Set(prev);
-      profile.tests.forEach((t) => next.add(t.id));
+      profileTestIds.forEach((id) => next.delete(id));
       return next;
     });
   };
+
+  const removeProfile = (profileId: string) => {
+    setSelectedProfileIds((prev) => {
+      const next = new Set(prev);
+      next.delete(profileId);
+      return next;
+    });
+  };
+
+  const testIdsInPromos = new Set(
+    Array.from(selectedProfileIds).flatMap((pid) => {
+      const p = profiles.find((x) => x.id === pid);
+      return p ? p.tests.map((t) => t.id) : [];
+    })
+  );
 
   const toggleFavorite = async (testId: string) => {
     const add = !favoriteIds.has(testId);
@@ -135,8 +157,16 @@ export function QuickOrderModal({ open, onOpenChange }: Props) {
   };
 
   const handleSubmit = async () => {
-    if (selectedTestIds.size === 0) {
-      toast.error("Selecciona al menos un análisis");
+    const testsFromProfiles = new Set(
+      Array.from(selectedProfileIds).flatMap((pid) => {
+        const p = profiles.find((x) => x.id === pid);
+        return p ? p.tests.map((t) => t.id) : [];
+      })
+    );
+    const individualTestIds = Array.from(selectedTestIds).filter((id) => !testsFromProfiles.has(id));
+    const hasTests = selectedProfileIds.size > 0 || individualTestIds.length > 0;
+    if (!hasTests) {
+      toast.error("Selecciona al menos un análisis o una promoción");
       return;
     }
 
@@ -166,7 +196,8 @@ export function QuickOrderModal({ open, onOpenChange }: Props) {
           doctorName: doctorName || null,
           indication: indication || null,
           patientType: patientType || null,
-          tests: Array.from(selectedTestIds),
+          profileIds: Array.from(selectedProfileIds),
+          tests: individualTestIds,
         }),
       });
 
@@ -195,8 +226,19 @@ export function QuickOrderModal({ open, onOpenChange }: Props) {
   };
 
   const favoriteTests = tests.filter((t) => favoriteIds.has(t.id));
-  const selectedTests = tests.filter((t) => selectedTestIds.has(t.id));
-  const total = selectedTests.reduce((acc, t) => acc + t.price, 0);
+  const selectedProfiles = profiles.filter((p) => selectedProfileIds.has(p.id));
+  const testsFromProfilesSet = new Set(
+    selectedProfiles.flatMap((p) => p.tests.map((t) => t.id))
+  );
+  const selectedIndividualTests = tests.filter(
+    (t) => selectedTestIds.has(t.id) && !testsFromProfilesSet.has(t.id)
+  );
+  const totalFromProfiles = selectedProfiles.reduce(
+    (acc, p) => acc + (p.packagePrice ?? p.tests.reduce((s, t) => s + t.price, 0)),
+    0
+  );
+  const totalFromTests = selectedIndividualTests.reduce((acc, t) => acc + t.price, 0);
+  const total = totalFromProfiles + totalFromTests;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -335,8 +377,8 @@ export function QuickOrderModal({ open, onOpenChange }: Props) {
           <div className="space-y-2">
             <Label>Análisis</Label>
             {profiles.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                <span className="text-xs text-slate-500">Agregar perfil:</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-slate-500">Agregar promoción:</span>
                 <select
                   onChange={(e) => {
                     const id = e.target.value;
@@ -348,13 +390,31 @@ export function QuickOrderModal({ open, onOpenChange }: Props) {
                   }}
                   className="h-8 rounded border border-slate-200 bg-white px-2 text-sm dark:border-slate-600 dark:bg-slate-800"
                 >
-                  <option value="">Seleccionar perfil</option>
+                  <option value="">Seleccionar paquete</option>
                   {profiles.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.name} ({p.tests.length} tests)
+                      {p.name}
+                      {p.packagePrice != null ? ` — S/ ${p.packagePrice.toFixed(2)}` : ""}
+                      {" "}({p.tests.length} análisis)
                     </option>
                   ))}
                 </select>
+                {selectedProfiles.map((p) => (
+                  <span
+                    key={p.id}
+                    className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800 border border-amber-200"
+                  >
+                    {p.name}
+                    <button
+                      type="button"
+                      onClick={() => removeProfile(p.id)}
+                      className="text-amber-600 hover:text-amber-800"
+                      title="Quitar"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
               </div>
             )}
             {favoriteTests.length > 0 && (
@@ -381,41 +441,81 @@ export function QuickOrderModal({ open, onOpenChange }: Props) {
                 Lista general
               </p>
               <div className="max-h-44 overflow-auto rounded border border-slate-200 p-2 dark:border-slate-600">
-                {tests.map((t) => (
-                  <label
-                    key={t.id}
-                    className={`flex cursor-pointer items-center justify-between gap-2 rounded px-2 py-1.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 ${
-                      selectedTestIds.has(t.id) ? "bg-blue-50 dark:bg-blue-900/20" : ""
-                    }`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={selectedTestIds.has(t.id)}
-                        onChange={() => toggleTest(t.id)}
-                      />
-                      {t.code} - {t.name}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        toggleFavorite(t.id);
-                      }}
-                      className="text-slate-400 hover:text-amber-500"
+                {tests.map((t) => {
+                  const isInPromo = testIdsInPromos.has(t.id);
+                  const promoContaining = profiles.find(
+                    (p) => selectedProfileIds.has(p.id) && p.tests.some((x) => x.id === t.id)
+                  );
+                  const isChecked = selectedTestIds.has(t.id) || isInPromo;
+                  return (
+                    <label
+                      key={t.id}
+                      className={`flex items-center justify-between gap-2 rounded px-2 py-1.5 text-sm ${
+                        isInPromo ? "bg-amber-50/50 dark:bg-amber-900/10" : "cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800"
+                      } ${selectedTestIds.has(t.id) ? "bg-blue-50 dark:bg-blue-900/20" : ""}`}
                     >
-                      <Star
-                        className={`h-4 w-4 ${favoriteIds.has(t.id) ? "fill-amber-400 text-amber-500" : ""}`}
-                      />
-                    </button>
-                  </label>
-                ))}
+                      <span className="flex items-center gap-2 min-w-0">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          disabled={isInPromo}
+                          onChange={() => toggleTest(t.id)}
+                          title={isInPromo ? `Incluido en: ${promoContaining?.name ?? ""}` : undefined}
+                        />
+                        <span className="truncate">
+                          {t.code} - {t.name}
+                          {isInPromo && promoContaining && (
+                            <span className="ml-1 text-xs text-amber-600 dark:text-amber-400">
+                              (en {promoContaining.name})
+                            </span>
+                          )}
+                        </span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          toggleFavorite(t.id);
+                        }}
+                        className="text-slate-400 hover:text-amber-500 shrink-0"
+                      >
+                        <Star
+                          className={`h-4 w-4 ${favoriteIds.has(t.id) ? "fill-amber-400 text-amber-500" : ""}`}
+                        />
+                      </button>
+                    </label>
+                  );
+                })}
               </div>
             </div>
-            {selectedTests.length > 0 && (
-              <p className="text-sm text-slate-600 dark:text-slate-400">
-                {selectedTests.length} seleccionados · Total: S/ {total.toFixed(2)}
-              </p>
+            {(selectedProfiles.length > 0 || selectedIndividualTests.length > 0) && (
+              <div className="rounded border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-600 dark:bg-slate-800/50 space-y-2">
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                  Resumen (promociones encapsuladas, análisis sueltos aparte)
+                </p>
+                {selectedProfiles.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">Promociones</p>
+                    {selectedProfiles.map((p) => (
+                      <div
+                        key={p.id}
+                        className="text-xs rounded bg-amber-50 dark:bg-amber-900/20 px-2 py-1.5 border border-amber-200 dark:border-amber-800"
+                      >
+                        <span className="font-medium">{p.name}</span>
+                        <span className="text-slate-600 dark:text-slate-400"> — {p.tests.map((x) => x.code).join(", ")}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {selectedIndividualTests.length > 0 && (
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                    Análisis sueltos: {selectedIndividualTests.map((t) => t.code).join(", ")}
+                  </p>
+                )}
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-300 pt-1 border-t border-slate-200 dark:border-slate-600">
+                  Total: S/ {total.toFixed(2)}
+                </p>
+              </div>
             )}
           </div>
 

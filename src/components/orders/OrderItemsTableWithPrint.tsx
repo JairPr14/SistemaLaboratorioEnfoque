@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, Fragment } from "react";
 import Link from "next/link";
 
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -27,6 +27,8 @@ type OrderItem = {
   status: string;
   priceSnapshot: number | { toString(): string };
   templateSnapshot: unknown;
+  promotionId?: string | null;
+  promotionName?: string | null;
   labTest: {
     id: string;
     code: string;
@@ -79,9 +81,11 @@ type Props = {
   order: Order;
   /** Abre automáticamente el diálogo de captura de este item (ej. desde worklist) */
   defaultOpenItemId?: string;
+  /** Si false, no se muestra el botón de quitar análisis (solo administradores pueden eliminar). */
+  canDeleteItems?: boolean;
 };
 
-export function OrderItemsTableWithPrint({ order, defaultOpenItemId }: Props) {
+export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteItems = true }: Props) {
   const [openItemId, setOpenItemId] = useState<string | null>(null);
   const [addAnalysisOpen, setAddAnalysisOpen] = useState(false);
 
@@ -90,6 +94,21 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId }: Props) {
     [order.items],
   );
   const canAddAnalysis = order.status !== "ANULADO";
+
+  const itemsByPromotion = useMemo(() => {
+    const groups: { promotionKey: string | null; promotionName: string; items: OrderItem[] }[] = [];
+    const byKey = new Map<string | null, OrderItem[]>();
+    for (const item of order.items) {
+      const key = item.promotionId ?? null;
+      if (!byKey.has(key)) byKey.set(key, []);
+      byKey.get(key)!.push(item);
+    }
+    byKey.forEach((items, key) => {
+      const promotionName = key == null ? "Análisis sueltos" : (items[0].promotionName ?? "Promoción");
+      groups.push({ promotionKey: key, promotionName, items });
+    });
+    return groups;
+  }, [order.items]);
 
   useEffect(() => {
     if (defaultOpenItemId) setOpenItemId(defaultOpenItemId);
@@ -254,7 +273,21 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId }: Props) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {order.items.map((item) => {
+            {itemsByPromotion.map((group) => (
+              <Fragment key={group.promotionKey ?? "sueltos"}>
+                <TableRow className="bg-slate-100 hover:bg-slate-100">
+                    <TableCell
+                      colSpan={printableItemIds.length > 0 ? 7 : 6}
+                      className="font-semibold text-slate-700 py-2"
+                    >
+                      {group.promotionKey != null ? (
+                        <span className="text-amber-700">Promoción: {group.promotionName}</span>
+                      ) : (
+                        <span className="text-slate-600">{group.promotionName}</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                {group.items.map((item) => {
               const hasResults =
                 item.result && (item.result.items?.length ?? 0) > 0;
               const canSelect = printableItemIds.includes(item.id);
@@ -406,7 +439,7 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId }: Props) {
                 templateItems.length > 0 ? templateItems : originalTemplateItems;
 
               return (
-                <TableRow key={item.id}>
+                <TableRow key={item.id} className={group.promotionKey != null ? "bg-amber-50/30" : undefined}>
                   {printableItemIds.length > 0 && (
                     <TableCell className="w-10">
                       {canSelect ? (
@@ -492,15 +525,19 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId }: Props) {
                           Sin plantilla
                         </span>
                       )}
-                      <DeleteButton
-                        url={`/api/orders/${order.id}/items/${item.id}`}
-                        label="Quitar"
-                      />
+                      {canDeleteItems && (
+                        <DeleteButton
+                          url={`/api/orders/${order.id}/items/${item.id}`}
+                          label="Quitar"
+                        />
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
               );
             })}
+              </Fragment>
+            ))}
           </TableBody>
         </Table>
       </CardContent>

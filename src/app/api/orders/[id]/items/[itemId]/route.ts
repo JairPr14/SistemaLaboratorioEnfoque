@@ -1,14 +1,18 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { requirePermission, PERMISSION_ELIMINAR_REGISTROS } from "@/lib/auth";
 
 type Params = { params: Promise<{ id: string; itemId: string }> };
 
 /**
  * DELETE: elimina un análisis (ítem) de la orden.
  * Borra resultado e ítems de resultado si existen, luego el ítem y actualiza el total de la orden.
+ * Solo administradores.
  */
 export async function DELETE(_request: Request, { params }: Params) {
+  const auth = await requirePermission(PERMISSION_ELIMINAR_REGISTROS);
+  if (auth.response) return auth.response;
   try {
     const { id: orderId, itemId } = await params;
 

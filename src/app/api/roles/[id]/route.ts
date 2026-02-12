@@ -9,19 +9,27 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await _request.json();
-    const { name, description, isActive } = body as {
+    const { name, description, isActive, permissions } = body as {
       name?: string;
       description?: string | null;
       isActive?: boolean;
+      permissions?: string[] | null;
     };
+
+    const data: { name?: string; description?: string | null; isActive?: boolean; permissions?: string | null } = {};
+    if (name != null) data.name = String(name).trim();
+    if (description !== undefined) data.description = description === "" ? null : description;
+    if (typeof isActive === "boolean") data.isActive = isActive;
+    if (permissions !== undefined) {
+      data.permissions =
+        Array.isArray(permissions) && permissions.every((p) => typeof p === "string")
+          ? JSON.stringify(permissions)
+          : null;
+    }
 
     const role = await prisma.role.update({
       where: { id },
-      data: {
-        ...(name != null && { name: String(name).trim() }),
-        ...(description !== undefined && { description: description === "" ? null : description }),
-        ...(typeof isActive === "boolean" && { isActive }),
-      },
+      data,
     });
     return NextResponse.json(role);
   } catch (error) {

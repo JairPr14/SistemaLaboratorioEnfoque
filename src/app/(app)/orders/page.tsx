@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { getServerSession } from "next-auth";
 
+import { authOptions, hasPermission, PERMISSION_ELIMINAR_REGISTROS } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,12 +12,15 @@ import { DeleteButton } from "@/components/common/DeleteButton";
 export default async function OrdersPage({
   searchParams,
 }: {
-  searchParams: { search?: string; status?: string; from?: string; to?: string };
+  searchParams: Promise<{ search?: string; status?: string; from?: string; to?: string }>;
 }) {
-  const search = searchParams.search?.trim();
-  const status = searchParams.status?.trim();
-  const from = searchParams.from?.trim();
-  const to = searchParams.to?.trim();
+  const params = await searchParams;
+  const search = params.search?.trim();
+  const status = params.status?.trim();
+  const from = params.from?.trim();
+  const to = params.to?.trim();
+  const session = await getServerSession(authOptions);
+  const canDeleteOrders = hasPermission(session, PERMISSION_ELIMINAR_REGISTROS);
 
   const orders = await prisma.labOrder.findMany({
     where: {
@@ -148,7 +153,9 @@ export default async function OrdersPage({
                   <Link className="text-sm text-slate-600 hover:underline mr-2" href={`/orders/${order.id}/print`}>
                     Imprimir
                   </Link>
-                  <DeleteButton url={`/api/orders/${order.id}`} label="Eliminar" />
+                  {canDeleteOrders && (
+                    <DeleteButton url={`/api/orders/${order.id}`} label="Eliminar" />
+                  )}
                 </TableCell>
               </TableRow>
               );

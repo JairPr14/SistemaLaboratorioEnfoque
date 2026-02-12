@@ -88,12 +88,17 @@ export function AddAnalysisToOrderDialog({
       toast.error("Selecciona al menos un análisis.");
       return;
     }
+    const idsToAdd = Array.from(selectedIds).filter((id) => !existingSet.has(id));
+    if (idsToAdd.length === 0) {
+      toast.error("Esos análisis ya están en la orden.");
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch(`/api/orders/${orderId}/items`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ labTestIds: Array.from(selectedIds) }),
+        body: JSON.stringify({ labTestIds: idsToAdd }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {

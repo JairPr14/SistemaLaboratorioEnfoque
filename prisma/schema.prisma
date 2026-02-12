@@ -12,6 +12,8 @@ model Role {
   code        String   @unique
   name        String
   description String?
+  /** JSON array de códigos de permiso: ["REPORTES", "EDITAR_PACIENTES", "ELIMINAR_REGISTROS"] */
+  permissions String?
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -50,11 +52,12 @@ model UserFavoriteTest {
 }
 
 model TestProfile {
-  id       String   @id @default(cuid())
-  name     String
-  isActive Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(cuid())
+  name         String
+  packagePrice Float?   // Precio promocional del paquete (si null = suma de análisis)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   items TestProfileItem[]
 }
@@ -234,6 +237,8 @@ model LabOrderItem {
   status           OrderItemStatus @default(PENDIENTE)
   priceSnapshot    Float
   templateSnapshot Json?
+  promotionId      String?         // Si viene de una promoción, id del TestProfile
+  promotionName    String?         // Nombre de la promoción (para mostrar en detalle)
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 

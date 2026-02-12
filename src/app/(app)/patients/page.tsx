@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { getServerSession } from "next-auth";
 
+import { authOptions, hasPermission, PERMISSION_ELIMINAR_REGISTROS } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PatientForm } from "@/components/forms/PatientForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +16,8 @@ type Props = {
 export default async function PatientsPage({ searchParams }: Props) {
   const params = await searchParams;
   const search = params.search?.trim();
+  const session = await getServerSession(authOptions);
+  const canDeletePatients = hasPermission(session, PERMISSION_ELIMINAR_REGISTROS);
 
   const patients = await prisma.patient.findMany({
     where: {
@@ -133,9 +137,11 @@ export default async function PatientsPage({ searchParams }: Props) {
                             href={`/patients/${patient.id}`}
                             className="text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:underline mr-2"
                           >
-                            Editar
+                            {canDeletePatients ? "Editar" : "Ver"}
                           </Link>
-                          <DeleteButton url={`/api/patients/${patient.id}`} label="Eliminar" />
+                          {canDeletePatients && (
+                            <DeleteButton url={`/api/patients/${patient.id}`} label="Eliminar" />
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}

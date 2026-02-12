@@ -82,17 +82,76 @@ function parseRefRange(ref: string | null): { refMin: number | null; refMax: num
 }
 
 // ---------------------------------------------------------------------------
+// Análisis más utilizados en laboratorios clínicos (solo catálogo: código, sección, precio 0)
+// Las plantillas las creas tú después.
+// ---------------------------------------------------------------------------
+const CATALOGO_ANALISIS: { code: string; name: string; section: LabSection }[] = [
+  // BIOQUIMICA
+  { code: "GLU", name: "Glucosa", section: "BIOQUIMICA" },
+  { code: "CRE", name: "Creatinina", section: "BIOQUIMICA" },
+  { code: "UREA", name: "Urea", section: "BIOQUIMICA" },
+  { code: "AU", name: "Ácido úrico", section: "BIOQUIMICA" },
+  { code: "CT", name: "Colesterol total", section: "BIOQUIMICA" },
+  { code: "HDL", name: "Colesterol HDL", section: "BIOQUIMICA" },
+  { code: "LDL", name: "Colesterol LDL", section: "BIOQUIMICA" },
+  { code: "TG", name: "Triglicéridos", section: "BIOQUIMICA" },
+  { code: "TGO", name: "TGO (AST)", section: "BIOQUIMICA" },
+  { code: "TGP", name: "TGP (ALT)", section: "BIOQUIMICA" },
+  { code: "BIL", name: "Bilirrubina", section: "BIOQUIMICA" },
+  { code: "AMIL", name: "Amilasa", section: "BIOQUIMICA" },
+  { code: "LDH", name: "LDH", section: "BIOQUIMICA" },
+  { code: "CK", name: "Creatina quinasa (CK)", section: "BIOQUIMICA" },
+  { code: "P", name: "Fósforo", section: "BIOQUIMICA" },
+  { code: "CA", name: "Calcio", section: "BIOQUIMICA" },
+  { code: "MG", name: "Magnesio", section: "BIOQUIMICA" },
+  { code: "NA", name: "Sodio", section: "BIOQUIMICA" },
+  { code: "K", name: "Potasio", section: "BIOQUIMICA" },
+  { code: "CL", name: "Cloro", section: "BIOQUIMICA" },
+  { code: "HBA1C", name: "Hemoglobina glicada (HbA1c)", section: "BIOQUIMICA" },
+  { code: "PCR", name: "Proteína C reactiva", section: "BIOQUIMICA" },
+  { code: "FERR", name: "Ferritina", section: "BIOQUIMICA" },
+  { code: "LIPASA", name: "Lipasa", section: "BIOQUIMICA" },
+  // HEMATOLOGIA
+  { code: "HEM", name: "Hemograma completo", section: "HEMATOLOGIA" },
+  { code: "GRUPO", name: "Grupo y factor Rh", section: "HEMATOLOGIA" },
+  { code: "VSG", name: "Velocidad de sedimentación globular", section: "HEMATOLOGIA" },
+  { code: "TP", name: "Tiempo de protrombina", section: "HEMATOLOGIA" },
+  { code: "TPT", name: "Tiempo parcial de tromboplastina", section: "HEMATOLOGIA" },
+  { code: "INR", name: "INR", section: "HEMATOLOGIA" },
+  { code: "FROTIS", name: "Frotis de sangre periférica", section: "HEMATOLOGIA" },
+  { code: "PLAQ", name: "Recuento de plaquetas", section: "HEMATOLOGIA" },
+  // ORINA
+  { code: "ORINA", name: "Orina completa", section: "ORINA" },
+  { code: "UROC", name: "Urocultivo", section: "ORINA" },
+  // HECES
+  { code: "HECES", name: "Examen general de heces", section: "HECES" },
+  { code: "PARAS", name: "Parasitológico", section: "HECES" },
+  { code: "SO", name: "Sangre oculta en heces", section: "HECES" },
+  // INMUNOLOGIA
+  { code: "VDRL", name: "VDRL / RPR", section: "INMUNOLOGIA" },
+  { code: "VIH", name: "VIH (ELISA)", section: "INMUNOLOGIA" },
+  { code: "HBSAG", name: "HBsAg (hepatitis B)", section: "INMUNOLOGIA" },
+  { code: "ANTIHCV", name: "Anti-HCV (hepatitis C)", section: "INMUNOLOGIA" },
+  { code: "COVID", name: "COVID-19 (PCR o antígeno)", section: "INMUNOLOGIA" },
+  { code: "FR", name: "Factor reumatoide", section: "INMUNOLOGIA" },
+  { code: "ASO", name: "Antiestreptolisina O (ASO)", section: "INMUNOLOGIA" },
+  { code: "HCG", name: "HCG cualitativo (embarazo)", section: "INMUNOLOGIA" },
+  // OTROS
+  { code: "TSH", name: "TSH", section: "OTROS" },
+  { code: "T3L", name: "T3 libre", section: "OTROS" },
+  { code: "T4L", name: "T4 libre", section: "OTROS" },
+];
+
+// ---------------------------------------------------------------------------
 // Carga del JSON (ruta: prisma/plantillas_seed.json o env SEED_JSON_PATH)
 // ---------------------------------------------------------------------------
-function loadSeedJson(): SeedTemplate[] {
+function loadSeedJson(): SeedTemplate[] | null {
   const defaultPath = path.join(process.cwd(), "prisma", "plantillas_seed.json");
   const envPath = process.env.SEED_JSON_PATH;
   const filePath = envPath ? path.resolve(envPath) : defaultPath;
 
   if (!fs.existsSync(filePath)) {
-    throw new Error(
-      `No se encontró el archivo de plantillas: ${filePath}. Coloca plantillas_seed.json en prisma/ o define SEED_JSON_PATH.`
-    );
+    return null;
   }
 
   const raw = fs.readFileSync(filePath, "utf-8");
@@ -151,7 +210,28 @@ async function main() {
     console.log("Usuario inicial creado:", DEFAULT_USER_EMAIL, "con rol ADMIN");
   }
 
+  // Catálogo: análisis más utilizados (solo código, sección, nombre; precio 0)
+  for (const a of CATALOGO_ANALISIS) {
+    await prisma.labTest.upsert({
+      where: { code: a.code },
+      update: { name: a.name, section: a.section, price: 0 },
+      create: {
+        code: a.code,
+        name: a.name,
+        section: a.section,
+        price: 0,
+        estimatedTimeMinutes: null,
+        isActive: true,
+      },
+    });
+  }
+  console.log("Catálogo:", CATALOGO_ANALISIS.length, "análisis (precio 0, sin plantilla)");
+
   const templates = loadSeedJson();
+  if (!templates || templates.length === 0) {
+    console.log("No se encontró plantillas_seed.json; omisión de plantillas. Puedes añadirlas después.");
+    return;
+  }
 
   for (const t of templates) {
     const code = toTestCode(t.templateKey);

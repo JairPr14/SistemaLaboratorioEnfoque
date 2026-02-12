@@ -1,8 +1,17 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+Sistema de Laboratorio (Next.js + Prisma + SQLite).
+
+## Base de datos (SQLite)
+
+- La BD está en `prisma/dev.db` (archivo local).
+- Variables en `.env`: `DATABASE_URL`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`.
+- Para crear el usuario inicial y roles (y opcionalmente plantillas desde `prisma/plantillas_seed.json`):  
+  `pnpm exec prisma db seed`
+
+**Si aparece "Unknown argument" (promotionId, packagePrice, etc.):** el cliente de Prisma está desactualizado. Detén el servidor (Ctrl+C), ejecuta `pnpm exec prisma generate` y vuelve a arrancar con `pnpm dev`.
 
 ## Getting Started
 
-First, run the development server:
+Primero, arranca el servidor de desarrollo:
 
 ```bash
 npm run dev

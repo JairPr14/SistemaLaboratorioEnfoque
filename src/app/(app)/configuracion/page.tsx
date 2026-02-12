@@ -16,15 +16,27 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Pencil, Users, Shield, UserPlus, Trash2, Stamp, FlaskConical, Plus } from "lucide-react";
 import Link from "next/link";
+import { ALL_PERMISSIONS } from "@/lib/auth";
 
 type Role = {
   id: string;
   code: string;
   name: string;
   description: string | null;
+  permissions: string | null;
   isActive: boolean;
   _count: { users: number };
 };
+
+function parseRolePermissions(permissions: string | null): string[] {
+  if (!permissions) return [];
+  try {
+    const parsed = JSON.parse(permissions) as unknown;
+    return Array.isArray(parsed) && parsed.every((p) => typeof p === "string") ? parsed : [];
+  } catch {
+    return [];
+  }
+}
 
 type User = {
   id: string;
@@ -83,11 +95,14 @@ export default function ConfiguracionPage() {
     const name = (form.elements.namedItem("roleName") as HTMLInputElement).value.trim();
     const description = (form.elements.namedItem("roleDescription") as HTMLInputElement).value.trim() || null;
     const isActive = (form.elements.namedItem("roleActive") as HTMLInputElement).checked;
+    const permissions = ALL_PERMISSIONS.filter(
+      (p) => (form.elements.namedItem(`rolePerm_${p.code}`) as HTMLInputElement)?.checked,
+    ).map((p) => p.code);
     try {
       const res = await fetch(`/api/roles/${roleEdit.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, description, isActive }),
+        body: JSON.stringify({ name, description, isActive, permissions }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -112,11 +127,14 @@ export default function ConfiguracionPage() {
     const name = (form.elements.namedItem("newRoleName") as HTMLInputElement).value.trim();
     const description = (form.elements.namedItem("newRoleDescription") as HTMLInputElement).value.trim() || null;
     const isActive = (form.elements.namedItem("newRoleActive") as HTMLInputElement).checked;
+    const permissions = ALL_PERMISSIONS.filter(
+      (p) => (form.elements.namedItem(`newRolePerm_${p.code}`) as HTMLInputElement)?.checked,
+    ).map((p) => p.code);
     try {
       const res = await fetch("/api/roles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, name, description, isActive }),
+        body: JSON.stringify({ code, name, description, isActive, permissions }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -564,6 +582,24 @@ export default function ConfiguracionPage() {
                 placeholder="Ej: Acceso completo al sistema"
               />
             </div>
+            <div className="space-y-2">
+              <Label className="text-slate-700">Permisos</Label>
+              <div className="rounded-md border border-slate-200 bg-slate-50/50 p-3 space-y-2 dark:border-slate-600 dark:bg-slate-800/50">
+                {ALL_PERMISSIONS.map((p) => (
+                  <div key={p.code} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id={`newRolePerm_${p.code}`}
+                      name={`newRolePerm_${p.code}`}
+                      className="h-4 w-4 rounded border-slate-300"
+                    />
+                    <Label htmlFor={`newRolePerm_${p.code}`} className="font-normal cursor-pointer">
+                      {p.label}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -611,6 +647,28 @@ export default function ConfiguracionPage() {
                   name="roleDescription"
                   defaultValue={roleEdit.description ?? ""}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-slate-700">Permisos</Label>
+                <div className="rounded-md border border-slate-200 bg-slate-50/50 p-3 space-y-2 dark:border-slate-600 dark:bg-slate-800/50">
+                  {ALL_PERMISSIONS.map((p) => {
+                    const rolePerms = parseRolePermissions(roleEdit.permissions);
+                    return (
+                      <div key={p.code} className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id={`rolePerm_${p.code}`}
+                          name={`rolePerm_${p.code}`}
+                          defaultChecked={rolePerms.includes(p.code)}
+                          className="h-4 w-4 rounded border-slate-300"
+                        />
+                        <Label htmlFor={`rolePerm_${p.code}`} className="font-normal cursor-pointer">
+                          {p.label}
+                        </Label>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <input

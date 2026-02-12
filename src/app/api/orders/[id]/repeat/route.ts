@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
-import { buildOrderCode } from "@/features/lab/order-utils";
+import {
+  buildOrderCode,
+  orderCodePrefixForDate,
+  parseOrderCodeSequence,
+} from "@/features/lab/order-utils";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -53,34 +57,56 @@ export async function POST(request: Request, { params }: Params) {
     const totalPrice = items.reduce((acc, i) => acc + Number(i.priceSnapshot), 0);
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
-    const todayCount = await prisma.labOrder.count({
-      where: { createdAt: { gte: todayStart } },
-    });
-    const orderCode = buildOrderCode(todayCount + 1);
 
-    const order = await prisma.labOrder.create({
-      data: {
-        orderCode,
-        patientId,
-        requestedBy: doctorName,
-        notes: indication,
-        patientType: sourceOrder.patientType ?? null,
-        totalPrice,
-        items: {
-          createMany: {
-            data: items.map((i) => ({
-              labTestId: i.labTestId,
-              priceSnapshot: i.priceSnapshot,
-              templateSnapshot: (i.templateSnapshot ?? undefined) as Prisma.InputJsonValue | undefined,
-            })),
+    async function createWithNextCode(): Promise<{ orderCode: string; orderId: string }> {
+      const prefix = orderCodePrefixForDate(todayStart);
+      const existing = await prisma.labOrder.findMany({
+        where: { orderCode: { startsWith: prefix } },
+        select: { orderCode: true },
+      });
+      const maxSeq = existing.length
+        ? Math.max(...existing.map((o) => parseOrderCodeSequence(o.orderCode)))
+        : 0;
+      const orderCode = buildOrderCode(maxSeq + 1, todayStart);
+
+      const order = await prisma.labOrder.create({
+        data: {
+          orderCode,
+          patientId,
+          requestedBy: doctorName,
+          notes: indication,
+          patientType: sourceOrder.patientType ?? null,
+          totalPrice,
+          items: {
+            createMany: {
+              data: items.map((i) => ({
+                labTestId: i.labTestId,
+                priceSnapshot: i.priceSnapshot,
+                templateSnapshot: (i.templateSnapshot ?? undefined) as Prisma.InputJsonValue | undefined,
+              })),
+            },
           },
         },
-      },
-    });
+      });
+      return { orderCode, orderId: order.id };
+    }
+
+    let result: { orderCode: string; orderId: string };
+    try {
+      result = await createWithNextCode();
+    } catch (err: unknown) {
+      const isUniqueViolation =
+        err && typeof err === "object" && "code" in err && (err as { code: string }).code === "P2002";
+      if (isUniqueViolation) {
+        result = await createWithNextCode();
+      } else {
+        throw err;
+      }
+    }
 
     return NextResponse.json({
-      orderId: order.id,
-      code: orderCode,
+      orderId: result.orderId,
+      code: result.orderCode,
     });
   } catch (error) {
     console.error("Error repeating order:", error);

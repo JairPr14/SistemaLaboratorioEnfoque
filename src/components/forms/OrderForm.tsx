@@ -34,13 +34,21 @@ type TestOption = {
   templateTitle?: string | null;
 };
 
+type ProfileOption = {
+  id: string;
+  name: string;
+  packagePrice: number | null;
+  tests: { id: string; code: string; name: string; section: string; price: number }[];
+};
+
 type Props = {
   patients: PatientOption[];
   recentPatients?: PatientOption[];
   tests: TestOption[];
+  profiles?: ProfileOption[];
 };
 
-export function OrderForm({ patients, recentPatients = [], tests }: Props) {
+export function OrderForm({ patients, recentPatients = [], tests, profiles = [] }: Props) {
   const router = useRouter();
   const [patientSearch, setPatientSearch] = useState("");
   const [testSearch, setTestSearch] = useState("");
@@ -54,6 +62,7 @@ export function OrderForm({ patients, recentPatients = [], tests }: Props) {
       orderDate: new Date().toISOString().slice(0, 10),
       patientType: null,
       labTestIds: [],
+      profileIds: [],
     },
   });
 
@@ -107,22 +116,68 @@ export function OrderForm({ patients, recentPatients = [], tests }: Props) {
     setPatientSearch("");
   };
 
+  const testIdsInPromos = useMemo(
+    () =>
+      new Set(
+        (form.watch("profileIds") ?? [])
+          .flatMap((pid) => profiles.find((p) => p.id === pid)?.tests.map((t) => t.id) ?? [])
+      ),
+    [profiles, form.watch("profileIds")]
+  );
+
+  const getProfileContainingTest = (testId: string) =>
+    profiles.find((p) => selectedProfileIds.includes(p.id) && p.tests.some((t) => t.id === testId));
+
   const toggleTest = (testId: string) => {
     const current = new Set(form.getValues("labTestIds"));
     if (current.has(testId)) {
       current.delete(testId);
+      form.setValue("labTestIds", Array.from(current), { shouldValidate: true });
     } else {
+      if (testIdsInPromos.has(testId)) {
+        toast.info("Este análisis ya está incluido en una promoción seleccionada.");
+        return;
+      }
       current.add(testId);
+      form.setValue("labTestIds", Array.from(current), { shouldValidate: true });
     }
-    form.setValue("labTestIds", Array.from(current), { shouldValidate: true });
+  };
+
+  const addProfile = (profileId: string) => {
+    const profile = profiles.find((p) => p.id === profileId);
+    if (!profile) return;
+    const currentProfiles = new Set(form.getValues("profileIds"));
+    if (currentProfiles.has(profileId)) return;
+    currentProfiles.add(profileId);
+    const profileTestIds = new Set(profile.tests.map((t) => t.id));
+    const labIds = form.getValues("labTestIds").filter((id) => !profileTestIds.has(id));
+    form.setValue("profileIds", Array.from(currentProfiles), { shouldValidate: true });
+    form.setValue("labTestIds", labIds, { shouldValidate: true });
+  };
+
+  const removeProfile = (profileId: string) => {
+    const current = form.getValues("profileIds").filter((id) => id !== profileId);
+    form.setValue("profileIds", current, { shouldValidate: true });
   };
 
   const onSubmit = async (values: OrderFormValues) => {
     try {
+      const profileIds = values.profileIds ?? [];
+      const testIdsInSelectedPromos = new Set(
+        profileIds.flatMap(
+          (pid) => profiles.find((p) => p.id === pid)?.tests.map((t) => t.id) ?? []
+        )
+      );
+      const labTestIdsOnlyExternal = (values.labTestIds ?? []).filter(
+        (id) => !testIdsInSelectedPromos.has(id)
+      );
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        body: JSON.stringify({
+          ...values,
+          labTestIds: labTestIdsOnlyExternal,
+        }),
       });
 
       if (!res.ok) {
@@ -141,8 +196,16 @@ export function OrderForm({ patients, recentPatients = [], tests }: Props) {
   };
 
   const selectedIds = new Set(form.watch("labTestIds"));
-  const selectedTests = tests.filter((t) => selectedIds.has(t.id));
-  const total = selectedTests.reduce((acc, t) => acc + t.price, 0);
+  const selectedProfileIds = form.watch("profileIds") ?? [];
+  const selectedProfiles = profiles.filter((p) => selectedProfileIds.includes(p.id));
+  const selectedIndividualTests = tests.filter(
+    (t) => selectedIds.has(t.id) && !testIdsInPromos.has(t.id)
+  );
+  const totalFromProfiles = selectedProfiles.reduce((acc, p) => {
+    return acc + (p.packagePrice ?? p.tests.reduce((s, t) => s + t.price, 0));
+  }, 0);
+  const totalFromTests = selectedIndividualTests.reduce((acc, t) => acc + t.price, 0);
+  const total = totalFromProfiles + totalFromTests;
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -277,18 +340,67 @@ export function OrderForm({ patients, recentPatients = [], tests }: Props) {
           <h2 className="text-sm font-semibold text-slate-700">
             Análisis a solicitar
           </h2>
-          {selectedTests.length > 0 && (
+          {(selectedIndividualTests.length > 0 || selectedProfiles.length > 0) && (
             <p className="text-sm text-slate-500">
-              <span className="font-medium text-slate-700">
-                {selectedTests.length}
-              </span>{" "}
-              seleccionados · Total:{" "}
+              {selectedProfiles.length > 0 && (
+                <span className="font-medium text-slate-700">
+                  {selectedProfiles.length} promoción(es)
+                </span>
+              )}
+              {selectedProfiles.length > 0 && selectedIndividualTests.length > 0 && " · "}
+              {selectedIndividualTests.length > 0 && (
+                <span className="font-medium text-slate-700">
+                  {selectedIndividualTests.length} análisis sueltos
+                </span>
+              )}
+              {" · Total: "}
               <span className="font-semibold text-slate-900">
                 S/ {total.toFixed(2)}
               </span>
             </p>
           )}
         </div>
+
+        {profiles.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-amber-50/50 px-3 py-2">
+            <span className="text-xs font-medium text-slate-600">Agregar promoción:</span>
+            <select
+              className="h-8 rounded border border-slate-200 bg-white px-2 text-sm"
+              onChange={(e) => {
+                const id = e.target.value;
+                if (id) {
+                  addProfile(id);
+                  e.target.value = "";
+                }
+              }}
+            >
+              <option value="">Seleccionar paquete</option>
+              {profiles.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                  {p.packagePrice != null ? ` — S/ ${p.packagePrice.toFixed(2)}` : ""}
+                  {` (${p.tests.length} análisis)`}
+                </option>
+              ))}
+            </select>
+            {selectedProfiles.map((p) => (
+              <span
+                key={p.id}
+                className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-700 border border-slate-200"
+              >
+                {p.name}
+                <button
+                  type="button"
+                  onClick={() => removeProfile(p.id)}
+                  className="text-slate-400 hover:text-red-600"
+                  title="Quitar"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
 
         <div className="relative">
           <Input
@@ -324,19 +436,24 @@ export function OrderForm({ patients, recentPatients = [], tests }: Props) {
                     </div>
                     <ul className="py-1">
                       {sectionTests.map((test) => {
+                        const isInPromo = testIdsInPromos.has(test.id);
+                        const promoContaining = getProfileContainingTest(test.id);
                         const isSelected = selectedIds.has(test.id);
+                        const isDisabled = isInPromo;
                         return (
                           <li key={test.id}>
                             <label
-                              className={`flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-slate-50/80 ${
-                                isSelected ? "bg-blue-50/80" : ""
-                              }`}
+                              className={`flex items-center gap-3 px-4 py-3 transition-colors ${
+                                isDisabled ? "cursor-default opacity-90" : "cursor-pointer hover:bg-slate-50/80"
+                              } ${isSelected ? "bg-blue-50/80" : ""} ${isInPromo ? "bg-amber-50/50" : ""}`}
                             >
                               <input
                                 type="checkbox"
-                                checked={isSelected}
-                                onChange={() => toggleTest(test.id)}
-                                className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400"
+                                checked={isSelected || isInPromo}
+                                disabled={isDisabled}
+                                onChange={() => !isDisabled && toggleTest(test.id)}
+                                className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400 disabled:opacity-70"
+                                title={isInPromo ? `Incluido en promoción: ${promoContaining?.name ?? ""}` : undefined}
                               />
                               <span className="flex-1 min-w-0">
                                 <span className="font-medium text-slate-900 block truncate">
@@ -344,7 +461,12 @@ export function OrderForm({ patients, recentPatients = [], tests }: Props) {
                                 </span>
                                 <span className="text-xs text-slate-500">
                                   {test.code}
-                                  {test.hasTemplate && (
+                                  {isInPromo && promoContaining && (
+                                    <span className="ml-2 text-amber-600">
+                                      · Incluido en {promoContaining.name}
+                                    </span>
+                                  )}
+                                  {!isInPromo && test.hasTemplate && (
                                     <span className="ml-2 text-blue-600">
                                       · Con plantilla
                                     </span>
@@ -366,40 +488,75 @@ export function OrderForm({ patients, recentPatients = [], tests }: Props) {
           </div>
         </div>
 
-        {selectedTests.length > 0 && (
-          <div className="rounded-lg border border-slate-200 bg-slate-50/80 px-4 py-3">
-            <p className="text-xs font-medium text-slate-500 mb-2">
-              Resumen de análisis seleccionados
+        {(selectedIndividualTests.length > 0 || selectedProfiles.length > 0) && (
+          <div className="rounded-lg border border-slate-200 bg-slate-50/80 px-4 py-3 space-y-3">
+            <p className="text-xs font-medium text-slate-500">
+              Resumen (promociones encapsuladas, análisis sueltos aparte)
             </p>
-            <ul className="flex flex-wrap gap-2">
-              {selectedTests.map((t) => (
-                <li
-                  key={t.id}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-700 shadow-sm border border-slate-200"
-                >
-                  {t.code}
-                  <button
-                    type="button"
-                    onClick={() => toggleTest(t.id)}
-                    className="text-slate-400 hover:text-red-600 rounded-full p-0.5 leading-none"
-                    title="Quitar"
+            {selectedProfiles.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-slate-600">Promociones</p>
+                {selectedProfiles.map((p) => (
+                  <div
+                    key={p.id}
+                    className="rounded border border-amber-200 bg-amber-50/50 px-3 py-2"
                   >
-                    ×
-                  </button>
-                </li>
-              ))}
-            </ul>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium text-slate-800">{p.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeProfile(p.id)}
+                        className="text-slate-400 hover:text-red-600 text-xs"
+                        title="Quitar promoción"
+                      >
+                        × Quitar
+                      </button>
+                    </div>
+                    <p className="text-xs text-slate-600 mt-1">
+                      Análisis: {p.tests.map((t) => t.code).join(", ")}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+            {selectedIndividualTests.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-slate-600 mb-1">Análisis sueltos</p>
+                <ul className="flex flex-wrap gap-2">
+                  {selectedIndividualTests.map((t) => (
+                    <li
+                      key={t.id}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-700 shadow-sm border border-slate-200"
+                    >
+                      {t.code}
+                      <button
+                        type="button"
+                        onClick={() => toggleTest(t.id)}
+                        className="text-slate-400 hover:text-red-600 rounded-full p-0.5 leading-none"
+                        title="Quitar"
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         )}
       </section>
 
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end sm:items-center pt-2 border-t border-slate-200 min-w-0">
-        {selectedTests.length > 0 && (
+        {(selectedProfileIds.length > 0 || selectedIds.size > 0) && (
           <span className="text-sm text-slate-600 sm:mr-4">
             Total: <strong>S/ {total.toFixed(2)}</strong>
           </span>
         )}
-        <Button type="submit" className="w-full sm:w-auto min-w-[160px]">
+        <Button
+          type="submit"
+          className="w-full sm:w-auto min-w-[160px]"
+          disabled={selectedProfileIds.length === 0 && selectedIds.size === 0}
+        >
           Crear orden
         </Button>
       </div>

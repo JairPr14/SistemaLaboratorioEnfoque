@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { orderUpdateSchema } from "@/features/lab/schemas";
+import { requirePermission, PERMISSION_ELIMINAR_REGISTROS } from "@/lib/auth";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -45,7 +46,8 @@ export async function PUT(request: Request, { params }: Params) {
       where: { id },
       data: {
         status: parsed.status,
-        notes: parsed.notes ?? undefined,
+        notes: parsed.notes !== undefined ? parsed.notes : undefined,
+        requestedBy: parsed.requestedBy !== undefined ? parsed.requestedBy : undefined,
         patientType: parsed.patientType !== undefined ? parsed.patientType : undefined,
         deliveredAt:
           parsed.deliveredAt !== undefined
@@ -78,6 +80,8 @@ export async function PUT(request: Request, { params }: Params) {
 }
 
 export async function DELETE(_request: Request, { params }: Params) {
+  const auth = await requirePermission(PERMISSION_ELIMINAR_REGISTROS);
+  if (auth.response) return auth.response;
   try {
     const { id } = await params;
 

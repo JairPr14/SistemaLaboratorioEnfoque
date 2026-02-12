@@ -21,11 +21,12 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { code, name, description, isActive } = body as {
+    const { code, name, description, isActive, permissions } = body as {
       code: string;
       name: string;
       description?: string | null;
       isActive?: boolean;
+      permissions?: string[] | null;
     };
 
     if (!code || !name) {
@@ -35,12 +36,18 @@ export async function POST(request: Request) {
       );
     }
 
+    const permissionsJson =
+      Array.isArray(permissions) && permissions.every((p) => typeof p === "string")
+        ? JSON.stringify(permissions)
+        : null;
+
     const role = await prisma.role.create({
       data: {
         code: code.trim().toUpperCase(),
         name: name.trim(),
         description: description?.trim() || null,
         isActive: isActive ?? true,
+        permissions: permissionsJson,
       },
     });
 

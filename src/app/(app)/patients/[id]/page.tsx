@@ -1,18 +1,25 @@
 import Link from "next/link";
+import { Plus } from "lucide-react";
+import { getServerSession } from "next-auth";
 
 import { notFound } from "next/navigation";
 
+import { authOptions, hasPermission, PERMISSION_EDITAR_PACIENTES } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/format";
 import { PatientForm } from "@/components/forms/PatientForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 type Props = { params: Promise<{ id: string }> };
 
 export default async function PatientDetailPage({ params }: Props) {
   const { id } = await params;
+  const session = await getServerSession(authOptions);
+  const canEditPatient = hasPermission(session, PERMISSION_EDITAR_PACIENTES);
   const [patient, orders] = await Promise.all([
     prisma.patient.findFirst({
       where: { id, deletedAt: null },
@@ -41,11 +48,12 @@ export default async function PatientDetailPage({ params }: Props) {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Editar paciente</CardTitle>
+          <CardTitle>{canEditPatient ? "Editar paciente" : "Datos del paciente"}</CardTitle>
         </CardHeader>
         <CardContent>
           <PatientForm
             patientId={patient.id}
+            canEdit={canEditPatient}
             defaultValues={{
               code: patient.code,
               dni: patient.dni,
@@ -62,23 +70,30 @@ export default async function PatientDetailPage({ params }: Props) {
       </Card>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-row items-center justify-between gap-4">
           <CardTitle>Análisis realizados</CardTitle>
           <Link
             href="/orders/new"
-            className="text-sm font-medium text-slate-600 hover:text-slate-900 hover:underline"
+            className={cn(buttonVariants({ size: "sm" }), "gap-2")}
           >
+            <Plus className="h-4 w-4" />
             Nueva orden
           </Link>
         </CardHeader>
         <CardContent>
           {orders.length === 0 ? (
-            <div className="py-8 text-center text-slate-500">
-              <p>Este paciente aún no tiene órdenes ni análisis registrados.</p>
+            <div className="py-12 text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+                <Plus className="h-8 w-8 text-slate-400 dark:text-slate-500" />
+              </div>
+              <p className="mb-4 text-slate-600 dark:text-slate-400">
+                Este paciente aún no tiene órdenes ni análisis registrados.
+              </p>
               <Link
                 href="/orders/new"
-                className="mt-2 inline-block text-sm font-medium text-slate-900 hover:underline"
+                className={cn(buttonVariants({ size: "lg" }), "gap-2 inline-flex")}
               >
+                <Plus className="h-4 w-4" />
                 Crear primera orden
               </Link>
             </div>

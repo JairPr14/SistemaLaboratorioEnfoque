@@ -80,7 +80,7 @@ CREATE TABLE "LabOrderItem" (
     "labTestId" TEXT NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'PENDIENTE',
     "priceSnapshot" REAL NOT NULL,
-    "templateSnapshot" JSONB,
+    "templateSnapshot" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
     CONSTRAINT "LabOrderItem_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "LabOrder" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,

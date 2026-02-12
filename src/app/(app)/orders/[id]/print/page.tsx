@@ -202,7 +202,7 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                 return (
                   <div key={item.id} className="mb-6 break-inside-avoid">
                     <p className="text-sm font-semibold text-slate-900 mb-2">
-                      {item.labTest.code} - {item.labTest.name}
+                      {item.labTest.name}
                     </p>
 
                     {hasResults ? (

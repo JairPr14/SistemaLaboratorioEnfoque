@@ -14,12 +14,21 @@ function toYYYYMMDD(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+const STATUS_OPTIONS = [
+  { value: "", label: "Todos los estados" },
+  { value: "ENTREGADO", label: "Solo entregados" },
+  { value: "COMPLETADO", label: "Completados" },
+  { value: "EN_PROCESO", label: "En proceso" },
+  { value: "PENDIENTE", label: "Pendientes" },
+] as const;
+
 type Props = {
   defaultDateFrom: string;
   defaultDateTo: string;
+  defaultStatus?: string;
 };
 
-export function ReportesFilterForm({ defaultDateFrom, defaultDateTo }: Props) {
+export function ReportesFilterForm({ defaultDateFrom, defaultDateTo, defaultStatus = "" }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
@@ -29,11 +38,14 @@ export function ReportesFilterForm({ defaultDateFrom, defaultDateTo }: Props) {
     const form = e.currentTarget;
     const from = (form.elements.namedItem("dateFrom") as HTMLInputElement).value;
     const to = (form.elements.namedItem("dateTo") as HTMLInputElement).value;
+    const status = (form.elements.namedItem("status") as HTMLSelectElement)?.value ?? "";
     const params = new URLSearchParams(searchParams.toString());
     if (from) params.set("dateFrom", from);
     else params.delete("dateFrom");
     if (to) params.set("dateTo", to);
     else params.delete("dateTo");
+    if (status) params.set("status", status);
+    else params.delete("status");
     startTransition(() => {
       router.push(`/reportes?${params.toString()}`);
     });
@@ -46,6 +58,8 @@ export function ReportesFilterForm({ defaultDateFrom, defaultDateTo }: Props) {
     const params = new URLSearchParams();
     params.set("dateFrom", toYYYYMMDD(from));
     params.set("dateTo", toYYYYMMDD(to));
+    const status = searchParams.get("status");
+    if (status) params.set("status", status);
     startTransition(() => {
       router.push(`/reportes?${params.toString()}`);
     });
@@ -54,6 +68,23 @@ export function ReportesFilterForm({ defaultDateFrom, defaultDateTo }: Props) {
   return (
     <div className="flex flex-wrap items-end gap-4">
       <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3">
+        <div className="flex items-center gap-2">
+          <Label htmlFor="reportes-status" className="text-sm text-slate-600">
+            Estado
+          </Label>
+          <select
+            id="reportes-status"
+            name="status"
+            defaultValue={defaultStatus}
+            className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm w-44"
+          >
+            {STATUS_OPTIONS.map((o) => (
+              <option key={o.value || "_all"} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
         <div className="flex items-center gap-2">
           <Label htmlFor="dateFrom" className="text-sm text-slate-600">
             Desde

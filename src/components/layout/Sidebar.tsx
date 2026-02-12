@@ -2,25 +2,31 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Settings } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { hasPermission, PERMISSION_REPORTES } from "@/lib/auth";
 
-const navItems = [
+const navItemsBase: { href: string; label: string; adminOnly?: boolean }[] = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/worklist", label: "Worklist" },
   { href: "/patients", label: "Pacientes" },
   { href: "/catalog/tests", label: "Catálogo" },
+  { href: "/promociones", label: "Promociones" },
   { href: "/templates", label: "Plantillas" },
   { href: "/orders", label: "Órdenes" },
   { href: "/results", label: "Resultados" },
   { href: "/pending", label: "Pendientes" },
   { href: "/delivered", label: "Entregados" },
-  { href: "/reportes", label: "Reportes" },
+  { href: "/reportes", label: "Reportes", adminOnly: true },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const canSeeReportes = hasPermission(session ?? null, PERMISSION_REPORTES);
+  const navItems = navItemsBase.filter((item) => !("adminOnly" in item && item.adminOnly) || canSeeReportes);
 
   return (
     <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col border-r border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">

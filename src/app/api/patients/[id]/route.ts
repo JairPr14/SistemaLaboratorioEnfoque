@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { patientSchema } from "@/features/lab/schemas";
+import {
+  requirePermission,
+  PERMISSION_EDITAR_PACIENTES,
+  PERMISSION_ELIMINAR_REGISTROS,
+} from "@/lib/auth";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -27,6 +32,8 @@ export async function GET(_request: Request, { params }: Params) {
 }
 
 export async function PUT(request: Request, { params }: Params) {
+  const auth = await requirePermission(PERMISSION_EDITAR_PACIENTES);
+  if (auth.response) return auth.response;
   try {
     const { id } = await params;
     const payload = await request.json();
@@ -68,6 +75,8 @@ export async function PUT(request: Request, { params }: Params) {
 }
 
 export async function DELETE(_request: Request, { params }: Params) {
+  const auth = await requirePermission(PERMISSION_ELIMINAR_REGISTROS);
+  if (auth.response) return auth.response;
   try {
     const { id } = await params;
     const item = await prisma.patient.update({

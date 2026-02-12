@@ -25,6 +25,10 @@ export function GlobalSearch() {
 
   const allResults = [...results.patients, ...results.orders].slice(0, 8);
 
+  useEffect(() => {
+    setSelectedIndex((i) => (allResults.length ? Math.min(i, allResults.length - 1) : 0));
+  }, [allResults.length]);
+
   const fetchResults = useCallback(async (q: string) => {
     if (!q || q.length < 2) {
       setResults({ patients: [], orders: [] });
@@ -111,13 +115,13 @@ export function GlobalSearch() {
           ⌘K
         </kbd>
       </div>
-      {open && (query.length >= 2 || allResults.length > 0) && (
+      {open && (
         <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-72 overflow-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-600 dark:bg-slate-800">
           {loading ? (
             <div className="px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">Buscando...</div>
           ) : allResults.length === 0 ? (
             <div className="px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
-              {query.length < 2 ? "Escribe al menos 2 caracteres" : "Sin resultados"}
+              {query.trim().length < 2 ? "Escribe al menos 2 caracteres (paciente, DNI o código de orden)" : "Sin resultados"}
             </div>
           ) : (
             allResults.map((r, i) => (

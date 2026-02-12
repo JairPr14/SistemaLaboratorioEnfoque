@@ -12,7 +12,7 @@ const SECTION_LABELS: Record<string, string> = {
 };
 
 export default async function NewOrderPage() {
-  const [patients, recentPatients, tests] = await Promise.all([
+  const [patients, recentPatients, tests, profilesData] = await Promise.all([
     prisma.patient.findMany({
       where: { deletedAt: null },
       orderBy: { lastName: "asc" },
@@ -27,7 +27,30 @@ export default async function NewOrderPage() {
       orderBy: [{ section: "asc" }, { name: "asc" }],
       include: { template: { include: { items: true } } },
     }),
+    prisma.testProfile.findMany({
+      where: { isActive: true },
+      include: {
+        items: {
+          orderBy: { order: "asc" },
+          include: { labTest: { select: { id: true, code: true, name: true, section: true, price: true } } },
+        },
+      },
+      orderBy: { name: "asc" },
+    }),
   ]);
+
+  const profiles = profilesData.map((p) => ({
+    id: p.id,
+    name: p.name,
+    packagePrice: p.packagePrice != null ? Number(p.packagePrice) : null,
+    tests: p.items.map((i) => ({
+      id: i.labTest.id,
+      code: i.labTest.code,
+      name: i.labTest.name,
+      section: i.labTest.section,
+      price: Number(i.labTest.price),
+    })),
+  }));
 
   return (
     <div className="space-y-6 min-w-0">
@@ -74,6 +97,7 @@ export default async function NewOrderPage() {
               hasTemplate: !!t.template,
               templateTitle: t.template?.title ?? null,
             }))}
+            profiles={profiles}
           />
         </CardContent>
       </Card>

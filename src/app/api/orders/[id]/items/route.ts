@@ -28,11 +28,12 @@ export async function POST(request: Request, { params }: Params) {
     }
 
     const existingLabTestIds = new Set(order.items.map((i) => i.labTestId));
-    const labTestIdsToAdd = parsed.labTestIds.filter((tid) => !existingLabTestIds.has(tid));
+    const uniqueRequestedIds = [...new Set(parsed.labTestIds)];
+    const labTestIdsToAdd = uniqueRequestedIds.filter((tid) => !existingLabTestIds.has(tid));
 
     if (labTestIdsToAdd.length === 0) {
       return NextResponse.json(
-        { error: "Todos los análisis seleccionados ya están en la orden." },
+        { error: "Todos los análisis seleccionados ya están en la orden o están repetidos." },
         { status: 400 },
       );
     }

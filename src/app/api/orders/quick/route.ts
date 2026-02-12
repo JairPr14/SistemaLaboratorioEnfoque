@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { quickOrderSchema } from "@/features/lab/schemas";
-import { buildOrderCode } from "@/features/lab/order-utils";
+import {
+  buildOrderCode,
+  orderCodePrefixForDate,
+  parseOrderCodeSequence,
+} from "@/features/lab/order-utils";
 import { generateNextPatientCode } from "@/lib/patient-code";
 
 export async function POST(request: Request) {
@@ -47,87 +51,150 @@ export async function POST(request: Request) {
       );
     }
 
-    const tests = await prisma.labTest.findMany({
-      where: {
-        id: { in: parsed.tests },
-        deletedAt: null,
-        isActive: true,
-      },
-      include: {
-        template: {
-          include: {
-            items: {
-              include: { refRanges: { orderBy: { order: "asc" } } },
-              orderBy: { order: "asc" },
-            },
+    type TestWithTemplate = Awaited<ReturnType<typeof prisma.labTest.findMany>>[number];
+    const fullInclude = {
+      template: {
+        include: {
+          items: {
+            include: { refRanges: { orderBy: { order: "asc" as const } } },
+            orderBy: { order: "asc" as const },
           },
         },
       },
-    });
+    } as const;
 
-    if (!tests.length) {
+    type OrderItemPayload = {
+      test: TestWithTemplate;
+      priceSnapshot: number;
+      promotionId?: string | null;
+      promotionName?: string | null;
+    };
+    const orderItemsPayload: OrderItemPayload[] = [];
+    const fromProfileTestIds = new Set<string>();
+
+    if (parsed.profileIds && parsed.profileIds.length > 0) {
+      const profiles = await prisma.testProfile.findMany({
+        where: { id: { in: parsed.profileIds }, isActive: true },
+        include: {
+          items: {
+            orderBy: { order: "asc" },
+            include: { labTest: { include: fullInclude } },
+          },
+        },
+      });
+      for (const profile of profiles) {
+        const profileTests = profile.items.map((i) => i.labTest).filter(Boolean);
+        if (profileTests.length === 0) continue;
+        const priceEach =
+          profile.packagePrice != null
+            ? Number(profile.packagePrice) / profileTests.length
+            : null;
+        for (const test of profileTests) {
+          orderItemsPayload.push({
+            test,
+            priceSnapshot: priceEach ?? Number(test.price),
+            promotionId: profile.id,
+            promotionName: profile.name,
+          });
+          fromProfileTestIds.add(test.id);
+        }
+      }
+    }
+
+    const individualTestIds = (parsed.tests ?? []).filter((id) => !fromProfileTestIds.has(id));
+    if (individualTestIds.length > 0) {
+      const individualTests = await prisma.labTest.findMany({
+        where: { id: { in: individualTestIds }, deletedAt: null, isActive: true },
+        include: fullInclude,
+      });
+      for (const test of individualTests) {
+        orderItemsPayload.push({ test, priceSnapshot: Number(test.price) });
+      }
+    }
+
+    if (orderItemsPayload.length === 0) {
       return NextResponse.json(
         { error: "No hay análisis válidos" },
         { status: 400 }
       );
     }
 
-    const totalPrice = tests.reduce((acc, t) => acc + Number(t.price), 0);
+    const totalPrice = orderItemsPayload.reduce((acc, x) => acc + x.priceSnapshot, 0);
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
-    const todayCount = await prisma.labOrder.count({
-      where: { createdAt: { gte: todayStart } },
-    });
-    const orderCode = buildOrderCode(todayCount + 1);
+    const prefix = orderCodePrefixForDate(todayStart);
 
-    const order = await prisma.labOrder.create({
-      data: {
-        orderCode,
-        patientId,
-        requestedBy: parsed.doctorName ?? null,
-        notes: parsed.indication ?? null,
-        patientType: parsed.patientType ?? null,
-        totalPrice,
-        items: {
-          createMany: {
-            data: tests.map((test) => ({
+    let order: Awaited<ReturnType<typeof prisma.labOrder.create>>;
+    let orderCode: string;
+    const maxRetries = 3;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      const existing = await prisma.labOrder.findMany({
+        where: { orderCode: { startsWith: prefix } },
+        select: { orderCode: true },
+      });
+      const sequences = existing.map((o) => parseOrderCodeSequence(o.orderCode));
+      const maxSeq = sequences.length > 0 ? Math.max(...sequences) : 0;
+      orderCode = buildOrderCode(maxSeq + 1, todayStart);
+
+      try {
+        order = await prisma.labOrder.create({
+          data: {
+            orderCode,
+            patientId,
+            requestedBy: parsed.doctorName ?? null,
+            notes: parsed.indication ?? null,
+            patientType: parsed.patientType ?? null,
+            totalPrice,
+            items: {
+              createMany: {
+            data: orderItemsPayload.map(({ test, priceSnapshot, promotionId, promotionName }) => ({
               labTestId: test.id,
-              priceSnapshot: test.price,
+              priceSnapshot,
+              promotionId: promotionId ?? undefined,
+              promotionName: promotionName ?? undefined,
               templateSnapshot: test.template
-                ? ({
-                    title: test.template.title,
-                    notes: test.template.notes,
-                    items: test.template.items.map((item) => ({
-                      id: item.id,
-                      groupName: item.groupName,
-                      paramName: item.paramName,
-                      unit: item.unit,
-                      refRangeText: item.refRangeText,
-                      refMin: item.refMin ? Number(item.refMin) : null,
-                      refMax: item.refMax ? Number(item.refMax) : null,
-                      valueType: item.valueType,
-                      selectOptions: item.selectOptions ?? "[]",
-                      order: item.order,
-                      refRanges: (item.refRanges ?? []).map((r) => ({
-                        ageGroup: r.ageGroup,
-                        sex: r.sex,
-                        refRangeText: r.refRangeText,
-                        refMin: r.refMin,
-                        refMax: r.refMax,
-                        order: r.order ?? 0,
-                      })),
-                    })),
-                  } as const)
-                : undefined,
-            })),
+                    ? ({
+                        title: test.template.title,
+                        notes: test.template.notes,
+                        items: test.template.items.map((item) => ({
+                          id: item.id,
+                          groupName: item.groupName,
+                          paramName: item.paramName,
+                          unit: item.unit,
+                          refRangeText: item.refRangeText,
+                          refMin: item.refMin ? Number(item.refMin) : null,
+                          refMax: item.refMax ? Number(item.refMax) : null,
+                          valueType: item.valueType,
+                          selectOptions: item.selectOptions ?? "[]",
+                          order: item.order,
+                          refRanges: (item.refRanges ?? []).map((r) => ({
+                            ageGroup: r.ageGroup,
+                            sex: r.sex,
+                            refRangeText: r.refRangeText,
+                            refMin: r.refMin,
+                            refMax: r.refMax,
+                            order: r.order ?? 0,
+                          })),
+                        })),
+                      } as const)
+                    : undefined,
+                })),
+              },
+            },
           },
-        },
-      },
-    });
+        });
+        break;
+      } catch (err) {
+        const isUnique =
+          err && typeof err === "object" && "code" in err && (err as { code: string }).code === "P2002";
+        if (isUnique && attempt < maxRetries - 1) continue;
+        throw err;
+      }
+    }
 
     return NextResponse.json({
-      orderId: order.id,
-      code: orderCode,
+      orderId: order!.id,
+      code: orderCode!,
     });
   } catch (error) {
     console.error("Error creating quick order:", error);

@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
+import { getServerSession } from "next-auth";
 
+import { authOptions, hasPermission, PERMISSION_ELIMINAR_REGISTROS } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { OrderStatusActions } from "@/components/orders/OrderStatusActions";
 import { OrderItemsTableWithPrint } from "@/components/orders/OrderItemsTableWithPrint";
 import { RepeatOrderButton } from "@/components/orders/RepeatOrderButton";
+import { EditOrderButton } from "@/components/orders/EditOrderButton";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -16,6 +19,8 @@ type Props = {
 export default async function OrderDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
   const { captureItem } = await searchParams;
+  const session = await getServerSession(authOptions);
+  const canDeleteOrderItems = hasPermission(session, PERMISSION_ELIMINAR_REGISTROS);
   const order = await prisma.labOrder.findFirst({
     where: { id },
     include: {
@@ -55,7 +60,14 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
               Cambiar estado de la orden
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <EditOrderButton
+              orderId={order.id}
+              patientType={order.patientType}
+              requestedBy={order.requestedBy}
+              notes={order.notes}
+              disabled={order.status === "ANULADO"}
+            />
             <RepeatOrderButton
               orderId={order.id}
               patientName={`${order.patient.firstName} ${order.patient.lastName}`}
@@ -95,11 +107,27 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
                 {formatCurrency(Number(order.totalPrice))}
               </p>
             </div>
+            <div>
+              <p className="text-sm text-slate-500">Tipo de paciente (sede)</p>
+              <p className="text-base font-semibold text-slate-900">
+                {order.patientType === "CLINICA"
+                  ? "Paciente Clínica"
+                  : order.patientType === "EXTERNO"
+                    ? "Paciente Externo"
+                    : order.patientType === "IZAGA"
+                      ? "Paciente Izaga"
+                      : "—"}
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      <OrderItemsTableWithPrint order={order} defaultOpenItemId={captureItem ?? undefined} />
+      <OrderItemsTableWithPrint
+        order={order}
+        defaultOpenItemId={captureItem ?? undefined}
+        canDeleteItems={canDeleteOrderItems}
+      />
     </div>
   );
 }
