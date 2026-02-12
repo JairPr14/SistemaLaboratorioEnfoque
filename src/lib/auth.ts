@@ -5,11 +5,6 @@ import { compare } from "bcryptjs";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// Re-exportar getServerSession con authOptions pre-configurado
-export async function getServerSession() {
-  return nextAuthGetServerSession(authOptions);
-}
-
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -89,6 +84,11 @@ export const ALL_PERMISSIONS = [
 
 /** Código del rol administrador (compatibilidad: si el rol no tiene permisos configurados, ADMIN tiene todos). */
 export const ADMIN_ROLE_CODE = "ADMIN";
+
+// Re-exportar getServerSession con authOptions pre-configurado
+export async function getServerSession() {
+  return nextAuthGetServerSession(authOptions);
+}
 
 export function hasPermission(
   session: { user?: { roleCode?: string | null; permissions?: string[] } } | null,
