@@ -8,6 +8,7 @@ export default defineConfig({
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
-    url: env("DATABASE_URL"),
+    // DATABASE_URL es opcional durante prisma generate (solo se necesita para migraciones)
+    url: env("DATABASE_URL", { optional: true }) || "file:./dev.db",
   },
 });
