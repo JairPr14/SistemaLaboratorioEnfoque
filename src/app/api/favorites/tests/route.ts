@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 
 export async function GET() {
   try {
@@ -20,7 +21,7 @@ export async function GET() {
       testIds: favs.map((f) => f.labTestId),
     });
   } catch (error) {
-    console.error("Error fetching favorites:", error);
+    logger.error("Error fetching favorites:", error);
     return NextResponse.json(
       { error: "Error al obtener favoritos" },
       { status: 500 }
@@ -59,7 +60,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("Error toggling favorite:", error);
+    logger.error("Error toggling favorite:", error);
     return NextResponse.json(
       { error: "Error al actualizar favorito" },
       { status: 500 }

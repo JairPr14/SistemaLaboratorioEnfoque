@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { testProfileSchema } from "@/features/lab/schemas";
+import { requireAdmin } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 const includeItems = {
   items: {
@@ -26,6 +28,7 @@ function mapProfile(p: { id: string; name: string; packagePrice: number | null; 
 }
 
 export async function GET(request: Request) {
+  // GET puede ser público para que todos vean las promociones disponibles
   try {
     const { searchParams } = new URL(request.url);
     const activeOnly = searchParams.get("active") !== "false";
@@ -40,7 +43,7 @@ export async function GET(request: Request) {
       profiles: profiles.map((p) => mapProfile(p)),
     });
   } catch (error) {
-    console.error("Error fetching test profiles:", error);
+    logger.error("Error fetching test profiles:", error);
     return NextResponse.json(
       { error: "Error al obtener perfiles" },
       { status: 500 }
@@ -49,6 +52,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireAdmin();
+  if (auth.response) return auth.response;
+
   try {
     const body = await request.json();
     const parsed = testProfileSchema.parse(body);
@@ -70,7 +76,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ profile: mapProfile(profile) });
   } catch (error) {
-    console.error("Error creating test profile:", error);
+    logger.error("Error creating test profile:", error);
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
         { error: "Datos inválidos", details: error },

@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
+import { requireAdmin } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function GET() {
+  const auth = await requireAdmin();
+  if (auth.response) return auth.response;
+
   try {
     const roles = await prisma.role.findMany({
       orderBy: { code: "asc" },
@@ -10,7 +15,7 @@ export async function GET() {
     });
     return NextResponse.json({ items: roles });
   } catch (error) {
-    console.error("Error fetching roles:", error);
+    logger.error("Error fetching roles:", error);
     return NextResponse.json(
       { error: "Error al obtener roles" },
       { status: 500 },
@@ -19,6 +24,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireAdmin();
+  if (auth.response) return auth.response;
   try {
     const body = await request.json();
     const { code, name, description, isActive, permissions } = body as {
@@ -53,7 +60,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(role, { status: 201 });
   } catch (error) {
-    console.error("Error creating role:", error);
+    logger.error("Error creating role:", error);
     if (error instanceof PrismaClientKnownRequestError) {
       if (error.code === "P2002") {
         return NextResponse.json(

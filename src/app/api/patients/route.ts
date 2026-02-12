@@ -3,8 +3,16 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { patientSchema } from "@/features/lab/schemas";
 import { generateNextPatientCode } from "@/lib/patient-code";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search")?.trim();
@@ -28,7 +36,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ items });
   } catch (error) {
-    console.error("Error fetching patients:", error);
+    logger.error("Error fetching patients:", error);
     return NextResponse.json(
       { error: "Error al obtener pacientes" },
       { status: 500 },
@@ -37,6 +45,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
   try {
     const payload = await request.json();
     const parsed = patientSchema.parse(payload);
@@ -61,7 +74,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ item });
   } catch (error) {
-    console.error("Error creating patient:", error);
+    logger.error("Error creating patient:", error);
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
         { error: "Datos inválidos", details: error },

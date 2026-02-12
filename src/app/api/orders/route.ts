@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { orderCreateSchema } from "@/features/lab/schemas";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import {
   buildOrderCode,
   orderCodePrefixForDate,
@@ -9,6 +12,11 @@ import {
 } from "@/features/lab/order-utils";
 
 export async function GET(request: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
@@ -38,7 +46,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ items });
   } catch (error) {
-    console.error("Error fetching orders:", error);
+    logger.error("Error fetching orders:", error);
     return NextResponse.json(
       { error: "Error al obtener órdenes" },
       { status: 500 },
@@ -47,6 +55,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
   try {
     const payload = await request.json();
     const parsed = orderCreateSchema.parse(payload);
@@ -204,7 +217,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ item: order! });
   } catch (error) {
-    console.error("Error creating order:", error);
+    logger.error("Error creating order:", error);
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
         { error: "Datos inválidos", details: error },

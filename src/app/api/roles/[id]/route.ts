@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
+import { requireAdmin } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function PATCH(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const auth = await requireAdmin();
+  if (auth.response) return auth.response;
+
   try {
     const { id } = await params;
     const body = await _request.json();
@@ -33,7 +38,7 @@ export async function PATCH(
     });
     return NextResponse.json(role);
   } catch (error) {
-    console.error("Error updating role:", error);
+    logger.error("Error updating role:", error);
     if (error instanceof PrismaClientKnownRequestError) {
       if (error.code === "P2025") {
         return NextResponse.json(
@@ -53,6 +58,9 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const auth = await requireAdmin();
+  if (auth.response) return auth.response;
+
   try {
     const { id } = await params;
 
@@ -82,7 +90,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting role:", error);
+    logger.error("Error deleting role:", error);
     if (error instanceof PrismaClientKnownRequestError) {
       if (error.code === "P2025") {
         return NextResponse.json(

@@ -8,8 +8,16 @@ import {
   parseOrderCodeSequence,
 } from "@/features/lab/order-utils";
 import { generateNextPatientCode } from "@/lib/patient-code";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const parsed = quickOrderSchema.parse(body);
@@ -197,7 +205,7 @@ export async function POST(request: Request) {
       code: orderCode!,
     });
   } catch (error) {
-    console.error("Error creating quick order:", error);
+    logger.error("Error creating quick order:", error);
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
         { error: "Datos inválidos", details: error },

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { testProfileSchema } from "@/features/lab/schemas";
+import { requireAdmin } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 const includeItems = {
   items: {
@@ -29,6 +31,7 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // GET puede ser público para ver detalles de promoción
   try {
     const { id } = await params;
     const profile = await prisma.testProfile.findUnique({
@@ -40,7 +43,7 @@ export async function GET(
     }
     return NextResponse.json({ profile: mapProfile(profile) });
   } catch (error) {
-    console.error("Error fetching test profile:", error);
+    logger.error("Error fetching test profile:", error);
     return NextResponse.json(
       { error: "Error al obtener la promoción" },
       { status: 500 }
@@ -52,6 +55,9 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAdmin();
+  if (auth.response) return auth.response;
+
   try {
     const { id } = await params;
     const body = await request.json();
@@ -83,7 +89,7 @@ export async function PATCH(
     }
     return NextResponse.json({ profile: mapProfile(profile) });
   } catch (error) {
-    console.error("Error updating test profile:", error);
+    logger.error("Error updating test profile:", error);
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
         { error: "Datos inválidos", details: error },
@@ -101,12 +107,15 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAdmin();
+  if (auth.response) return auth.response;
+
   try {
     const { id } = await params;
     await prisma.testProfile.delete({ where: { id } });
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("Error deleting test profile:", error);
+    logger.error("Error deleting test profile:", error);
     return NextResponse.json(
       { error: "Error al eliminar la promoción" },
       { status: 500 }

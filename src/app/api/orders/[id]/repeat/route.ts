@@ -7,10 +7,18 @@ import {
   orderCodePrefixForDate,
   parseOrderCodeSequence,
 } from "@/features/lab/order-utils";
+import { getServerSession } from "next-auth";
+import { logger } from "@/lib/logger";
+import { authOptions } from "@/lib/auth";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function POST(request: Request, { params }: Params) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
   try {
     const { id: orderId } = await params;
 
@@ -109,7 +117,7 @@ export async function POST(request: Request, { params }: Params) {
       code: result.orderCode,
     });
   } catch (error) {
-    console.error("Error repeating order:", error);
+    logger.error("Error repeating order:", error);
     return NextResponse.json(
       { error: "Error al repetir la orden" },
       { status: 500 }

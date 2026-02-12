@@ -106,7 +106,12 @@ export function QuickOrderModal({ open, onOpenChange }: Props) {
 
   const toggleTest = (id: string) => {
     if (testIdsInPromos.has(id)) {
-      toast.info("Este análisis ya está incluido en una promoción seleccionada.");
+      const promoContaining = profiles.find(
+        (p) => selectedProfileIds.has(p.id) && p.tests.some((x) => x.id === id)
+      );
+      toast.info(
+        `Este análisis ya está incluido en la promoción "${promoContaining?.name ?? ""}". No se puede seleccionar individualmente.`
+      );
       return;
     }
     setSelectedTestIds((prev) => {
@@ -118,11 +123,32 @@ export function QuickOrderModal({ open, onOpenChange }: Props) {
   };
 
   const addProfile = (profile: Profile) => {
+    if (selectedProfileIds.has(profile.id)) {
+      toast.info("Esta promoción ya está seleccionada.");
+      return;
+    }
     setSelectedProfileIds((prev) => new Set(prev).add(profile.id));
     const profileTestIds = new Set(profile.tests.map((t) => t.id));
     setSelectedTestIds((prev) => {
+      const previousCount = prev.size;
       const next = new Set(prev);
-      profileTestIds.forEach((id) => next.delete(id));
+      const removedIds: string[] = [];
+      profileTestIds.forEach((id) => {
+        if (next.has(id)) {
+          removedIds.push(id);
+          next.delete(id);
+        }
+      });
+      
+      // Si se eliminaron análisis individuales porque ahora están en la promoción, mostrar mensaje
+      if (removedIds.length > 0) {
+        setTimeout(() => {
+          toast.info(
+            `Se agregó la promoción "${profile.name}". ${removedIds.length} análisis individual${removedIds.length > 1 ? "es" : ""} que ya estaban incluidos fueron removidos para evitar duplicados.`
+          );
+        }, 100);
+      }
+      
       return next;
     });
   };

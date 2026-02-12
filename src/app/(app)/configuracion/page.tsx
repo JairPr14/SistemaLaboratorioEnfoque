@@ -181,13 +181,38 @@ export default function ConfiguracionPage() {
     const form = e.currentTarget;
     const roleId = (form.elements.namedItem("userRoleId") as HTMLSelectElement).value || null;
     const isActive = (form.elements.namedItem("userActive") as HTMLInputElement).checked;
+    const newPassword = (form.elements.namedItem("userPassword") as HTMLInputElement).value;
+    const confirmPassword = (form.elements.namedItem("userPasswordConfirm") as HTMLInputElement).value;
+    
+    // Validar contraseña si se proporciona
+    if (newPassword) {
+      if (newPassword.length < 6) {
+        toast.error("La contraseña debe tener al menos 6 caracteres");
+        setSaving(false);
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        toast.error("Las contraseñas no coinciden");
+        setSaving(false);
+        return;
+      }
+    }
+    
     try {
       const res = await fetch(`/api/config/users/${userEdit.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ roleId, isActive }),
+        body: JSON.stringify({ 
+          roleId, 
+          isActive,
+          ...(newPassword && { password: newPassword })
+        }),
       });
-      if (!res.ok) throw new Error("Error al guardar");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.error ?? "Error al guardar");
+        return;
+      }
       toast.success("Usuario actualizado");
       setUserEdit(null);
       await loadUsers();
@@ -780,6 +805,29 @@ export default function ConfiguracionPage() {
                     </option>
                   ))}
                 </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="userPassword">Nueva contraseña (opcional)</Label>
+                <Input
+                  id="userPassword"
+                  name="userPassword"
+                  type="password"
+                  placeholder="Dejar vacío para no cambiar"
+                  minLength={6}
+                  className="dark:bg-slate-800"
+                />
+                <p className="text-xs text-slate-500">Mínimo 6 caracteres</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="userPasswordConfirm">Confirmar nueva contraseña</Label>
+                <Input
+                  id="userPasswordConfirm"
+                  name="userPasswordConfirm"
+                  type="password"
+                  placeholder="Repetir contraseña"
+                  minLength={6}
+                  className="dark:bg-slate-800"
+                />
               </div>
               <div className="flex items-center gap-2">
                 <input

@@ -2,10 +2,18 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { orderAddItemsSchema } from "@/features/lab/schemas";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function POST(request: Request, { params }: Params) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
   try {
     const { id: orderId } = await params;
     const payload = await request.json();
@@ -13,7 +21,14 @@ export async function POST(request: Request, { params }: Params) {
 
     const order = await prisma.labOrder.findFirst({
       where: { id: orderId },
-      include: { items: { select: { labTestId: true } } },
+      include: { 
+        items: { 
+          select: { 
+            labTestId: true,
+            promotionId: true 
+          } 
+        } 
+      },
     });
 
     if (!order) {
@@ -27,7 +42,35 @@ export async function POST(request: Request, { params }: Params) {
       );
     }
 
+    // Verificar análisis existentes (tanto sueltos como en promociones)
     const existingLabTestIds = new Set(order.items.map((i) => i.labTestId));
+    
+    // Si hay promociones en la orden, verificar que los análisis a agregar no estén en esas promociones
+    const itemsWithPromotions = order.items.filter((i) => i.promotionId != null);
+    if (itemsWithPromotions.length > 0) {
+      const promotionIds = new Set(itemsWithPromotions.map((i) => i.promotionId).filter(Boolean));
+      if (promotionIds.size > 0) {
+        const profiles = await prisma.testProfile.findMany({
+          where: { id: { in: Array.from(promotionIds) } },
+          include: { items: { select: { labTestId: true } } },
+        });
+        
+        const testIdsInPromotions = new Set(
+          profiles.flatMap((p) => p.items.map((i) => i.labTestId))
+        );
+        
+        const duplicatesInPromotions = parsed.labTestIds.filter((id) => testIdsInPromotions.has(id));
+        if (duplicatesInPromotions.length > 0) {
+          return NextResponse.json(
+            { 
+              error: `Los siguientes análisis ya están incluidos en promociones de esta orden: ${duplicatesInPromotions.join(", ")}. No se pueden agregar duplicados.` 
+            },
+            { status: 400 },
+          );
+        }
+      }
+    }
+    
     const uniqueRequestedIds = [...new Set(parsed.labTestIds)];
     const labTestIdsToAdd = uniqueRequestedIds.filter((tid) => !existingLabTestIds.has(tid));
 
@@ -114,7 +157,7 @@ export async function POST(request: Request, { params }: Params) {
       newTotal,
     });
   } catch (error) {
-    console.error("Error adding items to order:", error);
+    logger.error("Error adding items to order:", error);
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
         { error: "Datos inválidos", details: error },

@@ -3,8 +3,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { templateSchema } from "@/features/lab/schemas";
 import { stringifySelectOptions } from "@/lib/json-helpers";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function GET() {
+  // GET puede ser público para ver plantillas disponibles
   try {
     const items = await prisma.labTemplate.findMany({
       include: { labTest: true, items: true },
@@ -13,7 +17,7 @@ export async function GET() {
 
     return NextResponse.json({ items });
   } catch (error) {
-    console.error("Error fetching templates:", error);
+    logger.error("Error fetching templates:", error);
     return NextResponse.json(
       { error: "Error al obtener plantillas" },
       { status: 500 },
@@ -22,6 +26,11 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
   try {
     const payload = await request.json();
     const parsed = templateSchema.parse(payload);
@@ -76,7 +85,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ item });
   } catch (error) {
-    console.error("Error creating template:", error);
+    logger.error("Error creating template:", error);
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
         { error: "Datos inválidos", details: error },

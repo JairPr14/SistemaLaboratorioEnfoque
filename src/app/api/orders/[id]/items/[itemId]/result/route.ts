@@ -2,10 +2,18 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { resultSchema } from "@/features/lab/schemas";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 type Params = { params: Promise<{ id: string; itemId: string }> };
 
 export async function GET(_request: Request, { params }: Params) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
   try {
     const { id, itemId } = await params;
     const orderItem = await prisma.labOrderItem.findFirst({
@@ -22,7 +30,7 @@ export async function GET(_request: Request, { params }: Params) {
 
     return NextResponse.json({ item: orderItem });
   } catch (error) {
-    console.error("Error fetching result:", error);
+    logger.error("Error fetching result:", error);
     return NextResponse.json(
       { error: "Error al obtener resultado" },
       { status: 500 },
@@ -31,10 +39,18 @@ export async function GET(_request: Request, { params }: Params) {
 }
 
 export async function POST(request: Request, { params }: Params) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
   return upsertResult(request, params);
 }
 
 export async function PUT(request: Request, { params }: Params) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
   return upsertResult(request, params);
 }
 
@@ -111,7 +127,7 @@ async function upsertResult(request: Request, paramsPromise: Params["params"]) {
 
     return NextResponse.json({ item: result });
   } catch (error) {
-    console.error("Error upserting result:", error);
+    logger.error("Error upserting result:", error);
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
         { error: "Datos inválidos", details: error },

@@ -7,6 +7,9 @@ import {
   getTestAlerts,
   sortByRiskAndAge,
 } from "@/features/lab/worklist-rules";
+import { getServerSession } from "next-auth";
+import { logger } from "@/lib/logger";
+import { authOptions } from "@/lib/auth";
 
 const SECTION_MAP: Record<string, string> = {
   BIOQUIMICA: "BIOQUIMICA",
@@ -18,6 +21,11 @@ const SECTION_MAP: Record<string, string> = {
 };
 
 export async function GET(request: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const sectionParam = searchParams.get("section")?.toUpperCase();
@@ -135,7 +143,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ items: sorted });
   } catch (error) {
-    console.error("Error fetching worklist:", error);
+    logger.error("Error fetching worklist:", error);
     return NextResponse.json(
       { error: "Error al obtener worklist" },
       { status: 500 }

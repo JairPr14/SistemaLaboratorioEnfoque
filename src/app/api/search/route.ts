@@ -1,34 +1,89 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { logger } from "@/lib/logger";
+
+const MAX_QUERY_LENGTH = 100;
+const MIN_QUERY_LENGTH = 2;
+const MAX_RESULTS = 100;
 
 export async function GET(request: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const q = searchParams.get("q")?.trim();
-    if (!q || q.length < 2) {
+
+    // Validación de entrada
+    if (!q) {
       return NextResponse.json({ patients: [], orders: [] });
     }
 
-    const pattern = `%${q.toLowerCase().replace(/%/g, "\\%").replace(/_/g, "\\_")}%`;
-    const [patientsRaw, ordersRaw] = await Promise.all([
-      prisma.$queryRaw<
-        { id: string; firstName: string; lastName: string; dni: string }[]
-      >`
-      SELECT id, firstName, lastName, dni FROM Patient
-      WHERE deletedAt IS NULL
-        AND (LOWER(TRIM(firstName)) LIKE ${pattern}
-             OR LOWER(TRIM(lastName)) LIKE ${pattern}
-             OR LOWER(TRIM(dni)) LIKE ${pattern})
-      LIMIT 5
-    `,
-      prisma.$queryRaw<{ id: string; orderCode: string }[]>`
-      SELECT id, orderCode FROM LabOrder
-      WHERE LOWER(TRIM(orderCode)) LIKE ${pattern}
-      LIMIT 5
-    `,
+    if (q.length < MIN_QUERY_LENGTH) {
+      return NextResponse.json(
+        { error: `La búsqueda debe tener al menos ${MIN_QUERY_LENGTH} caracteres` },
+        { status: 400 },
+      );
+    }
+
+    if (q.length > MAX_QUERY_LENGTH) {
+      return NextResponse.json(
+        { error: `La búsqueda no puede exceder ${MAX_QUERY_LENGTH} caracteres` },
+        { status: 400 },
+      );
+    }
+
+    // Sanitizar query: remover caracteres peligrosos y limitar longitud
+    const sanitizedQuery = q
+      .slice(0, MAX_QUERY_LENGTH)
+      .replace(/[<>\"'%;()&+]/g, "")
+      .trim();
+
+    if (sanitizedQuery.length < MIN_QUERY_LENGTH) {
+      return NextResponse.json({ patients: [], orders: [] });
+    }
+
+    // Usar Prisma queries en lugar de raw queries para mayor seguridad
+    const searchPattern = {
+      contains: sanitizedQuery,
+      mode: "insensitive" as const,
+    };
+
+    const [patients, orders] = await Promise.all([
+      prisma.patient.findMany({
+        where: {
+          deletedAt: null,
+          OR: [
+            { firstName: searchPattern },
+            { lastName: searchPattern },
+            { dni: searchPattern },
+          ],
+        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          dni: true,
+        },
+        take: Math.min(MAX_RESULTS, 50), // Límite de resultados
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.labOrder.findMany({
+        where: {
+          orderCode: searchPattern,
+        },
+        select: {
+          id: true,
+          orderCode: true,
+        },
+        take: Math.min(MAX_RESULTS, 50), // Límite de resultados
+        orderBy: { createdAt: "desc" },
+      }),
     ]);
-    const patients = patientsRaw;
-    const orders = ordersRaw;
 
     return NextResponse.json({
       patients: patients.map((p) => ({
@@ -46,7 +101,11 @@ export async function GET(request: Request) {
         href: `/orders/${o.id}`,
       })),
     });
-  } catch {
-    return NextResponse.json({ patients: [], orders: [] }, { status: 200 });
+  } catch (error) {
+    logger.error("Error in search:", error);
+    return NextResponse.json(
+      { error: "Error al realizar la búsqueda" },
+      { status: 500 },
+    );
   }
 }

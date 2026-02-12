@@ -1,6 +1,6 @@
 # Sistema de Laboratorio Clínico
 
-Sistema de gestión de laboratorio clínico desarrollado con Next.js 16, Prisma, SQLite y NextAuth.
+Sistema de gestión de laboratorio clínico desarrollado con Next.js 16, Prisma, PostgreSQL (Neon) y NextAuth.
 
 ## 📋 Requisitos Previos
 
@@ -36,8 +36,8 @@ pnpm install
 Crea un archivo `.env` en la raíz del proyecto con el siguiente contenido:
 
 ```env
-# Base de datos SQLite
-DATABASE_URL="file:./prisma/dev.db"
+# Base de datos (SQLite para desarrollo)
+DATABASE_URL="file:./prisma/dev.db?connection_limit=1&busy_timeout=10000"
 
 # NextAuth
 NEXTAUTH_URL="http://localhost:3000"
@@ -69,7 +69,9 @@ pnpm exec prisma generate
 pnpm exec prisma migrate deploy
 ```
 
-Esto creará todas las tablas necesarias en la base de datos SQLite.
+Esto creará todas las tablas necesarias en la base de datos.
+
+**Nota:** En desarrollo se usa SQLite. Para producción, ver la sección de [Despliegue](#-despliegue-en-producción).
 
 #### 4.3. Poblar la Base de Datos (Opcional)
 
@@ -244,12 +246,30 @@ pnpm exec prisma db seed
 1. Genera un secret: `openssl rand -base64 32`
 2. Añádelo a `.env`: `NEXTAUTH_SECRET="tu-secret-generado"`
 
+## 🚀 Despliegue en Producción
+
+Para desplegar en producción, consulta la guía completa en [DEPLOYMENT.md](./DEPLOYMENT.md).
+
+### Resumen Rápido (Vercel + Neon PostgreSQL)
+
+1. **Crear cuenta en Neon** (gratis): https://neon.tech
+2. **Crear proyecto en Vercel**: https://vercel.com
+3. **Conectar Neon con Vercel** usando la integración nativa
+4. **Configurar variables de entorno** en Vercel:
+   - `DATABASE_URL` (desde Neon)
+   - `NEXTAUTH_SECRET` (generar uno nuevo)
+   - `NEXTAUTH_URL` (URL de tu app en Vercel)
+   - `NODE_ENV=production`
+5. **Desplegar**: Vercel ejecutará automáticamente las migraciones
+
+**Nota:** Los planes gratuitos de Vercel y Neon son suficientes para un laboratorio pequeño con hasta 4 usuarios simultáneos.
+
 ## 📝 Notas Importantes
 
-- La base de datos SQLite (`prisma/dev.db`) es un archivo local. Para producción, considera usar PostgreSQL o MySQL.
+- En desarrollo se usa SQLite (`prisma/dev.db`). En producción se usa PostgreSQL (Neon).
 - El archivo `.env` contiene información sensible y **NO debe subirse a Git**.
 - Las migraciones de Prisma están en `prisma/migrations/`. No las modifiques manualmente.
-- Para producción, configura variables de entorno apropiadas y usa una base de datos más robusta que SQLite.
+- Para producción, consulta [DEPLOYMENT.md](./DEPLOYMENT.md) para instrucciones detalladas.
 
 ## 🔄 Actualizar el Proyecto
 

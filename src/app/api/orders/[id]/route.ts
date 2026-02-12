@@ -2,11 +2,17 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { orderUpdateSchema } from "@/features/lab/schemas";
-import { requirePermission, PERMISSION_ELIMINAR_REGISTROS } from "@/lib/auth";
+import { requirePermission, PERMISSION_ELIMINAR_REGISTROS, getServerSession, authOptions } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function GET(_request: Request, { params }: Params) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
   try {
     const { id } = await params;
     const item = await prisma.labOrder.findFirst({
@@ -28,7 +34,7 @@ export async function GET(_request: Request, { params }: Params) {
 
     return NextResponse.json({ item });
   } catch (error) {
-    console.error("Error fetching order:", error);
+    logger.error("Error fetching order:", error);
     return NextResponse.json(
       { error: "Error al obtener orden" },
       { status: 500 },
@@ -37,6 +43,11 @@ export async function GET(_request: Request, { params }: Params) {
 }
 
 export async function PUT(request: Request, { params }: Params) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
   try {
     const { id } = await params;
     const payload = await request.json();
@@ -62,7 +73,7 @@ export async function PUT(request: Request, { params }: Params) {
 
     return NextResponse.json({ item });
   } catch (error) {
-    console.error("Error updating order:", error);
+    logger.error("Error updating order:", error);
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
         { error: "Datos inválidos", details: error },
@@ -107,7 +118,7 @@ export async function DELETE(_request: Request, { params }: Params) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting order:", error);
+    logger.error("Error deleting order:", error);
     if (error instanceof Error && error.message.includes("Record to delete does not exist")) {
       return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
     }

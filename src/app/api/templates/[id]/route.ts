@@ -3,10 +3,14 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { templateSchema } from "@/features/lab/schemas";
 import { stringifySelectOptions } from "@/lib/json-helpers";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function GET(_request: Request, { params }: Params) {
+  // GET puede ser público para ver detalles de plantilla
   try {
     const { id } = await params;
     const item = await prisma.labTemplate.findFirst({
@@ -30,7 +34,7 @@ export async function GET(_request: Request, { params }: Params) {
 
     return NextResponse.json({ item });
   } catch (error) {
-    console.error("Error fetching template:", error);
+    logger.error("Error fetching template:", error);
     return NextResponse.json(
       { error: "Error al obtener plantilla" },
       { status: 500 },
@@ -39,6 +43,11 @@ export async function GET(_request: Request, { params }: Params) {
 }
 
 export async function PUT(request: Request, { params }: Params) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
   try {
     const { id } = await params;
     const payload = await request.json();
@@ -89,7 +98,7 @@ export async function PUT(request: Request, { params }: Params) {
 
     return NextResponse.json({ item });
   } catch (error) {
-    console.error("Error updating template:", error);
+    logger.error("Error updating template:", error);
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
         { error: "Datos inválidos", details: error },
@@ -107,6 +116,11 @@ export async function PUT(request: Request, { params }: Params) {
 }
 
 export async function DELETE(_request: Request, { params }: Params) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
   try {
     const { id } = await params;
     await prisma.$transaction(async (tx) => {
@@ -116,7 +130,7 @@ export async function DELETE(_request: Request, { params }: Params) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting template:", error);
+    logger.error("Error deleting template:", error);
     if (error instanceof Error && error.message.includes("Record to delete does not exist")) {
       return NextResponse.json({ error: "Plantilla no encontrada" }, { status: 404 });
     }

@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import { hash } from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function GET() {
+  const auth = await requireAdmin();
+  if (auth.response) return auth.response;
+
   try {
     const users = await prisma.user.findMany({
       orderBy: { email: "asc" },
@@ -17,7 +22,7 @@ export async function GET() {
     });
     return NextResponse.json({ items: users });
   } catch (error) {
-    console.error("Error fetching users:", error);
+    logger.error("Error fetching users:", error);
     return NextResponse.json(
       { error: "Error al obtener usuarios" },
       { status: 500 },
@@ -26,6 +31,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireAdmin();
+  if (auth.response) return auth.response;
   try {
     const body = await request.json();
     const { email, password, name, roleId } = body as {
@@ -70,7 +77,7 @@ export async function POST(request: Request) {
     });
     return NextResponse.json(user);
   } catch (error) {
-    console.error("Error creating user:", error);
+    logger.error("Error creating user:", error);
     return NextResponse.json(
       { error: "Error al crear el usuario" },
       { status: 500 },

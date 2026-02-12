@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { requirePermission, PERMISSION_ELIMINAR_REGISTROS } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 type Params = { params: Promise<{ id: string; itemId: string }> };
 
@@ -54,7 +55,7 @@ export async function DELETE(_request: Request, { params }: Params) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting order item:", error);
+    logger.error("Error deleting order item:", error);
     return NextResponse.json(
       { error: "Error al eliminar el análisis de la orden" },
       { status: 500 },

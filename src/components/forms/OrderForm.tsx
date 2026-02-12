@@ -135,7 +135,10 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [] 
       form.setValue("labTestIds", Array.from(current), { shouldValidate: true });
     } else {
       if (testIdsInPromos.has(testId)) {
-        toast.info("Este análisis ya está incluido en una promoción seleccionada.");
+        const promoContaining = getProfileContainingTest(testId);
+        toast.info(
+          `Este análisis ya está incluido en la promoción "${promoContaining?.name ?? ""}". No se puede seleccionar individualmente.`
+        );
         return;
       }
       current.add(testId);
@@ -147,10 +150,23 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [] 
     const profile = profiles.find((p) => p.id === profileId);
     if (!profile) return;
     const currentProfiles = new Set(form.getValues("profileIds"));
-    if (currentProfiles.has(profileId)) return;
+    if (currentProfiles.has(profileId)) {
+      toast.info("Esta promoción ya está seleccionada.");
+      return;
+    }
     currentProfiles.add(profileId);
     const profileTestIds = new Set(profile.tests.map((t) => t.id));
-    const labIds = form.getValues("labTestIds").filter((id) => !profileTestIds.has(id));
+    const currentLabIds = form.getValues("labTestIds");
+    const labIds = currentLabIds.filter((id) => !profileTestIds.has(id));
+    
+    // Si se eliminaron análisis individuales porque ahora están en la promoción, mostrar mensaje
+    const removedCount = currentLabIds.length - labIds.length;
+    if (removedCount > 0) {
+      toast.info(
+        `Se agregó la promoción "${profile.name}". ${removedCount} análisis individual${removedCount > 1 ? "es" : ""} que ya estaban incluidos fueron removidos para evitar duplicados.`
+      );
+    }
+    
     form.setValue("profileIds", Array.from(currentProfiles), { shouldValidate: true });
     form.setValue("labTestIds", labIds, { shouldValidate: true });
   };

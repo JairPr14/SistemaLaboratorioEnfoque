@@ -1,12 +1,17 @@
 import { NextResponse } from "next/server";
 import { getPrintConfig, updatePrintConfig } from "@/lib/print-config";
+import { requireAdmin } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function GET() {
+  const auth = await requireAdmin();
+  if (auth.response) return auth.response;
+
   try {
     const config = await getPrintConfig();
     return NextResponse.json(config);
   } catch (error) {
-    console.error("Error fetching print config:", error);
+    logger.error("Error fetching print config:", error);
     return NextResponse.json(
       { error: "Error al obtener la configuración" },
       { status: 500 },
@@ -15,6 +20,9 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
+  const auth = await requireAdmin();
+  if (auth.response) return auth.response;
+
   try {
     const body = await request.json();
     const { stampEnabled, stampImageUrl } = body as {
@@ -29,7 +37,7 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json(config);
   } catch (error) {
-    console.error("Error updating print config:", error);
+    logger.error("Error updating print config:", error);
     return NextResponse.json(
       { error: "Error al actualizar la configuración" },
       { status: 500 },

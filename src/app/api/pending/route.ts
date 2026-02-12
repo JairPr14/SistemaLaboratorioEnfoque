@@ -2,8 +2,16 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { getPendingAlert } from "@/features/lab/pending";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function GET() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
   try {
     const items = await prisma.labOrder.findMany({
       where: { status: { in: ["PENDIENTE", "EN_PROCESO"] } },
@@ -18,7 +26,7 @@ export async function GET() {
 
     return NextResponse.json({ items: enriched });
   } catch (error) {
-    console.error("Error fetching pending orders:", error);
+    logger.error("Error fetching pending orders:", error);
     return NextResponse.json(
       { error: "Error al obtener órdenes pendientes" },
       { status: 500 },
