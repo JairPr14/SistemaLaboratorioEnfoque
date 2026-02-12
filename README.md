@@ -1,45 +1,279 @@
-Sistema de Laboratorio (Next.js + Prisma + SQLite).
+# Sistema de Laboratorio Clínico
 
-## Base de datos (SQLite)
+Sistema de gestión de laboratorio clínico desarrollado con Next.js 16, Prisma, SQLite y NextAuth.
 
-- La BD está en `prisma/dev.db` (archivo local).
-- Variables en `.env`: `DATABASE_URL`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`.
-- Para crear el usuario inicial y roles (y opcionalmente plantillas desde `prisma/plantillas_seed.json`):  
-  `pnpm exec prisma db seed`
+## 📋 Requisitos Previos
 
-**Si aparece "Unknown argument" (promotionId, packagePrice, etc.):** el cliente de Prisma está desactualizado. Detén el servidor (Ctrl+C), ejecuta `pnpm exec prisma generate` y vuelve a arrancar con `pnpm dev`.
+Antes de comenzar, asegúrate de tener instalado:
 
-## Getting Started
+- **Node.js** (versión 18 o superior)
+- **pnpm** (gestor de paquetes recomendado) o npm/yarn
+- **Git**
 
-Primero, arranca el servidor de desarrollo:
+### Instalar pnpm (si no lo tienes)
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install -g pnpm
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🚀 Instalación y Configuración
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 1. Clonar el Repositorio
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+git clone https://github.com/JairPr14/SistemaLaboratorioEnfoque.git
+cd SistemaLaboratorioEnfoque
+```
 
-## Learn More
+### 2. Instalar Dependencias
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+pnpm install
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 3. Configurar Variables de Entorno
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Crea un archivo `.env` en la raíz del proyecto con el siguiente contenido:
 
-## Deploy on Vercel
+```env
+# Base de datos SQLite
+DATABASE_URL="file:./prisma/dev.db"
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# NextAuth
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="tu-secret-key-aqui-genera-una-aleatoria"
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Importante:** Para generar un `NEXTAUTH_SECRET` seguro, puedes usar:
+
+```bash
+openssl rand -base64 32
+```
+
+O en PowerShell:
+```powershell
+[Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 }))
+```
+
+### 4. Configurar la Base de Datos
+
+#### 4.1. Generar el Cliente de Prisma
+
+```bash
+pnpm exec prisma generate
+```
+
+#### 4.2. Ejecutar las Migraciones
+
+```bash
+pnpm exec prisma migrate deploy
+```
+
+Esto creará todas las tablas necesarias en la base de datos SQLite.
+
+#### 4.3. Poblar la Base de Datos (Opcional)
+
+Para crear datos iniciales (usuario admin, roles, secciones, etc.):
+
+```bash
+pnpm exec prisma db seed
+```
+
+**Nota:** Si aparece algún error de "Unknown argument" (promotionId, packagePrice, etc.), significa que el cliente de Prisma está desactualizado. Detén el servidor (Ctrl+C), ejecuta `pnpm exec prisma generate` y vuelve a arrancar.
+
+### 5. Iniciar el Servidor de Desarrollo
+
+```bash
+pnpm dev
+```
+
+El servidor estará disponible en [http://localhost:3000](http://localhost:3000)
+
+## 🔐 Primer Acceso
+
+### Usuario Administrador por Defecto
+
+Si ejecutaste el seed, puedes iniciar sesión con:
+
+- **Email:** `admin@lab.com`
+- **Contraseña:** `admin123`
+
+**⚠️ IMPORTANTE:** Cambia esta contraseña inmediatamente después del primer acceso desde Configuración → Usuarios.
+
+### Crear Usuario Administrador Manualmente
+
+Si no ejecutaste el seed, puedes crear un usuario administrador desde la consola de Prisma:
+
+```bash
+pnpm exec prisma studio
+```
+
+O usando un script SQL:
+
+1. Abre `prisma/dev.db` con un cliente SQLite
+2. Ejecuta:
+
+```sql
+-- Crear rol ADMIN
+INSERT INTO Role (id, code, name, description, "isActive", "createdAt", "updatedAt", permissions)
+VALUES ('admin-role-id', 'ADMIN', 'Administrador', 'Rol con todos los permisos', 1, datetime('now'), datetime('now'), '["REPORTES","EDITAR_PACIENTES","ELIMINAR_REGISTROS"]');
+
+-- Crear usuario (la contraseña es 'admin123' hasheada con bcrypt)
+INSERT INTO User (id, email, "passwordHash", name, "isActive", "roleId", "createdAt", "updatedAt")
+VALUES ('user-id', 'admin@lab.com', '$2a$10$rOzJqZqZqZqZqZqZqZqZqOqZqZqZqZqZqZqZqZqZqZqZqZqZqZqZq', 'Administrador', 1, 'admin-role-id', datetime('now'), datetime('now'));
+```
+
+## 📁 Estructura del Proyecto
+
+```
+SistemaLaboratorioEnfoque/
+├── prisma/
+│   ├── schema.prisma          # Esquema de la base de datos
+│   ├── dev.db                 # Base de datos SQLite (se crea automáticamente)
+│   ├── migrations/            # Migraciones de Prisma
+│   └── seed.ts                # Script de datos iniciales
+├── src/
+│   ├── app/                   # Rutas de Next.js (App Router)
+│   │   ├── (app)/             # Rutas protegidas (requieren autenticación)
+│   │   │   ├── dashboard/     # Dashboard principal
+│   │   │   ├── patients/      # Gestión de pacientes
+│   │   │   ├── orders/        # Gestión de órdenes
+│   │   │   ├── reportes/      # Reportes (solo admin)
+│   │   │   └── configuracion/ # Configuración del sistema
+│   │   ├── api/               # API Routes
+│   │   └── login/             # Página de login
+│   ├── components/            # Componentes React reutilizables
+│   ├── lib/                   # Utilidades y configuración
+│   │   ├── auth.ts            # Configuración de NextAuth
+│   │   └── prisma.ts          # Cliente de Prisma
+│   └── features/              # Lógica de negocio
+└── .env                       # Variables de entorno (no se sube a git)
+```
+
+## 🔑 Sistema de Permisos
+
+El sistema utiliza un sistema de permisos basado en roles. Cada rol puede tener los siguientes permisos:
+
+- **REPORTES**: Ver la sección de reportes
+- **EDITAR_PACIENTES**: Modificar datos de pacientes
+- **ELIMINAR_REGISTROS**: Eliminar pacientes, órdenes e ítems de órdenes
+
+### Configurar Permisos de un Rol
+
+1. Inicia sesión como administrador
+2. Ve a **Configuración** → **Roles**
+3. Crea o edita un rol
+4. Marca los permisos que deseas asignar al rol
+5. Guarda los cambios
+
+**Nota:** Los usuarios con rol que tenga código `ADMIN` y sin permisos configurados tendrán todos los permisos por defecto (compatibilidad hacia atrás).
+
+## 🛠️ Comandos Útiles
+
+### Desarrollo
+
+```bash
+# Iniciar servidor de desarrollo
+pnpm dev
+
+# Generar cliente de Prisma (si cambias el schema)
+pnpm exec prisma generate
+
+# Ver base de datos en Prisma Studio
+pnpm exec prisma studio
+
+# Ejecutar migraciones pendientes
+pnpm exec prisma migrate deploy
+
+# Crear nueva migración (después de cambiar schema.prisma)
+pnpm exec prisma migrate dev --name nombre_de_la_migracion
+```
+
+### Producción
+
+```bash
+# Construir para producción
+pnpm build
+
+# Iniciar servidor de producción
+pnpm start
+```
+
+### Base de Datos
+
+```bash
+# Resetear base de datos (⚠️ elimina todos los datos)
+pnpm exec prisma migrate reset
+
+# Poblar base de datos con datos iniciales
+pnpm exec prisma db seed
+```
+
+## 🐛 Solución de Problemas Comunes
+
+### Error: "Unknown argument 'promotionId'" o similar
+
+**Causa:** El cliente de Prisma está desactualizado.
+
+**Solución:**
+1. Detén el servidor (Ctrl+C)
+2. Ejecuta: `pnpm exec prisma generate`
+3. Reinicia el servidor: `pnpm dev`
+
+### Error: "Database locked" o "EPERM"
+
+**Causa:** Otro proceso está usando la base de datos (servidor corriendo, Prisma Studio abierto, etc.).
+
+**Solución:**
+1. Cierra todos los procesos que puedan estar usando `prisma/dev.db`
+2. Vuelve a intentar la operación
+
+### Error: "No se puede conectar a la base de datos"
+
+**Causa:** La ruta de `DATABASE_URL` en `.env` es incorrecta o la base de datos no existe.
+
+**Solución:**
+1. Verifica que `DATABASE_URL="file:./prisma/dev.db"` en `.env`
+2. Ejecuta las migraciones: `pnpm exec prisma migrate deploy`
+
+### Error: "NextAuth secret not set"
+
+**Causa:** Falta `NEXTAUTH_SECRET` en `.env`.
+
+**Solución:**
+1. Genera un secret: `openssl rand -base64 32`
+2. Añádelo a `.env`: `NEXTAUTH_SECRET="tu-secret-generado"`
+
+## 📝 Notas Importantes
+
+- La base de datos SQLite (`prisma/dev.db`) es un archivo local. Para producción, considera usar PostgreSQL o MySQL.
+- El archivo `.env` contiene información sensible y **NO debe subirse a Git**.
+- Las migraciones de Prisma están en `prisma/migrations/`. No las modifiques manualmente.
+- Para producción, configura variables de entorno apropiadas y usa una base de datos más robusta que SQLite.
+
+## 🔄 Actualizar el Proyecto
+
+Si clonaste el proyecto y hay cambios nuevos:
+
+```bash
+# Obtener últimos cambios
+git pull origin main
+
+# Instalar nuevas dependencias (si las hay)
+pnpm install
+
+# Regenerar cliente de Prisma
+pnpm exec prisma generate
+
+# Ejecutar nuevas migraciones
+pnpm exec prisma migrate deploy
+```
+
+## 📞 Soporte
+
+Para problemas o preguntas, revisa los issues en el repositorio de GitHub o contacta al equipo de desarrollo.
+
+---
+
+**Versión:** 0.1.0  
+**Última actualización:** Febrero 2026
