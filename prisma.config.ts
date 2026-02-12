@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { defineConfig, env } from "prisma/config";
+import { defineConfig } from "prisma/config";
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
@@ -8,7 +8,8 @@ export default defineConfig({
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
-    // DATABASE_URL es opcional durante prisma generate (solo se necesita para migraciones)
-    url: env("DATABASE_URL", { optional: true }) || "file:./dev.db",
+    // DATABASE_URL es opcional durante prisma generate
+    // Se usa un fallback para desarrollo local, pero en producción Vercel lo proveerá
+    url: process.env.DATABASE_URL || "file:./dev.db",
   },
 });
