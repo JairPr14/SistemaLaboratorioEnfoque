@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { orderCreateSchema } from "@/features/lab/schemas";
@@ -64,7 +65,6 @@ export async function POST(request: Request) {
     const payload = await request.json();
     const parsed = orderCreateSchema.parse(payload);
 
-    type TestWithTemplate = Awaited<ReturnType<typeof prisma.labTest.findMany>>[number];
     const fullInclude = {
       template: {
         include: {
@@ -75,6 +75,7 @@ export async function POST(request: Request) {
         },
       },
     } as const;
+    type TestWithTemplate = Prisma.LabTestGetPayload<{ include: typeof fullInclude }>;
 
     type OrderItemPayload = {
       test: TestWithTemplate;

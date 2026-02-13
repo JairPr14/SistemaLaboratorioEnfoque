@@ -18,6 +18,9 @@ import { QuickActionsBar } from "@/components/dashboard/QuickActionsBar";
 import { QuickOrderButton } from "@/components/dashboard/QuickOrderButton";
 import { DashboardPendingTable } from "@/components/dashboard/DashboardPendingTable";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
+
+export const dynamic = "force-dynamic";
+
 export default async function DashboardPage() {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);

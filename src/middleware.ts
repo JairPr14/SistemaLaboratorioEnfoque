@@ -19,8 +19,8 @@ function getRateLimitIdentifier(request: NextRequest): string {
   if (realIp) {
     return realIp;
   }
-  // Fallback a una IP genérica si no se puede determinar
-  return request.ip || "unknown";
+  // Fallback si no se puede determinar la IP desde headers
+  return "unknown";
 }
 
 export async function middleware(request: NextRequest) {

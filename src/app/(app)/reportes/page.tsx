@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 
+import type { OrderStatus, Prisma } from "@prisma/client";
 import { authOptions, hasPermission, PERMISSION_REPORTES } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -69,13 +70,13 @@ export default async function ReportesPage({
 
   // Para "Entregados" usamos fecha de entrega (deliveredAt); para el resto, fecha de creación (createdAt)
   const useDeliveredDate = statusFilter === "ENTREGADO";
-  const orderWhereWithDate = useDeliveredDate
+  const orderWhereWithDate: Prisma.LabOrderWhereInput = useDeliveredDate
     ? {
-        status: "ENTREGADO" as const,
+        status: "ENTREGADO",
         deliveredAt: { not: null, gte: dateFrom, lte: dateTo },
       }
     : {
-        ...(statusFilter ? { status: statusFilter } : { status: { not: "ANULADO" } }),
+        ...(statusFilter ? { status: statusFilter as OrderStatus } : { status: { not: "ANULADO" } }),
         createdAt: { gte: dateFrom, lte: dateTo },
       };
 

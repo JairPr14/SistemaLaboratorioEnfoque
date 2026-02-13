@@ -12,7 +12,7 @@ export function handleApiError(error: unknown, defaultMessage: string): NextResp
     return NextResponse.json(
       { 
         error: "Datos inválidos",
-        details: error.errors.map((e) => ({
+        details: error.issues.map((e) => ({
           path: e.path.join("."),
           message: e.message,
         })),

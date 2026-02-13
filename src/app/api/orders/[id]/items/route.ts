@@ -48,10 +48,12 @@ export async function POST(request: Request, { params }: Params) {
     // Si hay promociones en la orden, verificar que los análisis a agregar no estén en esas promociones
     const itemsWithPromotions = order.items.filter((i) => i.promotionId != null);
     if (itemsWithPromotions.length > 0) {
-      const promotionIds = new Set(itemsWithPromotions.map((i) => i.promotionId).filter(Boolean));
-      if (promotionIds.size > 0) {
+      const promotionIds = itemsWithPromotions
+        .map((i) => i.promotionId)
+        .filter((id): id is string => id != null);
+      if (promotionIds.length > 0) {
         const profiles = await prisma.testProfile.findMany({
-          where: { id: { in: Array.from(promotionIds) } },
+          where: { id: { in: promotionIds } },
           include: { items: { select: { labTestId: true } } },
         });
         

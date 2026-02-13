@@ -66,7 +66,9 @@ export async function POST(request: Request, { params }: Params) {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    async function createWithNextCode(): Promise<{ orderCode: string; orderId: string }> {
+    async function createWithNextCode(
+      orderSource: NonNullable<typeof sourceOrder>,
+    ): Promise<{ orderCode: string; orderId: string }> {
       const prefix = orderCodePrefixForDate(todayStart);
       const existing = await prisma.labOrder.findMany({
         where: { orderCode: { startsWith: prefix } },
@@ -83,7 +85,7 @@ export async function POST(request: Request, { params }: Params) {
           patientId,
           requestedBy: doctorName,
           notes: indication,
-          patientType: sourceOrder.patientType ?? null,
+          patientType: orderSource.patientType ?? null,
           totalPrice,
           items: {
             createMany: {
@@ -101,12 +103,12 @@ export async function POST(request: Request, { params }: Params) {
 
     let result: { orderCode: string; orderId: string };
     try {
-      result = await createWithNextCode();
+      result = await createWithNextCode(sourceOrder);
     } catch (err: unknown) {
       const isUniqueViolation =
         err && typeof err === "object" && "code" in err && (err as { code: string }).code === "P2002";
       if (isUniqueViolation) {
-        result = await createWithNextCode();
+        result = await createWithNextCode(sourceOrder);
       } else {
         throw err;
       }
