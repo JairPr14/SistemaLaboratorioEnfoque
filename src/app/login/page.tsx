@@ -30,8 +30,13 @@ function LoginForm() {
         toast.error("Email o contraseña incorrectos");
         return;
       }
-      router.push(callbackUrl);
-      router.refresh();
+      if (!res?.ok) {
+        toast.error("No se pudo iniciar sesión. Revisa NEXTAUTH_URL y NEXTAUTH_SECRET en Vercel.");
+        return;
+      }
+      // Redirección completa para que el middleware reciba la cookie de sesión
+      window.location.href = callbackUrl;
+      return;
     } finally {
       setLoading(false);
     }

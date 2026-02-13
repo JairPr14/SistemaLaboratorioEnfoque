@@ -97,7 +97,7 @@ El servidor estará disponible en [http://localhost:3000](http://localhost:3000)
 
 Si ejecutaste el seed, puedes iniciar sesión con:
 
-- **Email:** `admin@lab.com`
+- **Email:** `admin@sistemalis.local`
 - **Contraseña:** `admin123`
 
 **⚠️ IMPORTANTE:** Cambia esta contraseña inmediatamente después del primer acceso desde Configuración → Usuarios.
@@ -261,8 +261,66 @@ Para desplegar en producción, consulta la guía completa en [DEPLOYMENT.md](./D
    - `NEXTAUTH_URL` (URL de tu app en Vercel)
    - `NODE_ENV=production`
 5. **Desplegar**: Vercel ejecutará automáticamente las migraciones
+6. **Ejecutar el seed** para crear el usuario admin (ver abajo)
 
 **Nota:** Los planes gratuitos de Vercel y Neon son suficientes para un laboratorio pequeño con hasta 4 usuarios simultáneos.
+
+### 🌱 Ejecutar Seed en Producción (Crear Usuario Admin)
+
+Después de desplegar en Vercel y ejecutar las migraciones, necesitas ejecutar el seed para crear el usuario administrador inicial.
+
+#### Opción 1: Ejecutar desde tu máquina local (Recomendado)
+
+1. Obtén tu `DATABASE_URL` de Neon (desde el dashboard de Neon)
+2. Ejecuta el script de seed para producción:
+
+```bash
+# En PowerShell (Windows)
+$env:DATABASE_URL="tu-connection-string-de-neon"; pnpm tsx scripts/seed-production.ts
+
+# En Bash/Linux/Mac
+DATABASE_URL="tu-connection-string-de-neon" pnpm tsx scripts/seed-production.ts
+```
+
+O usa el script helper:
+
+```bash
+# Configura la variable de entorno primero
+export DATABASE_URL="tu-connection-string-de-neon"  # Linux/Mac
+# O en PowerShell:
+$env:DATABASE_URL="tu-connection-string-de-neon"
+
+# Luego ejecuta:
+pnpm tsx scripts/seed-production.ts
+```
+
+#### Opción 2: Ejecutar desde Vercel CLI
+
+```bash
+# Instala Vercel CLI si no lo tienes
+npm i -g vercel
+
+# Conecta con tu proyecto
+vercel login
+vercel link
+
+# Ejecuta el seed usando las variables de entorno de Vercel
+vercel env pull .env.production
+DATABASE_URL=$(grep DATABASE_URL .env.production | cut -d '=' -f2) pnpm tsx prisma/seed.ts
+```
+
+#### Opción 3: Ejecutar directamente con Prisma
+
+```bash
+# Configura DATABASE_URL y ejecuta
+DATABASE_URL="tu-connection-string-de-neon" pnpm exec prisma db seed
+```
+
+**Después de ejecutar el seed, las credenciales de acceso son:**
+- **Email:** `admin@sistemalis.local`
+- **Contraseña:** `admin123`
+
+⚠️ **IMPORTANTE:** Cambia la contraseña inmediatamente después del primer acceso desde Configuración → Usuarios.
 
 ## 📝 Notas Importantes
 

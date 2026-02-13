@@ -80,7 +80,7 @@ export function checkRateLimit(
  */
 export const RATE_LIMITS = {
   login: {
-    maxRequests: 5,
+    maxRequests: 20,
     windowMs: 15 * 60 * 1000, // 15 minutos
   },
   createOrder: {
