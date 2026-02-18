@@ -6,11 +6,10 @@ import { useSession } from "next-auth/react";
 import { Settings } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { hasPermission, PERMISSION_REPORTES } from "@/lib/auth";
+import { ADMIN_ROLE_CODE, hasPermission, PERMISSION_REPORTES } from "@/lib/auth";
 
 const navItemsBase: { href: string; label: string; adminOnly?: boolean }[] = [
   { href: "/dashboard", label: "Dashboard" },
-  { href: "/worklist", label: "Worklist" },
   { href: "/patients", label: "Pacientes" },
   { href: "/catalog/tests", label: "Catálogo" },
   { href: "/promociones", label: "Promociones" },
@@ -22,18 +21,30 @@ const navItemsBase: { href: string; label: string; adminOnly?: boolean }[] = [
   { href: "/reportes", label: "Reportes", adminOnly: true },
 ];
 
-export function Sidebar() {
+export function Sidebar({
+  open,
+  onToggle,
+}: {
+  open: boolean;
+  onToggle: () => void;
+}) {
   const pathname = usePathname();
   const { data: session } = useSession();
   const canSeeReportes = hasPermission(session ?? null, PERMISSION_REPORTES);
   const navItems = navItemsBase.filter((item) => !("adminOnly" in item && item.adminOnly) || canSeeReportes);
 
   return (
-    <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col border-r border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
-      <div className="px-6 py-5 text-lg font-semibold text-slate-900 dark:text-slate-100">
+    <aside
+      className={cn(
+        "sticky top-0 flex h-screen shrink-0 flex-col overflow-hidden border-r border-slate-200/80 bg-white/95 shadow-sm dark:border-slate-700/80 dark:bg-slate-800/95 backdrop-blur-sm transition-[width] duration-200 ease-out",
+        open ? "w-64 min-w-64" : "w-0 min-w-0 border-r-0",
+      )}
+    >
+      <div className={cn("flex h-full min-w-64 flex-col", !open && "invisible")}>
+      <div className="border-t-2 border-teal-500 px-5 py-5 text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100">
         Clinica Enfoque Salud - Laboratorio
       </div>
-      <nav className="flex-1 space-y-1 px-3">
+      <nav className="flex-1 space-y-0.5 px-2.5 py-2">
         {navItems.map((item) => {
           const active = pathname.startsWith(item.href);
           return (
@@ -41,8 +52,9 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "block rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700",
-                active && "bg-slate-900 text-white hover:bg-slate-900 dark:bg-slate-700 dark:text-white dark:hover:bg-slate-700",
+                "block rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700/80 dark:hover:text-slate-100",
+                active &&
+                  "bg-teal-600 text-white hover:bg-teal-700 hover:text-white dark:bg-teal-600 dark:hover:bg-teal-500 shadow-sm",
               )}
             >
               {item.label}
@@ -50,20 +62,24 @@ export function Sidebar() {
           );
         })}
       </nav>
-      <div className="border-t border-slate-200 px-3 py-3 dark:border-slate-700">
-        <Link
-          href="/configuracion"
-          className={cn(
-            "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700",
-            pathname.startsWith("/configuracion") && "bg-slate-900 text-white hover:bg-slate-900 dark:bg-slate-700 dark:text-white dark:hover:bg-slate-700",
-          )}
-        >
-          <Settings className="h-4 w-4 shrink-0" />
-          Configuración
-        </Link>
-      </div>
-      <div className="border-t border-slate-200 px-6 py-4 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-300">
+      {session?.user?.roleCode === ADMIN_ROLE_CODE && (
+        <div className="border-t border-slate-200/80 px-2.5 py-3 dark:border-slate-700/80">
+          <Link
+            href="/configuracion"
+            className={cn(
+              "flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700/80 dark:hover:text-slate-100",
+              pathname.startsWith("/configuracion") &&
+                "bg-teal-600 text-white hover:bg-teal-700 dark:bg-teal-600 dark:hover:bg-teal-500 shadow-sm",
+            )}
+          >
+            <Settings className="h-4 w-4 shrink-0" />
+            Configuración
+          </Link>
+        </div>
+      )}
+      <div className="border-t border-slate-200/80 px-5 py-4 text-xs text-slate-500 dark:border-slate-700/80 dark:text-slate-400">
         Laboratorio Clínico
+      </div>
       </div>
     </aside>
   );

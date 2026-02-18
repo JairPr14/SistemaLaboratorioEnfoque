@@ -1,4 +1,5 @@
-import { getSlaLevel, formatTimeAgo, type SlaLevel } from "@/lib/time-utils";
+import { getSlaLevel, formatTimeAgo } from "@/lib/time-utils";
+import { formatDate } from "@/lib/format";
 
 export type AlertType = "INCOMPLETE" | "UNVALIDATED" | "SLA";
 export type AlertSeverity = "green" | "yellow" | "red";
@@ -13,16 +14,23 @@ export type OrderAlert = {
 export type OrderForAlerts = {
   status: string;
   createdAt: Date | string;
+  /** Si la orden ya fue entregada, para mostrar "entregado hace X" */
+  deliveredAt?: Date | string | null;
   totalTests: number;
   completedTests: number;
   needsValidation: boolean;
   missingCount: number;
 };
 
-/** Obtiene la lista de alertas para una orden, ordenada por severidad (rojo > amarillo > verde) */
-export function getOrderAlerts(order: OrderForAlerts): OrderAlert[] {
-  const sla = getSlaLevel(order.createdAt);
-  const slaLabel = formatTimeAgo(order.createdAt);
+/**
+ * Obtiene la lista de alertas para una orden.
+ * @param order - Datos de la orden
+ * @param now - Hora de referencia para "hace X". Si es null/undefined (p. ej. en SSR), se muestra la fecha en lugar del tiempo relativo para evitar desfase por zona horaria del servidor.
+ */
+export function getOrderAlerts(order: OrderForAlerts, now?: Date | null): OrderAlert[] {
+  const createdAgo = formatTimeAgo(order.createdAt, now);
+  const createdDate = formatDate(order.createdAt);
+  const sla = getSlaLevel(order.createdAt, now);
   const alerts: OrderAlert[] = [];
 
   // 1) INCOMPLETA: completedTests < totalTests
@@ -36,7 +44,7 @@ export function getOrderAlerts(order: OrderForAlerts): OrderAlert[] {
       type: "INCOMPLETE",
       severity,
       label: `Incompleta (${order.completedTests}/${order.totalTests})`,
-      tooltip: `Faltan ${missing} análisis por capturar`,
+      tooltip: `Faltan ${missing} análisis por capturar. Fecha de creación: ${createdDate} (${createdAgo}).`,
     });
   }
 
@@ -49,16 +57,20 @@ export function getOrderAlerts(order: OrderForAlerts): OrderAlert[] {
       type: "UNVALIDATED",
       severity,
       label: "Sin validar",
-      tooltip: "Captura completa pero falta validación",
+      tooltip: `Captura completa pero falta validación. Fecha de creación: ${createdDate} (${createdAgo}).`,
     });
   }
 
-  // 3) SLA: siempre como indicador
+  // 3) SLA: tiempo desde creación (y desde entrega si aplica)
+  const slaTooltip =
+    order.deliveredAt != null
+      ? `Fecha de creación: ${createdDate} (${createdAgo}). Entregada ${formatTimeAgo(order.deliveredAt, now)}.`
+      : `Fecha de creación: ${createdDate}. Tiempo desde creación: ${createdAgo}.`;
   alerts.push({
     type: "SLA",
     severity: sla,
-    label: slaLabel,
-    tooltip: `SLA: ${slaLabel}`,
+    label: `Creado ${createdAgo}`,
+    tooltip: slaTooltip,
   });
 
   // Ordenar: rojo primero, amarillo, verde

@@ -34,15 +34,15 @@ export default async function TemplateDetailPage({ params }: Props) {
 
   return (
     <div className="space-y-6">
-      <nav className="flex items-center gap-2 text-sm text-slate-500">
+      <nav className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
         <Link
           href="/templates"
-          className="hover:text-slate-900 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 rounded"
+          className="hover:text-slate-900 dark:hover:text-slate-100 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 rounded"
         >
           Plantillas
         </Link>
         <span aria-hidden>/</span>
-        <span className="text-slate-900 font-medium truncate">
+        <span className="text-slate-900 dark:text-slate-100 font-medium truncate">
           {template.title}
         </span>
       </nav>
@@ -50,7 +50,7 @@ export default async function TemplateDetailPage({ params }: Props) {
       <Card>
         <CardHeader className="space-y-1">
           <CardTitle className="text-lg">Editar plantilla</CardTitle>
-          <p className="text-sm text-slate-500 font-normal">
+          <p className="text-sm text-slate-500 dark:text-slate-400 font-normal">
             {template.labTest.code} · {template.labTest.name}
           </p>
         </CardHeader>

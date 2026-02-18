@@ -48,10 +48,11 @@ try {
   console.log("   Email: admin@sistemalis.local");
   console.log("   Contraseña: admin123");
   console.log("\n⚠️  IMPORTANTE: Cambia la contraseña después del primer acceso!");
-} catch (error: any) {
+} catch (error: unknown) {
   console.error("\n❌ Error al ejecutar el seed");
-  if (error.stdout) console.error("STDOUT:", error.stdout);
-  if (error.stderr) console.error("STDERR:", error.stderr);
-  if (error.message) console.error("Error:", error.message);
+  const err = error as { stdout?: string; stderr?: string; message?: string };
+  if (err.stdout) console.error("STDOUT:", err.stdout);
+  if (err.stderr) console.error("STDERR:", err.stderr);
+  if (err.message) console.error("Error:", err.message);
   process.exit(1);
 }

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
@@ -17,6 +18,19 @@ export default async function TestDetailPage({ params }: Props) {
   }
 
   return (
+    <div className="space-y-6">
+      <nav className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+        <Link
+          href="/catalog/tests"
+          className="hover:text-slate-900 dark:hover:text-slate-100 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 rounded"
+        >
+          Catálogo
+        </Link>
+        <span aria-hidden>/</span>
+        <span className="text-slate-900 dark:text-slate-100 font-medium truncate">
+          {test.name}
+        </span>
+      </nav>
     <Card>
       <CardHeader>
         <CardTitle>Editar análisis</CardTitle>
@@ -35,5 +49,6 @@ export default async function TestDetailPage({ params }: Props) {
         />
       </CardContent>
     </Card>
+    </div>
   );
 }

@@ -121,7 +121,7 @@ export default async function PatientsPage({ searchParams }: Props) {
                   <TableBody>
                     {patients.map((patient) => (
                       <TableRow key={patient.id}>
-                        <TableCell className="font-mono text-sm">{patient.code}</TableCell>
+                        <TableCell className="font-mono text-sm text-slate-900 dark:text-slate-100">{patient.code}</TableCell>
                         <TableCell>
                           <Link
                             className="font-medium text-slate-900 dark:text-slate-100 hover:underline"
@@ -130,8 +130,8 @@ export default async function PatientsPage({ searchParams }: Props) {
                             {patient.firstName} {patient.lastName}
                           </Link>
                         </TableCell>
-                        <TableCell>{patient.dni}</TableCell>
-                        <TableCell>{formatDate(patient.birthDate)}</TableCell>
+                        <TableCell className="text-slate-700 dark:text-slate-300">{patient.dni}</TableCell>
+                        <TableCell className="text-slate-700 dark:text-slate-300">{formatDate(patient.birthDate)}</TableCell>
                         <TableCell className="text-right">
                           <Link
                             href={`/patients/${patient.id}`}

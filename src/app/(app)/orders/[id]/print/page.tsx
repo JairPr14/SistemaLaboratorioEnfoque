@@ -21,6 +21,107 @@ function calculateAge(birthDate: Date): number {
   return age;
 }
 
+// Forma mínima del order que usan PatientDataBlock y FooterBlock
+type OrderForPrint = {
+  patient: { lastName: string; firstName: string; dni: string; birthDate: Date; sex: string | null };
+  requestedBy: string | null;
+  createdAt: Date;
+  orderCode: string;
+  deliveredAt: Date | null;
+  items: Array<{
+    id: string;
+    result: { reportedBy?: string | null } | null;
+  }>;
+};
+
+type RefRangeItem = { ageGroup?: string | null; sex?: string | null; refRangeText?: string | null; refMin?: number | null; refMax?: number | null };
+
+function PatientDataBlock({
+  order,
+  age,
+  sexLabel,
+}: {
+  order: OrderForPrint;
+  age: number;
+  sexLabel: string;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm mb-6">
+      <div className="flex gap-2">
+        <span className="text-slate-500 font-medium shrink-0">PACIENTE:</span>
+        <span className="font-semibold text-slate-900 uppercase">
+          {order.patient.lastName} {order.patient.firstName}
+        </span>
+      </div>
+      <div className="flex gap-2">
+        <span className="text-slate-500 font-medium shrink-0">EDAD:</span>
+        <span>{age} Años</span>
+      </div>
+      <div className="flex gap-2">
+        <span className="text-slate-500 font-medium shrink-0">DNI:</span>
+        <span>{order.patient.dni}</span>
+      </div>
+      <div className="flex gap-2">
+        <span className="text-slate-500 font-medium shrink-0">INDICACIÓN:</span>
+        <span>{order.requestedBy || "Médico tratante"}</span>
+      </div>
+      <div className="flex gap-2">
+        <span className="text-slate-500 font-medium shrink-0">SEXO:</span>
+        <span>{sexLabel}</span>
+      </div>
+      <div className="flex gap-2">
+        <span className="text-slate-500 font-medium shrink-0">FECHA:</span>
+        <span>{formatDate(order.createdAt)}</span>
+      </div>
+      <div className="flex gap-2">
+        <span className="text-slate-500 font-medium shrink-0">N° REGISTRO:</span>
+        <span className="font-mono">{order.orderCode}</span>
+      </div>
+    </div>
+  );
+}
+
+function FooterBlock({
+  items,
+  order,
+  showStamp,
+  stampImageUrl,
+}: {
+  items: OrderForPrint["items"];
+  order: OrderForPrint;
+  showStamp: boolean;
+  stampImageUrl: string | null;
+}) {
+  return (
+    <div className="mt-10 pt-6 border-t-2 border-slate-300 flex flex-wrap items-end justify-between gap-6">
+      <div className="text-xs text-slate-500">
+        {items[0]?.result?.reportedBy && (
+          <p>Reportado por: {items[0].result.reportedBy}</p>
+        )}
+        {order.deliveredAt && (
+          <p className="mt-1">Fecha de entrega: {formatDate(order.deliveredAt)}</p>
+        )}
+      </div>
+      <div className="text-center flex flex-col items-center gap-2">
+        {showStamp && stampImageUrl && (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={stampImageUrl}
+            alt=""
+            className="print-stamp h-20 w-auto object-contain opacity-90"
+            style={{ maxWidth: "140px" }}
+          />
+        )}
+        <div className="w-56 h-16 border-b-2 border-slate-400 mb-1" />
+        <p className="text-xs font-semibold text-slate-700">
+          T.M / Responsable técnico
+        </p>
+        <p className="text-xs text-slate-500">CTMP</p>
+      </div>
+    </div>
+  );
+}
+
 export default async function OrderPrintPage({ params, searchParams }: Props) {
   const { id } = await params;
   const { items: itemsParam } = await searchParams;
@@ -88,71 +189,6 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
   // Si no hay secciones (sin items o items vacíos), mostramos una hoja con mensaje
   const hasSections = sectionsEntries.length > 0;
 
-  /** Bloque de datos del paciente (común a todas las hojas) */
-  const PatientDataBlock = () => (
-    <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm mb-6">
-      <div className="flex gap-2">
-        <span className="text-slate-500 font-medium shrink-0">PACIENTE:</span>
-        <span className="font-semibold text-slate-900 uppercase">
-          {order.patient.lastName} {order.patient.firstName}
-        </span>
-      </div>
-      <div className="flex gap-2">
-        <span className="text-slate-500 font-medium shrink-0">EDAD:</span>
-        <span>{age} Años</span>
-      </div>
-      <div className="flex gap-2">
-        <span className="text-slate-500 font-medium shrink-0">DNI:</span>
-        <span>{order.patient.dni}</span>
-      </div>
-      <div className="flex gap-2">
-        <span className="text-slate-500 font-medium shrink-0">INDICACIÓN:</span>
-        <span>{order.requestedBy || "Médico tratante"}</span>
-      </div>
-      <div className="flex gap-2">
-        <span className="text-slate-500 font-medium shrink-0">SEXO:</span>
-        <span>{sexLabel}</span>
-      </div>
-      <div className="flex gap-2">
-        <span className="text-slate-500 font-medium shrink-0">FECHA:</span>
-        <span>{formatDate(order.createdAt)}</span>
-      </div>
-      <div className="flex gap-2">
-        <span className="text-slate-500 font-medium shrink-0">N° REGISTRO:</span>
-        <span className="font-mono">{order.orderCode}</span>
-      </div>
-    </div>
-  );
-
-  /** Pie de página (reportado por, firma y sello) */
-  const FooterBlock = ({ items }: { items: typeof itemsToPrint }) => (
-    <div className="mt-10 pt-6 border-t-2 border-slate-300 flex flex-wrap items-end justify-between gap-6">
-      <div className="text-xs text-slate-500">
-        {items[0]?.result?.reportedBy && (
-          <p>Reportado por: {items[0].result.reportedBy}</p>
-        )}
-        {order.deliveredAt && (
-          <p className="mt-1">Fecha de entrega: {formatDate(order.deliveredAt)}</p>
-        )}
-      </div>
-      <div className="text-center flex flex-col items-center gap-2">
-        {showStamp && printConfig.stampImageUrl && (
-          <img
-            src={printConfig.stampImageUrl}
-            alt=""
-            className="print-stamp h-20 w-auto object-contain opacity-90"
-            style={{ maxWidth: "140px" }}
-          />
-        )}
-        <div className="w-56 h-16 border-b-2 border-slate-400 mb-1" />
-        <p className="text-xs font-semibold text-slate-700">
-          T.M / Responsable técnico
-        </p>
-        <p className="text-xs text-slate-500">CTMP</p>
-      </div>
-    </div>
-  );
-
   return (
     <>
       <PrintActions />
@@ -186,7 +222,7 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                 <div className="min-w-0 flex-1" aria-hidden />
               </header>
 
-              <PatientDataBlock />
+              <PatientDataBlock order={order} age={age} sexLabel={sexLabel} />
 
               {/* Barra negra con nombre de sección */}
               <div className="bg-slate-900 text-white py-2 px-4 mb-3">
@@ -230,7 +266,7 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                               const templateItem = res.templateItemId 
                                 ? item.labTest.template?.items.find((t) => t.id === res.templateItemId)
                                 : null;
-                              const refRanges = (templateItem as any)?.refRanges || [];
+                              const refRanges: RefRangeItem[] = (templateItem && "refRanges" in templateItem ? (templateItem.refRanges as RefRangeItem[]) : []) ?? [];
                               
                               return (
                                 <tr key={res.id} className="border-b border-slate-200 last:border-b-0">
@@ -256,7 +292,7 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                                       )}
                                       {refRanges.length > 0 && (
                                         <div className="space-y-0.5 text-[10px]">
-                                          {refRanges.map((range: any, rangeIdx: number) => {
+                                          {refRanges.map((range: RefRangeItem, rangeIdx: number) => {
                                             const ageGroupLabels: Record<string, string> = {
                                               NIÑOS: "Niños",
                                               JOVENES: "Jóvenes",
@@ -319,7 +355,7 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                 );
               })}
 
-              <FooterBlock items={items} />
+              <FooterBlock items={items} order={order} showStamp={!!(showStamp && printConfig.stampImageUrl)} stampImageUrl={printConfig.stampImageUrl} />
 
               <div className="mt-6 pt-3 text-center text-xs min-h-[1.5rem]" aria-hidden />
             </div>
@@ -346,9 +382,9 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
               style={{ paddingTop: "29.7mm", paddingBottom: "29.7mm" }}
             >
               <header className="flex items-start justify-between gap-4 mb-6 pb-4 border-b border-slate-300 min-h-[3.5rem]" />
-              <PatientDataBlock />
+              <PatientDataBlock order={order} age={age} sexLabel={sexLabel} />
               <p className="text-center text-slate-500 py-12">No hay análisis seleccionados para imprimir.</p>
-              <FooterBlock items={[]} />
+              <FooterBlock items={[]} order={order} showStamp={!!(showStamp && printConfig.stampImageUrl)} stampImageUrl={printConfig.stampImageUrl} />
             </div>
           </div>
         </div>

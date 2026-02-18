@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -93,7 +94,7 @@ export default function SeccionesPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12 text-slate-500">
+      <div className="flex items-center justify-center py-12 text-slate-500 dark:text-slate-400">
         Cargando análisis...
       </div>
     );
@@ -112,10 +113,10 @@ export default function SeccionesPage() {
 
       {sortedSections.length === 0 ? (
         <Card>
-          <CardContent className="py-12 text-center text-slate-500">
+          <CardContent className="py-12 text-center text-slate-500 dark:text-slate-400">
             <p>No hay análisis registrados.</p>
             <p className="text-sm mt-2">
-              Ve a <a href="/catalog/tests" className="text-slate-900 dark:text-slate-100 underline">Catálogo</a> para agregar análisis.
+              Ve a <Link href="/catalog/tests" className="text-slate-900 dark:text-slate-100 underline">Catálogo</Link> para agregar análisis.
             </p>
           </CardContent>
         </Card>
@@ -147,10 +148,10 @@ export default function SeccionesPage() {
                   <TableBody>
                     {groupedBySection[section].map((test, idx) => (
                       <TableRow key={test.id}>
-                        <TableCell className="text-slate-500">{idx + 1}</TableCell>
-                        <TableCell className="font-mono text-sm">{test.code}</TableCell>
-                        <TableCell className="font-medium">{test.name}</TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-slate-500 dark:text-slate-400">{idx + 1}</TableCell>
+                        <TableCell className="font-mono text-sm text-slate-900 dark:text-slate-100">{test.code}</TableCell>
+                        <TableCell className="font-medium text-slate-900 dark:text-slate-100">{test.name}</TableCell>
+                        <TableCell className="text-right text-slate-900 dark:text-slate-200">
                           S/ {Number(test.price).toFixed(2)}
                         </TableCell>
                         <TableCell>

@@ -6,7 +6,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export const authOptions: NextAuthOptions = {
-  trustHost: true, // Necesario en Vercel para que la URL se tome de los headers y no falle con "Invalid URL"
   providers: [
     CredentialsProvider({
       name: "Credenciales",

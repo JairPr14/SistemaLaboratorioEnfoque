@@ -102,12 +102,12 @@ export default async function PatientDetailPage({ params }: Props) {
               {orders.map((order) => (
                 <div
                   key={order.id}
-                  className="rounded-lg border border-slate-200 overflow-hidden"
+                  className="rounded-lg border border-slate-200 dark:border-slate-600 overflow-hidden"
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-50 px-4 py-2 border-b border-slate-100">
+                  <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-50 dark:bg-slate-700/50 px-4 py-2 border-b border-slate-100 dark:border-slate-600">
                     <Link
                       href={`/orders/${order.id}`}
-                      className="font-semibold text-slate-900 hover:underline"
+                      className="font-semibold text-slate-900 dark:text-slate-100 hover:underline"
                     >
                       {order.orderCode}
                     </Link>
@@ -115,14 +115,14 @@ export default async function PatientDetailPage({ params }: Props) {
                       <Badge variant="secondary" className="text-xs">
                         {order.status}
                       </Badge>
-                      <span className="text-xs text-slate-500">
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
                         {formatDate(order.createdAt)}
                       </span>
                       <Link
                         href={`/orders/${order.id}/print`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs font-medium text-slate-600 hover:underline"
+                        className="text-xs font-medium text-slate-600 dark:text-slate-300 hover:underline"
                       >
                         PDF
                       </Link>
@@ -130,7 +130,7 @@ export default async function PatientDetailPage({ params }: Props) {
                   </div>
                   <Table>
                     <TableHeader>
-                      <TableRow className="bg-slate-50/50">
+                      <TableRow className="bg-slate-50/50 dark:bg-slate-700/50">
                         <TableHead className="w-10">#</TableHead>
                         <TableHead>Análisis</TableHead>
                         <TableHead>Sección</TableHead>
@@ -140,8 +140,8 @@ export default async function PatientDetailPage({ params }: Props) {
                     <TableBody>
                       {order.items.map((item, idx) => (
                         <TableRow key={item.id}>
-                          <TableCell className="text-slate-500 text-sm">{idx + 1}</TableCell>
-                          <TableCell className="font-medium">
+                          <TableCell className="text-slate-500 dark:text-slate-400 text-sm">{idx + 1}</TableCell>
+                          <TableCell className="font-medium text-slate-900 dark:text-slate-100">
                             {item.labTest.code} - {item.labTest.name}
                           </TableCell>
                           <TableCell>
@@ -151,11 +151,11 @@ export default async function PatientDetailPage({ params }: Props) {
                           </TableCell>
                           <TableCell>
                             {item.result && (item.result.items?.length ?? 0) > 0 ? (
-                              <Badge variant="success" className="bg-emerald-100 text-emerald-700 text-xs">
+                              <Badge variant="success" className="text-xs">
                                 {item.result.items?.length ?? 0} parámetros
                               </Badge>
                             ) : (
-                              <span className="text-xs text-slate-400">Pendiente</span>
+                              <span className="text-xs text-slate-400 dark:text-slate-500">Pendiente</span>
                             )}
                           </TableCell>
                         </TableRow>

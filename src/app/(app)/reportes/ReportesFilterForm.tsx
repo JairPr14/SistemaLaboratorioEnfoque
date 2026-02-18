@@ -5,7 +5,7 @@ import { useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calendar } from "lucide-react";
+import { Calendar, RotateCcw } from "lucide-react";
 
 function toYYYYMMDD(d: Date): string {
   const y = d.getFullYear();
@@ -36,18 +36,25 @@ export function ReportesFilterForm({ defaultDateFrom, defaultDateTo, defaultStat
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
-    const from = (form.elements.namedItem("dateFrom") as HTMLInputElement).value;
-    const to = (form.elements.namedItem("dateTo") as HTMLInputElement).value;
-    const status = (form.elements.namedItem("status") as HTMLSelectElement)?.value ?? "";
-    const params = new URLSearchParams(searchParams.toString());
+    const from = (form.elements.namedItem("dateFrom") as HTMLInputElement)?.value?.trim() ?? "";
+    const to = (form.elements.namedItem("dateTo") as HTMLInputElement)?.value?.trim() ?? "";
+    const status = (form.elements.namedItem("status") as HTMLSelectElement)?.value?.trim() ?? "";
+    const params = new URLSearchParams();
     if (from) params.set("dateFrom", from);
-    else params.delete("dateFrom");
     if (to) params.set("dateTo", to);
-    else params.delete("dateTo");
     if (status) params.set("status", status);
-    else params.delete("status");
+    const query = params.toString();
     startTransition(() => {
-      router.push(`/reportes?${params.toString()}`);
+      router.push(query ? `/reportes?${query}` : "/reportes");
+    });
+  }
+
+  const hasActiveFilters =
+    searchParams.has("dateFrom") || searchParams.has("dateTo") || searchParams.has("status");
+
+  function resetFilters() {
+    startTransition(() => {
+      router.push("/reportes");
     });
   }
 
@@ -142,6 +149,19 @@ export function ReportesFilterForm({ defaultDateFrom, defaultDateTo, defaultStat
         >
           90 días
         </Button>
+        {hasActiveFilters && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={resetFilters}
+            disabled={isPending}
+            className="text-slate-600 hover:text-slate-900"
+          >
+            <RotateCcw className="h-4 w-4 mr-1" />
+            Restablecer filtros
+          </Button>
+        )}
       </div>
     </div>
   );

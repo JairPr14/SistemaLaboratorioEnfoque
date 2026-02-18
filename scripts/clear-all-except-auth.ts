@@ -2,14 +2,16 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- tx es el cliente Prisma de transacción
 async function deleteIfExists(tx: any, model: string, label: string): Promise<number> {
   try {
     const result = await tx[model]?.deleteMany({});
     const count = result?.count ?? 0;
     if (count > 0) console.log(`  ✓ Eliminados ${count} ${label}`);
     return count;
-  } catch (error: any) {
-    if (error?.code === "P2021") {
+  } catch (error: unknown) {
+    const err = error as { code?: string };
+    if (err?.code === "P2021") {
       // Tabla no existe, está bien
       return 0;
     }

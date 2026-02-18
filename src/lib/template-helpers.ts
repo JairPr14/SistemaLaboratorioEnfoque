@@ -14,7 +14,7 @@ type TemplateSnapshotItem = {
   refRanges?: RefRange[];
 };
 
-type RefRange = {
+export type RefRange = {
   id?: string;
   ageGroup: string | null;
   sex: "M" | "F" | "O" | null;
@@ -24,7 +24,7 @@ type RefRange = {
   order: number;
 };
 
-type TemplateItem = {
+export type TemplateItem = {
   id: string;
   groupName: string | null;
   paramName: string;

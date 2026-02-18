@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 import { prisma } from "@/lib/prisma";
-import { formatCurrency } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,7 +42,7 @@ export default async function DashboardPage() {
     prisma.labTest.count({ where: { deletedAt: null, isActive: true } }),
     prisma.labOrder.count({ where: { createdAt: { gte: startOfToday } } }),
     prisma.labOrder.findMany({
-      where: { status: { in: ["PENDIENTE", "EN_PROCESO", "COMPLETADO"] } },
+      where: { status: { in: ["PENDIENTE", "EN_PROCESO", "COMPLETADO", "ENTREGADO"] } },
       include: {
         patient: true,
         items: {
@@ -51,7 +50,7 @@ export default async function DashboardPage() {
         },
       },
       orderBy: { createdAt: "desc" },
-      take: 50,
+      take: 80,
     }),
     prisma.labOrder.findMany({
       orderBy: { createdAt: "desc" },
@@ -60,14 +59,19 @@ export default async function DashboardPage() {
     }),
   ]);
 
-  const recentActivity = recentOrdersForActivity.map((o, i) => ({
+  const patientName = (o: { patient: { firstName: string; lastName: string } }) =>
+    `${o.patient.lastName} ${o.patient.firstName}`.trim() || "Paciente";
+
+  const recentActivity = recentOrdersForActivity.map((o) => ({
     id: `a-${o.id}`,
+    orderId: o.id,
+    patientName: patientName(o),
     text:
       o.status === "ENTREGADO"
-        ? `Se entregó orden ${o.orderCode}`
+        ? `Se entregó a ${patientName(o)}`
         : o.status === "COMPLETADO"
-          ? `Se completó orden ${o.orderCode}`
-          : `Se creó ${o.orderCode}`,
+          ? `Se completó para ${patientName(o)}`
+          : `Se creó orden para ${patientName(o)}`,
     createdAt: o.createdAt.toISOString(),
   }));
 
@@ -82,6 +86,7 @@ export default async function DashboardPage() {
       id: o.id,
       orderCode: o.orderCode,
       createdAt: o.createdAt,
+      deliveredAt: o.deliveredAt ?? undefined,
       status: o.status,
       patient: o.patient,
       items: o.items,
@@ -119,36 +124,42 @@ export default async function DashboardPage() {
           value={patientsCount}
           subtitle="registrados"
           icon={<Users className="h-5 w-5" />}
+          accent="teal"
         />
         <MetricCard
           title="Órdenes (mes)"
           value={ordersCount}
           subtitle="este mes"
           icon={<FileText className="h-5 w-5" />}
+          accent="blue"
         />
         <MetricCard
           title="Pendientes"
           value={pendingCount}
           subtitle="por capturar / validar"
           icon={<ClipboardList className="h-5 w-5" />}
+          accent="amber"
         />
         <MetricCard
           title="Análisis en catálogo"
           value={testsCount}
           subtitle="activos"
           icon={<TestTube className="h-5 w-5" />}
+          accent="violet"
         />
         <MetricCard
           title="Órdenes hoy"
           value={ordersToday}
           subtitle="creadas hoy"
           icon={<Calendar className="h-5 w-5" />}
+          accent="emerald"
         />
         <MetricCard
           title="Tiempo promedio"
           value="24h"
           subtitle="entrega estimada"
           icon={<Clock className="h-5 w-5" />}
+          accent="sky"
         />
       </div>
 
@@ -156,10 +167,15 @@ export default async function DashboardPage() {
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Pendientes</CardTitle>
+            <div>
+              <CardTitle>Pendientes y recientes</CardTitle>
+              <p className="text-sm font-normal text-slate-500 dark:text-slate-400 mt-0.5">
+                Pendientes, en curso, completados y entregados — información rápida a la mano
+              </p>
+            </div>
             <Link
               href="/pending"
-              className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:underline"
+              className="text-sm font-medium text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 hover:underline shrink-0 transition-colors"
             >
               Ver todas
             </Link>

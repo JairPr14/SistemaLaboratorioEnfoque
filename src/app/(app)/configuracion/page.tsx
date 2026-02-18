@@ -331,7 +331,7 @@ export default function ConfiguracionPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12 text-slate-500">
+      <div className="flex items-center justify-center py-12 text-slate-500 dark:text-slate-400">
         Cargando configuración...
       </div>
     );
@@ -380,7 +380,7 @@ export default function ConfiguracionPage() {
             <TableBody>
               {roles.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-slate-500">
+                  <TableCell colSpan={6} className="py-8 text-center text-slate-500 dark:text-slate-400">
                     No hay roles.
                   </TableCell>
                 </TableRow>
@@ -389,7 +389,7 @@ export default function ConfiguracionPage() {
                   <TableRow key={role.id}>
                     <TableCell className="font-medium">{role.code}</TableCell>
                     <TableCell>{role.name}</TableCell>
-                    <TableCell className="text-slate-500 max-w-xs truncate">
+                    <TableCell className="text-slate-500 dark:text-slate-400 max-w-xs truncate">
                       {role.description ?? "—"}
                     </TableCell>
                     <TableCell>
@@ -414,7 +414,7 @@ export default function ConfiguracionPage() {
                           onClick={() => handleDeleteRole(role)}
                           disabled={saving || role._count.users > 0}
                           title={role._count.users > 0 ? "No se puede eliminar: tiene usuarios asignados" : "Eliminar rol"}
-                          className="text-slate-500 hover:text-red-600"
+                          className="text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -465,7 +465,7 @@ export default function ConfiguracionPage() {
               />
               <Label htmlFor="stampFile" className="cursor-pointer">
                 <span
-                  className={`inline-flex items-center justify-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm font-medium hover:bg-slate-100 ${stampUploading ? "opacity-50 cursor-not-allowed" : ""}`}
+                  className={`inline-flex items-center justify-center gap-2 rounded-md border border-slate-200 dark:border-slate-600 px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-700 ${stampUploading ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
                   {stampUploading ? "Subiendo…" : printConfig?.stampImageUrl ? "Cambiar sello" : "Subir sello"}
                 </span>
@@ -474,6 +474,7 @@ export default function ConfiguracionPage() {
             {printConfig?.stampImageUrl && (
               <>
                 <div className="flex items-center gap-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- URL dinámica de sello */}
                   <img
                     src={printConfig.stampImageUrl}
                     alt="Vista previa del sello"
@@ -486,7 +487,7 @@ export default function ConfiguracionPage() {
                   size="sm"
                   onClick={handleRemoveStamp}
                   disabled={saving}
-                  className="text-slate-500 hover:text-red-600"
+                  className="text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400"
                 >
                   Quitar sello
                 </Button>
@@ -521,7 +522,7 @@ export default function ConfiguracionPage() {
             <TableBody>
               {users.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-8 text-center text-slate-500">
+                  <TableCell colSpan={5} className="py-8 text-center text-slate-500 dark:text-slate-400">
                     No hay usuarios.
                   </TableCell>
                 </TableRow>
@@ -534,7 +535,7 @@ export default function ConfiguracionPage() {
                       {user.role ? (
                         <Badge variant="secondary">{user.role.name}</Badge>
                       ) : (
-                        <span className="text-slate-400">Sin rol</span>
+                        <span className="text-slate-400 dark:text-slate-500">Sin rol</span>
                       )}
                     </TableCell>
                     <TableCell>
@@ -558,7 +559,7 @@ export default function ConfiguracionPage() {
                           onClick={() => handleDeleteUser(user)}
                           disabled={saving}
                           title="Eliminar usuario"
-                          className="text-slate-500 hover:text-red-600"
+                          className="text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -608,7 +609,7 @@ export default function ConfiguracionPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-slate-700">Permisos</Label>
+              <Label className="text-slate-700 dark:text-slate-300">Permisos</Label>
               <div className="rounded-md border border-slate-200 bg-slate-50/50 p-3 space-y-2 dark:border-slate-600 dark:bg-slate-800/50">
                 {ALL_PERMISSIONS.map((p) => (
                   <div key={p.code} className="flex items-center gap-2">
@@ -655,7 +656,7 @@ export default function ConfiguracionPage() {
           </DialogHeader>
           {roleEdit && (
             <form onSubmit={handleSaveRole} className="space-y-4">
-              <p className="text-sm text-slate-500">Código: {roleEdit.code}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Código: {roleEdit.code}</p>
               <div className="space-y-2">
                 <Label htmlFor="roleName">Nombre</Label>
                 <Input
@@ -674,7 +675,7 @@ export default function ConfiguracionPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-slate-700">Permisos</Label>
+                <Label className="text-slate-700 dark:text-slate-300">Permisos</Label>
                 <div className="rounded-md border border-slate-200 bg-slate-50/50 p-3 space-y-2 dark:border-slate-600 dark:bg-slate-800/50">
                   {ALL_PERMISSIONS.map((p) => {
                     const rolePerms = parseRolePermissions(roleEdit.permissions);
@@ -789,7 +790,7 @@ export default function ConfiguracionPage() {
           </DialogHeader>
           {userEdit && (
             <form onSubmit={handleSaveUser} className="space-y-4">
-              <p className="text-sm text-slate-500">{userEdit.email}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">{userEdit.email}</p>
               <div className="space-y-2">
                 <Label htmlFor="userRoleId">Rol</Label>
                 <select
@@ -816,7 +817,7 @@ export default function ConfiguracionPage() {
                   minLength={6}
                   className="dark:bg-slate-800"
                 />
-                <p className="text-xs text-slate-500">Mínimo 6 caracteres</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Mínimo 6 caracteres</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="userPasswordConfirm">Confirmar nueva contraseña</Label>

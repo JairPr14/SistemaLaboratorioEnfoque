@@ -55,18 +55,18 @@ export default async function NewOrderPage() {
   return (
     <div className="space-y-6 min-w-0">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 tracking-tight">
           Nueva orden
         </h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           Seleccione el paciente y los análisis a solicitar.
         </p>
       </div>
 
       <Card className="overflow-hidden">
-        <CardHeader className="border-b border-slate-100 bg-slate-50/50">
+        <CardHeader className="border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
           <CardTitle className="text-lg">Datos de la orden</CardTitle>
-          <p className="text-sm text-slate-500 font-normal mt-0.5">
+          <p className="text-sm text-slate-500 dark:text-slate-400 font-normal mt-0.5">
             Cada análisis seleccionado incluye su plantilla para capturar resultados.
           </p>
         </CardHeader>

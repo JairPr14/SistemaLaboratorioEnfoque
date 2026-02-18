@@ -56,7 +56,7 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
         <CardHeader className="flex flex-row items-start justify-between gap-4">
           <div>
             <CardTitle>Orden {order.orderCode}</CardTitle>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
               Cambiar estado de la orden
             </p>
           </div>
@@ -78,38 +78,38 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
         <CardContent>
           <div className="grid gap-4 md:grid-cols-3">
             <div>
-              <p className="text-sm text-slate-500">Paciente</p>
-              <p className="text-base font-semibold text-slate-900">
+              <p className="text-sm text-slate-500 dark:text-slate-400">Paciente</p>
+              <p className="text-base font-semibold text-slate-900 dark:text-slate-100">
                 {order.patient.firstName} {order.patient.lastName}
               </p>
             </div>
             <div>
-              <p className="text-sm text-slate-500">Fecha</p>
-              <p className="text-base font-semibold text-slate-900">
+              <p className="text-sm text-slate-500 dark:text-slate-400">Fecha</p>
+              <p className="text-base font-semibold text-slate-900 dark:text-slate-100">
                 {formatDate(order.createdAt)}
               </p>
             </div>
             <div>
-              <p className="text-sm text-slate-500">Estado</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Estado</p>
               <Badge variant="secondary">{order.status}</Badge>
             </div>
           </div>
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             <div>
-              <p className="text-sm text-slate-500">Solicitante</p>
-              <p className="text-base font-semibold text-slate-900">
+              <p className="text-sm text-slate-500 dark:text-slate-400">Solicitante</p>
+              <p className="text-base font-semibold text-slate-900 dark:text-slate-100">
                 {order.requestedBy || "-"}
               </p>
             </div>
             <div>
-              <p className="text-sm text-slate-500">Total</p>
-              <p className="text-base font-semibold text-slate-900">
+              <p className="text-sm text-slate-500 dark:text-slate-400">Total</p>
+              <p className="text-base font-semibold text-slate-900 dark:text-slate-100">
                 {formatCurrency(Number(order.totalPrice))}
               </p>
             </div>
             <div>
-              <p className="text-sm text-slate-500">Tipo de paciente (sede)</p>
-              <p className="text-base font-semibold text-slate-900">
+              <p className="text-sm text-slate-500 dark:text-slate-400">Tipo de paciente (sede)</p>
+              <p className="text-base font-semibold text-slate-900 dark:text-slate-100">
                 {order.patientType === "CLINICA"
                   ? "Paciente Clínica"
                   : order.patientType === "EXTERNO"

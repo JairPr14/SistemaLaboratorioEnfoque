@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { pageLayoutClasses } from "@/components/layout/PageHeader";
 import { TemplateForm } from "@/components/forms/TemplateForm";
 import { TemplatesList } from "@/components/templates/TemplatesList";
 
@@ -23,41 +24,38 @@ export default async function TemplatesPage() {
     itemsCount: t.items.length,
   }));
 
+  const testIdsWithTemplate = new Set(templates.map((t) => t.labTest.id));
+  const labTestsForForm = tests.map((t) => ({
+    id: t.id,
+    name: t.name,
+    code: t.code,
+    hasTemplate: testIdsWithTemplate.has(t.id),
+  }));
+
   return (
-    <div className="space-y-8 min-w-0">
-      {/* Encabezado */}
+    <div className={pageLayoutClasses.wrapper}>
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">
-          Plantillas
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className={pageLayoutClasses.title}>Plantillas</h1>
+        <p className={pageLayoutClasses.description}>
           Define los parámetros de cada análisis para capturar resultados.
         </p>
       </div>
 
-      {/* 1. Catálogo de plantillas + buscador */}
       <TemplatesList templates={templatesForClient} />
 
-      {/* 2. Nueva plantilla */}
       <section className="min-w-0">
-        <h2 className="text-lg font-semibold text-slate-900 mb-3">
+        <h2 className={pageLayoutClasses.sectionTitle}>
           Nueva plantilla
         </h2>
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Agregar plantilla al catálogo</CardTitle>
-            <p className="text-sm text-slate-500 font-normal mt-0.5">
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-normal mt-0.5">
               Elige un análisis y define sus parámetros.
             </p>
           </CardHeader>
           <CardContent>
-            <TemplateForm
-              labTests={tests.map((t) => ({
-                id: t.id,
-                name: t.name,
-                code: t.code,
-              }))}
-            />
+            <TemplateForm labTests={labTestsForForm} />
           </CardContent>
         </Card>
       </section>

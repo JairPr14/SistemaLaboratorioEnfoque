@@ -12,6 +12,14 @@
   --primary: 15 23 42;
   --primary-foreground: 248 250 252;
   --danger: 220 38 38;
+  --accent: 20 184 166; /* teal-500 */
+  --accent-foreground: 255 255 255;
+  --radius: 0.75rem;
+  --radius-sm: 0.5rem;
+  --transition: 180ms ease;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.06), 0 2px 4px -2px rgb(0 0 0 / 0.04);
 }
 
 .dark {
@@ -23,6 +31,11 @@
   --primary: 248 250 252;
   --primary-foreground: 15 23 42;
   --danger: 239 68 68;
+  --accent: 45 212 191; /* teal-400 */
+  --accent-foreground: 15 23 42;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.2);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.25);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.2), 0 2px 4px -2px rgb(0 0 0 / 0.15);
 }
 
 @theme inline {
@@ -34,14 +47,23 @@
   --color-primary: rgb(var(--primary));
   --color-primary-foreground: rgb(var(--primary-foreground));
   --color-danger: rgb(var(--danger));
+  --color-accent: rgb(var(--accent));
+  --color-accent-foreground: rgb(var(--accent-foreground));
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   background: rgb(var(--background));
   color: rgb(var(--foreground));
-  font-family: "Inter", system-ui, sans-serif;
-  transition: background-color 0.2s, color 0.2s;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  transition: background-color 0.25s ease, color 0.25s ease;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+
 
 /* Estilos para selects en modo oscuro */
 .dark select {

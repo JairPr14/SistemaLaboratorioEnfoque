@@ -6,7 +6,7 @@ const Table = React.forwardRef<HTMLTableElement, React.ComponentProps<"table">>(
   ({ className, ...props }, ref) => (
     <table
       ref={ref}
-      className={cn("w-full text-sm text-slate-700 dark:text-slate-300", className)}
+      className={cn("w-full text-sm text-slate-700 dark:text-slate-200", className)}
       {...props}
     />
   ),
@@ -19,7 +19,10 @@ const TableHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <thead
     ref={ref}
-    className={cn("border-b border-slate-200 text-slate-500 dark:border-slate-700 dark:text-slate-300", className)}
+    className={cn(
+      "border-b border-slate-200/80 text-slate-500 dark:border-slate-600 dark:text-slate-300",
+      className,
+    )}
     {...props}
   />
 ));
@@ -29,7 +32,11 @@ const TableBody = React.forwardRef<
   HTMLTableSectionElement,
   React.ComponentProps<"tbody">
 >(({ className, ...props }, ref) => (
-  <tbody ref={ref} className={cn("divide-y divide-slate-200 dark:divide-slate-700", className)} {...props} />
+  <tbody
+    ref={ref}
+    className={cn("divide-y divide-slate-200/80 dark:divide-slate-700/80", className)}
+    {...props}
+  />
 ));
 TableBody.displayName = "TableBody";
 
@@ -37,7 +44,14 @@ const TableRow = React.forwardRef<
   HTMLTableRowElement,
   React.ComponentProps<"tr">
 >(({ className, ...props }, ref) => (
-  <tr ref={ref} className={cn("hover:bg-slate-50 dark:hover:bg-slate-800", className)} {...props} />
+  <tr
+    ref={ref}
+    className={cn(
+      "transition-colors duration-150 hover:bg-slate-50/80 dark:hover:bg-slate-800/50",
+      className,
+    )}
+    {...props}
+  />
 ));
 TableRow.displayName = "TableRow";
 
@@ -47,7 +61,7 @@ const TableHead = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <th
     ref={ref}
-    className={cn("px-4 py-3 text-left font-medium", className)}
+    className={cn("px-4 py-3.5 text-left font-medium", className)}
     {...props}
   />
 ));
@@ -57,7 +71,11 @@ const TableCell = React.forwardRef<
   HTMLTableCellElement,
   React.ComponentProps<"td">
 >(({ className, ...props }, ref) => (
-  <td ref={ref} className={cn("px-4 py-3", className)} {...props} />
+  <td
+    ref={ref}
+    className={cn("px-4 py-3.5 text-slate-700 dark:text-slate-200", className)}
+    {...props}
+  />
 ));
 TableCell.displayName = "TableCell";
 

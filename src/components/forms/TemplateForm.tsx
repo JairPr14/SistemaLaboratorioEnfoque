@@ -23,6 +23,8 @@ type LabTestOption = {
   id: string;
   name: string;
   code: string;
+  /** Si es false o no viene, el análisis aún no tiene plantilla (prioritario para crear una nueva) */
+  hasTemplate?: boolean;
 };
 
 type Props = {
@@ -34,10 +36,13 @@ type Props = {
 export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
   const router = useRouter();
   const [viewMode, setViewMode] = useState<"table" | "form">("form");
+  const defaultLabTestId =
+    labTests.find((t) => !t.hasTemplate)?.id ?? labTests[0]?.id ?? "";
+
   const form = useForm<TemplateFormValues>({
     resolver: zodResolver(templateSchema) as Resolver<TemplateFormValues>,
     defaultValues: {
-      labTestId: labTests[0]?.id ?? "",
+      labTestId: defaultLabTestId,
       title: "",
       notes: "",
       items: [
@@ -229,8 +234,8 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
   return (
     <FormProvider {...form}>
       <form onSubmit={form.handleSubmit(onSubmit, onError)} className="space-y-6">
-      <section className="space-y-4 rounded-lg border border-slate-200/80 bg-slate-50/50 p-4">
-        <h3 className="text-sm font-medium text-slate-700">Datos de la plantilla</h3>
+      <section className="space-y-4 rounded-lg border border-slate-200/80 dark:border-slate-600 bg-slate-50/50 dark:bg-slate-800/50 p-4">
+        <h3 className="text-sm font-medium text-slate-700 dark:text-slate-200">Datos de la plantilla</h3>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label className="text-slate-700 dark:text-slate-300">Análisis</Label>
@@ -238,15 +243,44 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
               className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-slate-400 focus:ring-1 focus:ring-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-500"
               {...form.register("labTestId")}
             >
-              {labTests.map((test) => (
-                <option key={test.id} value={test.id}>
-                  {test.code} — {test.name}
-                </option>
-              ))}
+              {(() => {
+                const withoutTemplate = labTests.filter((t) => !t.hasTemplate);
+                const withTemplate = labTests.filter((t) => t.hasTemplate);
+                return (
+                  <>
+                    {withoutTemplate.length > 0 && (
+                      <optgroup label="Sin plantilla (elegir para crear)">
+                        {withoutTemplate.map((test) => (
+                          <option key={test.id} value={test.id}>
+                            {test.code} — {test.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {withTemplate.length > 0 && (
+                      <optgroup label="Ya tienen plantilla">
+                        {withTemplate.map((test) => (
+                          <option key={test.id} value={test.id}>
+                            {test.code} — {test.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {labTests.length === 0 && (
+                      <option value="">No hay análisis en el catálogo</option>
+                    )}
+                  </>
+                );
+              })()}
             </select>
+            {labTests.some((t) => !t.hasTemplate) && (
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Los análisis &quot;Sin plantilla&quot; son los que aún no tienen parámetros definidos; al elegir uno podrás crear su plantilla.
+              </p>
+            )}
           </div>
           <div className="space-y-2">
-            <Label className="text-slate-700">Título</Label>
+            <Label className="text-slate-700 dark:text-slate-300">Título</Label>
             <Input
               {...form.register("title")}
               placeholder="Ej: Hemograma completo"
@@ -260,7 +294,7 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
           </div>
         </div>
         <div className="space-y-2">
-          <Label className="text-slate-700">Notas (opcional)</Label>
+          <Label className="text-slate-700 dark:text-slate-300">Notas (opcional)</Label>
           <Textarea
             {...form.register("notes")}
             placeholder="Notas adicionales..."
@@ -271,8 +305,8 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
 
       <section className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h3 className="text-sm font-medium text-slate-700">
-            Parámetros <span className="text-slate-500 font-normal">({fields.length})</span>
+          <h3 className="text-sm font-medium text-slate-700 dark:text-slate-200">
+            Parámetros <span className="text-slate-500 dark:text-slate-400 font-normal">({fields.length})</span>
           </h3>
           <div className="flex flex-wrap gap-2">
             <Button
@@ -323,10 +357,10 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
                       key={preset.code}
                       type="button"
                       onClick={() => loadPreset(preset)}
-                      className="text-left p-3 rounded-md border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                      className="text-left p-3 rounded-md border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:border-slate-300 dark:hover:border-slate-500 transition-colors"
                     >
-                      <div className="font-semibold text-slate-900">{preset.name}</div>
-                      <div className="text-xs text-slate-500 mt-1">
+                      <div className="font-semibold text-slate-900 dark:text-slate-100">{preset.name}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                         {preset.items.length} parámetros
                         {preset.notes && ` · ${preset.notes}`}
                       </div>
@@ -339,28 +373,28 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
         </div>
 
         {viewMode === "table" ? (
-          <div className="rounded-lg border border-slate-200 overflow-hidden">
+          <div className="rounded-lg border border-slate-200 dark:border-slate-600 overflow-hidden">
             <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
               <Table className="min-w-[800px]">
-                <TableHeader className="sticky top-0 bg-slate-100/95 z-10">
-                  <TableRow className="border-slate-200">
-                    <TableHead className="w-10 text-slate-600">#</TableHead>
-                    <TableHead className="text-slate-600">Grupo</TableHead>
-                    <TableHead className="text-slate-600">Parámetro</TableHead>
-                    <TableHead className="text-slate-600 w-24">Unidad</TableHead>
-                    <TableHead className="text-slate-600 min-w-[100px]">Ref. texto</TableHead>
-                    <TableHead className="text-slate-600 w-24">Tipo</TableHead>
-                    <TableHead className="text-slate-600 w-20">Min</TableHead>
-                    <TableHead className="text-slate-600 w-20">Max</TableHead>
-                    <TableHead className="text-slate-600 w-14">Ord.</TableHead>
-                    <TableHead className="text-slate-600 w-32">Rangos</TableHead>
+                <TableHeader className="sticky top-0 bg-slate-100/95 dark:bg-slate-800/95 z-10">
+                  <TableRow className="border-slate-200 dark:border-slate-600">
+                    <TableHead className="w-10 text-slate-600 dark:text-slate-300">#</TableHead>
+                    <TableHead className="text-slate-600 dark:text-slate-300">Grupo</TableHead>
+                    <TableHead className="text-slate-600 dark:text-slate-300">Parámetro</TableHead>
+                    <TableHead className="text-slate-600 dark:text-slate-300 w-24">Unidad</TableHead>
+                    <TableHead className="text-slate-600 dark:text-slate-300 min-w-[100px]">Ref. texto</TableHead>
+                    <TableHead className="text-slate-600 dark:text-slate-300 w-24">Tipo</TableHead>
+                    <TableHead className="text-slate-600 dark:text-slate-300 w-20">Min</TableHead>
+                    <TableHead className="text-slate-600 dark:text-slate-300 w-20">Max</TableHead>
+                    <TableHead className="text-slate-600 dark:text-slate-300 w-14">Ord.</TableHead>
+                    <TableHead className="text-slate-600 dark:text-slate-300 w-32">Rangos</TableHead>
                     <TableHead className="w-32">Ordenar</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {fields.map((field, index) => (
                     <TableRow key={field.id}>
-                      <TableCell className="text-xs text-slate-500">{index + 1}</TableCell>
+                      <TableCell className="text-xs text-slate-500 dark:text-slate-400">{index + 1}</TableCell>
                       <TableCell>
                         <Input
                           className="h-8 text-xs"
@@ -396,7 +430,7 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
                       </TableCell>
                       <TableCell>
                         <select
-                          className="h-8 w-full rounded-md border border-slate-200 bg-white px-2 text-xs"
+                          className="h-8 w-full rounded-md border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 text-xs text-slate-900 dark:text-slate-100"
                           {...form.register(`items.${index}.valueType`)}
                         >
                           {valueTypeValues.map((value) => (
@@ -494,9 +528,9 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
           <ul className="space-y-3">
             {fields.map((field, index) => (
               <li key={field.id}>
-                <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm space-y-4">
+                <div className="rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800/80 p-4 shadow-sm space-y-4">
                   <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <span className="text-xs font-medium text-slate-400">Parámetro {index + 1}</span>
+                    <span className="text-xs font-medium text-slate-400 dark:text-slate-500">Parámetro {index + 1}</span>
                     <div className="flex gap-2 flex-wrap">
                       <Button
                         type="button"
@@ -542,7 +576,7 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-slate-600">Parámetro</Label>
+                      <Label className="text-xs text-slate-600 dark:text-slate-300">Parámetro</Label>
                       <Input
                         className="rounded-lg h-9"
                         placeholder="Nombre"
@@ -555,7 +589,7 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
                       )}
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-slate-600">Grupo (opcional)</Label>
+                      <Label className="text-xs text-slate-600 dark:text-slate-300">Grupo (opcional)</Label>
                       <Input
                         className="rounded-lg h-9"
                         placeholder="Grupo"
@@ -565,7 +599,7 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-slate-600">Unidad</Label>
+                      <Label className="text-xs text-slate-600 dark:text-slate-300">Unidad</Label>
                       <Input
                         className="rounded-lg h-9"
                         placeholder="mg/dL"
@@ -573,7 +607,7 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-slate-600">Ref. texto</Label>
+                      <Label className="text-xs text-slate-600 dark:text-slate-300">Ref. texto</Label>
                       <Input
                         className="rounded-lg h-9"
                         placeholder="12-16"
@@ -581,9 +615,9 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-slate-600">Tipo</Label>
+                      <Label className="text-xs text-slate-600 dark:text-slate-300">Tipo</Label>
                       <select
-                        className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
+                        className="h-9 w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 text-sm text-slate-900 dark:text-slate-100"
                         {...form.register(`items.${index}.valueType`)}
                       >
                         {valueTypeValues.map((v) => (
@@ -593,7 +627,7 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
                     </div>
                     <div className="space-y-1.5 sm:col-span-2 lg:col-span-1 grid grid-cols-2 gap-2">
                       <div>
-                        <Label className="text-xs text-slate-600">Min</Label>
+                        <Label className="text-xs text-slate-600 dark:text-slate-300">Min</Label>
                         <Input
                           type="number"
                           step="0.01"
@@ -604,7 +638,7 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
                         />
                       </div>
                       <div>
-                        <Label className="text-xs text-slate-600">Max</Label>
+                        <Label className="text-xs text-slate-600 dark:text-slate-300">Max</Label>
                         <Input
                           type="number"
                           step="0.01"
@@ -618,7 +652,7 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
                   </div>
                   {form.watch(`items.${index}.valueType`) === "SELECT" && (
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-slate-600">Opciones (separadas por coma)</Label>
+                      <Label className="text-xs text-slate-600 dark:text-slate-300">Opciones (separadas por coma)</Label>
                       <Input
                         className="rounded-lg h-9"
                         value={form.watch(`items.${index}.selectOptions`)?.join(", ") || ""}
@@ -632,11 +666,11 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
                     </div>
                   )}
                   <div className="space-y-2 border-t pt-3">
-                    <Label className="text-xs text-slate-600 font-medium">Valores Referenciales</Label>
+                    <Label className="text-xs text-slate-600 dark:text-slate-300 font-medium">Valores Referenciales</Label>
                     <RefRangesManager itemIndex={index} />
                   </div>
                   <div className="flex items-center justify-end gap-2">
-                    <Label className="text-xs text-slate-600">Orden</Label>
+                    <Label className="text-xs text-slate-600 dark:text-slate-300">Orden</Label>
                     <Input
                       type="number"
                       className="rounded-lg h-9 w-16 text-center"
@@ -650,7 +684,7 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
         )}
       </section>
 
-      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end pt-4 border-t border-slate-200">
+      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end pt-4 border-t border-slate-200 dark:border-slate-600">
         <Button type="submit" className="w-full sm:w-auto sm:min-w-[180px]">
           Guardar plantilla
         </Button>

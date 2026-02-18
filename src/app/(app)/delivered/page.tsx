@@ -60,20 +60,20 @@ export default async function DeliveredPage() {
     <Card>
       <CardHeader>
         <CardTitle>Análisis entregados</CardTitle>
-        <p className="text-sm text-slate-500 mt-1">
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
           Órdenes con estado ENTREGADO, agrupadas por paciente y día (más recientes primero).
         </p>
       </CardHeader>
       <CardContent>
         {orders.length === 0 ? (
-          <div className="py-12 text-center text-slate-500">
+          <div className="py-12 text-center text-slate-500 dark:text-slate-400">
             <p>No hay órdenes entregadas registradas.</p>
             <p className="text-sm mt-2">
               Las órdenes marcadas como &quot;Entregado&quot; aparecerán aquí.
             </p>
             <Link
               href="/orders"
-              className="mt-4 inline-block text-sm font-medium text-slate-900 hover:underline"
+              className="mt-4 inline-block text-sm font-medium text-slate-900 dark:text-slate-100 hover:underline"
             >
               Ir a Órdenes
             </Link>
@@ -83,34 +83,34 @@ export default async function DeliveredPage() {
             {groups.map((group) => (
               <div
                 key={group.key}
-                className="rounded-lg border border-slate-200 bg-white overflow-hidden"
+                className="rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800/80 overflow-hidden"
               >
-                <div className="flex flex-wrap items-center gap-4 border-b border-slate-200 bg-slate-50 px-4 py-3">
-                  <span className="font-semibold text-slate-900">
+                <div className="flex flex-wrap items-center gap-4 border-b border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-3">
+                  <span className="font-semibold text-slate-900 dark:text-slate-100">
                     {group.patientName}
                   </span>
-                  <span className="text-sm text-slate-600">DNI {group.patientDni}</span>
+                  <span className="text-sm text-slate-600 dark:text-slate-300">DNI {group.patientDni}</span>
                   <Badge variant="secondary" className="text-xs">
                     {group.displayDate}
                   </Badge>
                   {group.orders.length > 1 && (
-                    <span className="text-xs text-slate-500">
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
                       {group.orders.length} órdenes en este día
                     </span>
                   )}
                 </div>
-                <div className="divide-y divide-slate-100">
+                <div className="divide-y divide-slate-100 dark:divide-slate-600">
                   {group.orders.map((order) => (
                     <div key={order.id}>
-                      <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50/50 px-4 py-2">
+                      <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-700/30 px-4 py-2">
                         <Link
                           href={`/orders/${order.id}`}
-                          className="font-medium text-slate-900 hover:underline"
+                          className="font-medium text-slate-900 dark:text-slate-100 hover:underline"
                         >
                           Orden {order.orderCode}
                         </Link>
                         {order.deliveredAt && (
-                          <span className="text-xs text-slate-500">
+                          <span className="text-xs text-slate-500 dark:text-slate-400">
                             Entregado: {formatDateTime(order.deliveredAt)}
                           </span>
                         )}
@@ -118,14 +118,14 @@ export default async function DeliveredPage() {
                           href={`/orders/${order.id}/print`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-sm font-medium text-slate-600 hover:text-slate-900 hover:underline"
+                          className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:underline"
                         >
                           Ver PDF
                         </Link>
                       </div>
                       <Table>
                         <TableHeader>
-                          <TableRow className="bg-slate-50/50">
+                          <TableRow className="bg-slate-50/50 dark:bg-slate-700/50">
                             <TableHead className="w-12">#</TableHead>
                             <TableHead>Código</TableHead>
                             <TableHead>Análisis</TableHead>
@@ -136,9 +136,9 @@ export default async function DeliveredPage() {
                         <TableBody>
                           {order.items.map((item, idx) => (
                             <TableRow key={item.id}>
-                              <TableCell className="text-slate-500 text-sm">{idx + 1}</TableCell>
-                              <TableCell className="font-mono text-sm">{item.labTest.code}</TableCell>
-                              <TableCell className="font-medium">{item.labTest.name}</TableCell>
+                              <TableCell className="text-slate-500 dark:text-slate-400 text-sm">{idx + 1}</TableCell>
+                              <TableCell className="font-mono text-sm text-slate-900 dark:text-slate-100">{item.labTest.code}</TableCell>
+                              <TableCell className="font-medium text-slate-900 dark:text-slate-100">{item.labTest.name}</TableCell>
                               <TableCell>
                                 <Badge variant="secondary" className="text-xs">
                                   {item.labTest.section}
@@ -146,11 +146,11 @@ export default async function DeliveredPage() {
                               </TableCell>
                               <TableCell>
                                 {item.result && (item.result.items?.length ?? 0) > 0 ? (
-                                  <Badge variant="success" className="bg-emerald-100 text-emerald-700 text-xs">
+                                  <Badge variant="success" className="text-xs">
                                     {item.result.items?.length ?? 0} parámetros
                                   </Badge>
                                 ) : (
-                                  <span className="text-xs text-slate-400">Sin resultados</span>
+                                  <span className="text-xs text-slate-400 dark:text-slate-500">Sin resultados</span>
                                 )}
                               </TableCell>
                             </TableRow>

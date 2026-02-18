@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { pageLayoutClasses } from "@/components/layout/PageHeader";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -143,20 +144,18 @@ export default function PromocionesPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12 text-slate-500">
+      <div className="flex items-center justify-center py-12 text-slate-500 dark:text-slate-400">
         Cargando promociones...
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 min-w-0">
-      <div className="flex items-center justify-between gap-4">
+    <div className={pageLayoutClasses.wrapper}>
+      <div className={pageLayoutClasses.headerRow}>
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">
-            Promociones / Paquetes
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className={pageLayoutClasses.title}>Promociones / Paquetes</h1>
+          <p className={pageLayoutClasses.description}>
             Agrupa análisis con un precio promocional (ej. Perfil renal, Paquete recién nacido).
           </p>
         </div>
@@ -169,37 +168,39 @@ export default function PromocionesPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Listado</CardTitle>
-          <p className="text-sm text-slate-500 font-normal mt-0.5">
+          <p className="text-sm text-slate-500 dark:text-slate-400 font-normal mt-0.5">
             Al crear una orden puedes elegir una promoción y se aplicará el precio del paquete (si lo definiste).
           </p>
         </CardHeader>
         <CardContent>
           {profiles.length === 0 ? (
-            <p className="text-slate-500 py-6 text-center">
+            <p className="text-slate-500 dark:text-slate-400 py-6 text-center">
               No hay promociones. Crea una para ofrecer paquetes como Glucosa+Urea+Creatinina o Paquete recién nacido.
             </p>
           ) : (
             <Table>
               <TableHeader>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Análisis</TableHead>
-                <TableHead className="text-right">Precio paquete</TableHead>
-                <TableHead className="w-[100px]" />
+                <TableRow>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Análisis</TableHead>
+                  <TableHead className="text-right">Precio paquete</TableHead>
+                  <TableHead className="w-[100px]" />
+                </TableRow>
               </TableHeader>
               <TableBody>
                 {profiles.map((p) => (
                   <TableRow key={p.id}>
-                    <TableCell className="font-medium">{p.name}</TableCell>
+                    <TableCell className="font-medium text-slate-900 dark:text-slate-100">{p.name}</TableCell>
                     <TableCell>
-                      <span className="text-slate-600">
+                      <span className="text-slate-600 dark:text-slate-300">
                         {p.tests.map((t) => t.code).join(", ")}
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
                       {p.packagePrice != null ? (
-                        <span className="font-medium">S/ {Number(p.packagePrice).toFixed(2)}</span>
+                        <span className="font-medium text-slate-900 dark:text-slate-100">S/ {Number(p.packagePrice).toFixed(2)}</span>
                       ) : (
-                        <span className="text-slate-400">Suma de análisis</span>
+                        <span className="text-slate-400 dark:text-slate-500">Suma de análisis</span>
                       )}
                     </TableCell>
                     <TableCell>
@@ -216,7 +217,7 @@ export default function PromocionesPage() {
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 dark:hover:text-red-400"
                           onClick={() => handleDelete(p.id)}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -260,24 +261,65 @@ export default function PromocionesPage() {
             </div>
             <div className="space-y-2">
               <Label>Análisis incluidos</Label>
+              {/* Apartado: análisis seleccionados */}
+              {formTestIds.length > 0 ? (
+                <div className="rounded border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/50 p-3 mb-2">
+                  <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">
+                    Análisis seleccionados ({formTestIds.length})
+                  </p>
+                  <ul className="max-h-32 overflow-auto space-y-1">
+                    {formTestIds.map((id) => {
+                      const t = tests.find((x) => x.id === id);
+                      if (!t) return null;
+                      return (
+                        <li
+                          key={t.id}
+                          className="flex items-center justify-between gap-2 text-sm rounded px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                        >
+                          <span className="text-slate-800 dark:text-slate-200">
+                            {t.code} – {t.name}
+                            <span className="text-slate-500 dark:text-slate-400 ml-1">
+                              (S/ {Number(t.price).toFixed(2)})
+                            </span>
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400"
+                            onClick={() => toggleTest(t.id)}
+                            aria-label={`Quitar ${t.code}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">
+                  Ningún análisis seleccionado. Elige al menos uno en la lista de abajo.
+                </p>
+              )}
               <Input
                 placeholder="Buscar por código o nombre..."
                 value={searchTest}
                 onChange={(e) => setSearchTest(e.target.value)}
                 className="mb-2"
               />
-              <div className="max-h-48 overflow-auto rounded border border-slate-200 p-2 space-y-1">
+              <div className="max-h-48 overflow-auto rounded border border-slate-200 dark:border-slate-600 p-2 space-y-1">
                 {filteredTests.map((t) => (
                   <label
                     key={t.id}
-                    className="flex items-center gap-2 cursor-pointer rounded px-2 py-1.5 hover:bg-slate-50"
+                    className="flex items-center gap-2 cursor-pointer rounded px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700/50"
                   >
                     <input
                       type="checkbox"
                       checked={formTestIds.includes(t.id)}
                       onChange={() => toggleTest(t.id)}
                     />
-                    <span className="text-sm">
+                    <span className="text-sm text-slate-900 dark:text-slate-200">
                       {t.code} - {t.name} (S/ {Number(t.price).toFixed(2)})
                     </span>
                   </label>

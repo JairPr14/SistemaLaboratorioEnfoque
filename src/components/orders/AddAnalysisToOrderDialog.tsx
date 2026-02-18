@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Plus, Search } from "lucide-react";
+import { Search } from "lucide-react";
 
 type TestItem = {
   id: string;

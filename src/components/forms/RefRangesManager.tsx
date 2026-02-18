@@ -58,14 +58,14 @@ export function RefRangesManager({ itemIndex }: Props) {
         <Button type="button" variant="outline" size="sm" className="text-xs">
           Rangos de referencia
           {fields.length > 0 && (
-            <span className="ml-1 text-slate-500">({fields.length})</span>
+            <span className="ml-1 text-slate-500 dark:text-slate-400">({fields.length})</span>
           )}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Valores Referenciales</DialogTitle>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Configure múltiples rangos según edad y sexo. Si no especifica edad/sexo, será el valor por defecto.
           </p>
         </DialogHeader>
@@ -78,12 +78,12 @@ export function RefRangesManager({ itemIndex }: Props) {
           </div>
 
           {fields.length === 0 ? (
-            <div className="text-center py-8 text-slate-500">
+            <div className="text-center py-8 text-slate-500 dark:text-slate-400">
               <p>No hay rangos configurados.</p>
               <p className="text-sm mt-1">Agrega un rango para definir valores referenciales específicos.</p>
             </div>
           ) : (
-            <div className="rounded-lg border border-slate-200 overflow-hidden">
+            <div className="rounded-lg border border-slate-200 dark:border-slate-600 overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -99,7 +99,7 @@ export function RefRangesManager({ itemIndex }: Props) {
                 <TableBody>
                   {fields.map((field, idx) => (
                     <TableRow key={field.id}>
-                      <TableCell className="text-xs text-slate-500">{idx + 1}</TableCell>
+                      <TableCell className="text-xs text-slate-500 dark:text-slate-400">{idx + 1}</TableCell>
                       <TableCell>
                         <select
                           className="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
@@ -179,7 +179,7 @@ export function RefRangesManager({ itemIndex }: Props) {
             </div>
           )}
 
-          <div className="flex justify-end gap-2 pt-2 border-t">
+          <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-600">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cerrar
             </Button>

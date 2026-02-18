@@ -10,6 +10,7 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader, pageLayoutClasses } from "@/components/layout/PageHeader";
 import { ReportesFilterForm } from "./ReportesFilterForm";
 
 type SearchParams = { dateFrom?: string; dateTo?: string; status?: string };
@@ -19,6 +20,16 @@ function toYYYYMMDD(d: Date): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+/** Parsea "YYYY-MM-DD" en hora local para evitar desfase por zona horaria */
+function parseLocalDate(dateStr: string): Date {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  if (y == null || m == null || d == null || Number.isNaN(y) || Number.isNaN(m) || Number.isNaN(d)) {
+    return new Date(dateStr);
+  }
+  const date = new Date(y, m - 1, d);
+  return date;
 }
 
 function parseDateRange(params: SearchParams) {
@@ -31,17 +42,17 @@ function parseDateRange(params: SearchParams) {
   const toParam = params.dateTo?.trim();
 
   if (fromParam && toParam) {
-    dateFrom = new Date(fromParam);
-    dateTo = new Date(toParam);
+    dateFrom = parseLocalDate(fromParam);
     dateFrom.setHours(0, 0, 0, 0);
+    dateTo = parseLocalDate(toParam);
     dateTo.setHours(23, 59, 59, 999);
     if (dateFrom.getTime() > dateTo.getTime()) [dateFrom, dateTo] = [dateTo, dateFrom];
   } else if (fromParam) {
-    dateFrom = new Date(fromParam);
+    dateFrom = parseLocalDate(fromParam);
     dateFrom.setHours(0, 0, 0, 0);
     dateTo = new Date(today);
   } else if (toParam) {
-    dateTo = new Date(toParam);
+    dateTo = parseLocalDate(toParam);
     dateTo.setHours(23, 59, 59, 999);
     dateFrom = new Date(dateTo);
     dateFrom.setDate(dateFrom.getDate() - 30);
@@ -155,23 +166,21 @@ export default async function ReportesPage({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Reportes</h1>
-          <p className="text-slate-500 mt-1">
-            Análisis más solicitados y resumen por período
-          </p>
-        </div>
-        <Suspense fallback={<div className="h-10 w-48 rounded-md bg-slate-100" />}>
-          <ReportesFilterForm
+    <div className={pageLayoutClasses.wrapper}>
+      <PageHeader
+        title="Reportes"
+        description="Análisis más solicitados y resumen por período"
+        actions={
+          <Suspense fallback={<div className="h-10 w-48 rounded-md bg-slate-100 dark:bg-slate-700" />}>
+            <ReportesFilterForm
             key={`${params.dateFrom ?? ""}-${params.dateTo ?? ""}-${params.status ?? ""}`}
             defaultDateFrom={params.dateFrom ?? toYYYYMMDD(dateFrom)}
             defaultDateTo={params.dateTo ?? toYYYYMMDD(dateTo)}
             defaultStatus={statusFilter ?? ""}
           />
-        </Suspense>
-      </div>
+          </Suspense>
+        }
+      />
 
       {/* Resumen del período */}
       <div className="grid gap-4 md:grid-cols-3">
@@ -180,10 +189,10 @@ export default async function ReportesPage({
             <CardTitle className="text-base">Período</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-slate-600 dark:text-slate-300">
               {formatDate(dateFrom)} — {formatDate(dateTo)}
               {statusFilter === "ENTREGADO" && (
-                <span className="ml-2 text-slate-500">(por fecha de entrega)</span>
+                <span className="ml-2 text-slate-500 dark:text-slate-400">(por fecha de entrega)</span>
               )}
             </p>
           </CardContent>
@@ -193,8 +202,8 @@ export default async function ReportesPage({
             <CardTitle className="text-base">Órdenes (no anuladas)</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold">{totalOrdenes}</p>
-            <p className="text-xs text-slate-500">Ingresos: {formatCurrency(ingresos)}</p>
+            <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{totalOrdenes}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Ingresos: {formatCurrency(ingresos)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -202,8 +211,8 @@ export default async function ReportesPage({
             <CardTitle className="text-base">Análisis solicitados</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold">{totalSolicitudes}</p>
-            <p className="text-xs text-slate-500">Total de pruebas en el período</p>
+            <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{totalSolicitudes}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Total de pruebas en el período</p>
           </CardContent>
         </Card>
       </div>

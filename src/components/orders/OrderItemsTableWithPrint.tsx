@@ -79,7 +79,7 @@ type Order = {
 
 type Props = {
   order: Order;
-  /** Abre automáticamente el diálogo de captura de este item (ej. desde worklist) */
+  /** Abre automáticamente el diálogo de captura de este item (ej. desde lista de pendientes) */
   defaultOpenItemId?: string;
   /** Si false, no se muestra el botón de quitar análisis (solo administradores pueden eliminar). */
   canDeleteItems?: boolean;
@@ -112,6 +112,7 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteIt
 
   useEffect(() => {
     if (defaultOpenItemId) setOpenItemId(defaultOpenItemId);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intencional: sincronizar con prop al montar/cambiar
   }, [defaultOpenItemId]);
 
   const printableItemIds = useMemo(
@@ -317,7 +318,7 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteIt
                               valueType: t.valueType as "NUMBER" | "TEXT" | "SELECT",
                               selectOptions: parseSelectOptions(t.selectOptions),
                               order: t.order,
-                              refRanges: (t as any).refRanges || [],
+                              refRanges: ((t as { refRanges?: import("@/lib/template-helpers").RefRange[] }).refRanges ?? []) as import("@/lib/template-helpers").RefRange[],
                             })),
                           }
                         : null,
@@ -347,7 +348,7 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteIt
                           | "SELECT",
                         selectOptions: originalItem?.selectOptions || [],
                         order: r.order,
-                        refRanges: (originalTemplateItem as any)?.refRanges || [],
+                        refRanges: ((originalTemplateItem as { refRanges?: import("@/lib/template-helpers").RefRange[] } | undefined)?.refRanges ?? []) as import("@/lib/template-helpers").RefRange[],
                       };
                     });
                   })()
@@ -372,7 +373,7 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteIt
                             valueType: t.valueType as "NUMBER" | "TEXT" | "SELECT",
                             selectOptions: parseSelectOptions(t.selectOptions),
                             order: t.order,
-                            refRanges: (t as any).refRanges || [],
+                            refRanges: ((t as { refRanges?: import("@/lib/template-helpers").RefRange[] }).refRanges ?? []) as import("@/lib/template-helpers").RefRange[],
                           })),
                         }
                       : null;
@@ -414,7 +415,7 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteIt
                       valueType: t.valueType as "NUMBER" | "TEXT" | "SELECT",
                       selectOptions: parseSelectOptions(t.selectOptions),
                       order: t.order,
-                      refRanges: (t as any).refRanges || [],
+                      refRanges: ((t as { refRanges?: import("@/lib/template-helpers").RefRange[] }).refRanges ?? []) as import("@/lib/template-helpers").RefRange[],
                     }));
                     
                     const processedItems = getTemplateItemsForPatient(

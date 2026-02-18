@@ -87,9 +87,15 @@ export function OrdersFilters({ filters, onChange, onClear, hasActiveFilters }: 
         className="h-9 w-36 dark:border-slate-600 dark:bg-slate-800"
       />
       {hasActiveFilters && (
-        <Button variant="ghost" size="sm" onClick={onClear} className="gap-1 text-slate-600 dark:text-slate-300">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onClear}
+          className="gap-1.5 rounded-xl border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+        >
           <X className="h-4 w-4" />
-          Limpiar filtros
+          Borrar filtros
         </Button>
       )}
     </div>

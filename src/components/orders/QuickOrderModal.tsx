@@ -130,7 +130,6 @@ export function QuickOrderModal({ open, onOpenChange }: Props) {
     setSelectedProfileIds((prev) => new Set(prev).add(profile.id));
     const profileTestIds = new Set(profile.tests.map((t) => t.id));
     setSelectedTestIds((prev) => {
-      const previousCount = prev.size;
       const next = new Set(prev);
       const removedIds: string[] = [];
       profileTestIds.forEach((id) => {

@@ -29,6 +29,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const initial: Theme = stored ?? (prefersDark ? "dark" : "light");
     setThemeState(initial);
     document.documentElement.classList.toggle("dark", initial === "dark");
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sincronizar tema desde localStorage al montar
   }, []);
 
   const setTheme = (value: Theme) => {

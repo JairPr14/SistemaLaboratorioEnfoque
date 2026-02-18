@@ -84,7 +84,7 @@ export default async function ResultsPage({
       <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <CardTitle>Resultados registrados</CardTitle>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Órdenes con resultados capturados, agrupadas por paciente y día (más recientes primero).
           </p>
         </div>
@@ -105,7 +105,7 @@ export default async function ResultsPage({
       </CardHeader>
       <CardContent>
         {orders.length === 0 ? (
-          <div className="py-12 text-center text-slate-500">
+          <div className="py-12 text-center text-slate-500 dark:text-slate-400">
             <p>No se encontraron resultados registrados.</p>
             <p className="text-sm mt-2">
               Ve a <Link href="/orders" className="text-slate-900 dark:text-slate-100 hover:underline">Órdenes</Link> para capturar resultados.
@@ -168,8 +168,8 @@ export default async function ResultsPage({
                           {order.items.map((item, idx) => (
                             <TableRow key={item.id}>
                               <TableCell className="text-slate-500 dark:text-slate-400 text-sm">{idx + 1}</TableCell>
-                              <TableCell className="font-mono text-sm">{item.labTest.code}</TableCell>
-                              <TableCell className="font-medium">{item.labTest.name}</TableCell>
+                              <TableCell className="font-mono text-sm text-slate-900 dark:text-slate-100">{item.labTest.code}</TableCell>
+                              <TableCell className="font-medium text-slate-900 dark:text-slate-100">{item.labTest.name}</TableCell>
                               <TableCell>
                                 <Badge variant="secondary" className="text-xs">
                                   {item.labTest.section}
@@ -181,7 +181,7 @@ export default async function ResultsPage({
                                     {item.result.items?.length ?? 0} parámetros
                                   </Badge>
                                 ) : (
-                                  <span className="text-xs text-slate-400">Sin resultados</span>
+                                  <span className="text-xs text-slate-400 dark:text-slate-500">Sin resultados</span>
                                 )}
                               </TableCell>
                             </TableRow>

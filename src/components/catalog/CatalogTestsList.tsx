@@ -38,7 +38,7 @@ export function CatalogTestsList({ tests }: Props) {
     <div className="space-y-6 min-w-0">
       {/* Catálogo de análisis */}
       <section className="min-w-0">
-        <h2 className="text-lg font-semibold text-slate-900 mb-3">
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">
           Catálogo de análisis
         </h2>
         <Card className="overflow-hidden">
@@ -57,7 +57,7 @@ export function CatalogTestsList({ tests }: Props) {
                 <TableBody>
                   {filtered.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-slate-500 py-8">
+                      <TableCell colSpan={5} className="text-center text-slate-500 dark:text-slate-400 py-8">
                         {search.trim()
                           ? "Ningún análisis coincide con la búsqueda."
                           : "No hay análisis en el catálogo."}
@@ -66,23 +66,23 @@ export function CatalogTestsList({ tests }: Props) {
                   ) : (
                     filtered.map((test) => (
                       <TableRow key={test.id}>
-                        <TableCell className="font-mono text-sm">{test.code}</TableCell>
+                        <TableCell className="font-mono text-sm text-slate-900 dark:text-slate-100">{test.code}</TableCell>
                         <TableCell>
                           <Link
-                            className="font-medium text-slate-900 hover:underline"
+                            className="font-medium text-slate-900 dark:text-slate-100 hover:underline"
                             href={`/catalog/tests/${test.id}`}
                           >
                             {test.name}
                           </Link>
                         </TableCell>
                         <TableCell>
-                          <span className="text-sm text-slate-600">{test.section}</span>
+                          <span className="text-sm text-slate-600 dark:text-slate-300">{test.section}</span>
                         </TableCell>
-                        <TableCell>{formatCurrency(test.price)}</TableCell>
+                        <TableCell className="text-slate-900 dark:text-slate-200">{formatCurrency(test.price)}</TableCell>
                         <TableCell className="text-right">
                           <Link
                             href={`/catalog/tests/${test.id}`}
-                            className="text-sm text-slate-600 hover:text-slate-900 hover:underline mr-2"
+                            className="text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:underline mr-2"
                           >
                             Editar
                           </Link>
@@ -109,7 +109,7 @@ export function CatalogTestsList({ tests }: Props) {
           placeholder="Buscar análisis"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full min-w-0 rounded-lg border border-slate-200 px-4 py-3 text-sm placeholder:text-slate-400 focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400"
+          className="w-full min-w-0 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-3 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 dark:focus:border-teal-400 dark:focus:ring-teal-400"
         />
       </section>
     </div>
