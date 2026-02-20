@@ -189,9 +189,18 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
   // Si no hay secciones (sin items o items vacíos), mostramos una hoja con mensaje
   const hasSections = sectionsEntries.length > 0;
 
+  const patientName = `${order.patient.firstName} ${order.patient.lastName}`.trim();
+  const analysesNames = itemsToPrint.map((i) => i.labTest.name).join(", ");
+  const dateStr = formatDate(order.createdAt);
+
   return (
     <>
-      <PrintActions />
+      <PrintActions
+        patientName={patientName}
+        patientPhone={order.patient.phone}
+        analysesNames={analysesNames}
+        date={dateStr}
+      />
       <PrintFitToPage />
       {hasSections ? sectionsEntries.map(([section, items], index) => (
         <div
