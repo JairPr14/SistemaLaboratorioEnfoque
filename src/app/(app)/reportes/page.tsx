@@ -249,8 +249,8 @@ export default async function ReportesPage({
           {byPatientType.length === 0 ? (
             <p className="text-sm text-slate-500">Sin órdenes en el período</p>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
+            <div className="overflow-x-auto -mx-1">
+              <Table className="min-w-[320px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Sede / Tipo</TableHead>
@@ -291,8 +291,8 @@ export default async function ReportesPage({
           {ordersList.length === 0 ? (
             <p className="text-sm text-slate-500">No hay órdenes en el período.</p>
           ) : (
-            <div className="overflow-x-auto max-h-[420px] overflow-y-auto">
-              <Table>
+            <div className="overflow-x-auto max-h-[420px] overflow-y-auto -mx-1">
+              <Table className="min-w-[560px]">
 <TableHeader>
                 <TableRow>
                     <TableHead>Orden</TableHead>
@@ -369,7 +369,8 @@ export default async function ReportesPage({
               </p>
             </div>
           ) : (
-            <Table>
+            <div className="overflow-x-auto -mx-1">
+            <Table className="min-w-[480px]">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-12">#</TableHead>
@@ -403,6 +404,7 @@ export default async function ReportesPage({
                 })}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>

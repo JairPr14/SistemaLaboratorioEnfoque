@@ -18,8 +18,8 @@ export function Topbar({
   const { data: session } = useSession();
 
   return (
-    <header className="flex items-center justify-between border border-slate-200/80 border-b-2 border-b-teal-500/70 bg-white/90 px-5 py-4 sm:px-6 dark:border-slate-700/80 dark:border-b-teal-500/50 dark:bg-slate-800/90 backdrop-blur-sm shadow-sm transition-colors duration-200">
-      <div className="flex items-center gap-2">
+    <header className="flex flex-wrap items-center justify-between gap-3 border border-slate-200/80 border-b-2 border-b-teal-500/70 bg-white/90 px-4 py-3 sm:px-6 sm:py-4 dark:border-slate-700/80 dark:border-b-teal-500/50 dark:bg-slate-800/90 backdrop-blur-sm shadow-sm transition-colors duration-200">
+      <div className="flex min-w-0 items-center gap-2">
         <Button
           variant="ghost"
           size="icon"
@@ -33,16 +33,16 @@ export function Topbar({
             <PanelLeft className="h-4 w-4" />
           )}
         </Button>
-      <div>
-        <h1 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100 sm:text-lg">
+      <div className="min-w-0">
+        <h1 className="truncate text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100 sm:text-lg">
           Gestión de Laboratorio
         </h1>
-        <p className="text-xs text-slate-500 dark:text-slate-400 sm:text-sm">
+        <p className="hidden truncate text-xs text-slate-500 dark:text-slate-400 sm:block sm:text-sm">
           Control de pacientes, órdenes y resultados
         </p>
       </div>
       </div>
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div className="flex w-full flex-1 shrink-0 items-center justify-end gap-2 sm:w-auto sm:flex-initial sm:gap-3">
         <GlobalSearch />
         <ThemeToggle />
         {session?.user && (

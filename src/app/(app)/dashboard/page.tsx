@@ -164,7 +164,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Pendientes + Actividad reciente */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-[1fr_320px]">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>

@@ -97,7 +97,7 @@ export function GlobalSearch() {
   }, []);
 
   return (
-    <div ref={containerRef} className="relative w-72">
+    <div ref={containerRef} className="relative w-full min-w-0 sm:w-72">
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
         <Input
@@ -111,7 +111,7 @@ export function GlobalSearch() {
           onFocus={() => setOpen(true)}
           className="pl-9 pr-20"
         />
-        <kbd className="absolute right-3 top-1/2 -translate-y-1/2 rounded border border-slate-200 px-1.5 py-0.5 text-[10px] text-slate-400 dark:border-slate-600 dark:text-slate-500">
+        <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden rounded border border-slate-200 px-1.5 py-0.5 text-[10px] text-slate-400 sm:inline-block dark:border-slate-600 dark:text-slate-500">
           ⌘K
         </kbd>
       </div>

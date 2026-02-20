@@ -355,7 +355,7 @@ export default function ConfiguracionPage() {
       </div>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-slate-600 dark:text-slate-400" />
             <CardTitle>Roles</CardTitle>
@@ -366,7 +366,8 @@ export default function ConfiguracionPage() {
           </Button>
         </CardHeader>
         <CardContent>
-          <Table>
+          <div className="overflow-x-auto -mx-1">
+          <Table className="min-w-[540px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Código</TableHead>
@@ -425,6 +426,7 @@ export default function ConfiguracionPage() {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 
@@ -498,7 +500,7 @@ export default function ConfiguracionPage() {
       </Card>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <Users className="h-5 w-5 text-slate-600 dark:text-slate-400" />
             <CardTitle>Usuarios</CardTitle>
@@ -509,7 +511,8 @@ export default function ConfiguracionPage() {
           </Button>
         </CardHeader>
         <CardContent>
-          <Table>
+          <div className="overflow-x-auto -mx-1">
+          <Table className="min-w-[520px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Email</TableHead>
@@ -570,6 +573,7 @@ export default function ConfiguracionPage() {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 

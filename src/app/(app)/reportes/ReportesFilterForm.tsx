@@ -73,8 +73,8 @@ export function ReportesFilterForm({ defaultDateFrom, defaultDateTo, defaultStat
   }
 
   return (
-    <div className="flex flex-wrap items-end gap-4">
-      <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3">
+    <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
         <div className="flex items-center gap-2">
           <Label htmlFor="reportes-status" className="text-sm text-slate-600">
             Estado
@@ -83,7 +83,7 @@ export function ReportesFilterForm({ defaultDateFrom, defaultDateTo, defaultStat
             id="reportes-status"
             name="status"
             defaultValue={defaultStatus}
-            className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm w-44"
+            className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm sm:w-44"
           >
             {STATUS_OPTIONS.map((o) => (
               <option key={o.value || "_all"} value={o.value}>
@@ -101,7 +101,7 @@ export function ReportesFilterForm({ defaultDateFrom, defaultDateTo, defaultStat
             name="dateFrom"
             type="date"
             defaultValue={defaultDateFrom}
-            className="w-40"
+            className="w-full sm:w-40"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -113,7 +113,7 @@ export function ReportesFilterForm({ defaultDateFrom, defaultDateTo, defaultStat
             name="dateTo"
             type="date"
             defaultValue={defaultDateTo}
-            className="w-40"
+            className="w-full sm:w-40"
           />
         </div>
         <Button type="submit" size="sm" disabled={isPending}>

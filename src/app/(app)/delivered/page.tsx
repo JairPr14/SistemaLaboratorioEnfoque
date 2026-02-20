@@ -123,7 +123,8 @@ export default async function DeliveredPage() {
                           Ver PDF
                         </Link>
                       </div>
-                      <Table>
+                      <div className="overflow-x-auto -mx-1">
+                      <Table className="min-w-[480px]">
                         <TableHeader>
                           <TableRow className="bg-slate-50/50 dark:bg-slate-700/50">
                             <TableHead className="w-12">#</TableHead>
@@ -157,6 +158,7 @@ export default async function DeliveredPage() {
                           ))}
                         </TableBody>
                       </Table>
+                      </div>
                     </div>
                   ))}
                 </div>

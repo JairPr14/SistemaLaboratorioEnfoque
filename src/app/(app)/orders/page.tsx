@@ -80,12 +80,12 @@ export default async function OrdersPage({
       <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <CardTitle>Órdenes de laboratorio</CardTitle>
         <div className="flex flex-wrap items-center gap-3">
-          <form className="flex flex-wrap items-center gap-2" method="GET">
+          <form className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2" method="GET">
             <input
               name="search"
               defaultValue={search}
               placeholder="Buscar por paciente u orden..."
-              className="h-9 rounded-md border border-slate-200 px-3 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
+              className="h-9 w-full min-w-0 rounded-md border border-slate-200 px-3 text-sm sm:w-auto dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
             />
             <select
               name="status"
@@ -132,7 +132,8 @@ export default async function OrdersPage({
         </div>
       </CardHeader>
       <CardContent>
-        <Table>
+        <div className="overflow-x-auto -mx-1">
+        <Table className="min-w-[640px]">
           <TableHeader>
             <TableRow>
               <TableHead>Orden</TableHead>
@@ -197,6 +198,7 @@ export default async function OrdersPage({
             })}
           </TableBody>
         </Table>
+        </div>
       </CardContent>
     </Card>
   );

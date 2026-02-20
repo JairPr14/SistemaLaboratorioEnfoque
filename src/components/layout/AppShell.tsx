@@ -1,11 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const isMobile = useMediaQuery("(max-width: 767px)");
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  useEffect(() => {
+    if (isMobile) setSidebarOpen(false);
+    else setSidebarOpen(true);
+  }, [isMobile]);
 
   return (
     <div className="flex min-h-screen bg-slate-100/80 dark:bg-slate-950 transition-colors duration-200">
