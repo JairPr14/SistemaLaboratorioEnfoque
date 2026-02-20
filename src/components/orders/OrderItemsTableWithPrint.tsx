@@ -259,7 +259,8 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteIt
         )}
       </CardHeader>
       <CardContent>
-        <Table>
+        <div className="-mx-1 overflow-x-auto">
+        <Table className="min-w-[640px]">
           <TableHeader>
             <TableRow>
               {printableItemIds.length > 0 && (
@@ -541,6 +542,7 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteIt
             ))}
           </TableBody>
         </Table>
+        </div>
       </CardContent>
     </Card>
   );

@@ -299,8 +299,8 @@ export function ResultForm({
                   </h3>
                 </div>
               )}
-              <div className="overflow-x-auto">
-                <Table>
+              <div className="-mx-1 overflow-x-auto">
+                <Table className="min-w-[560px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-12">#</TableHead>
@@ -539,8 +539,8 @@ export function ResultForm({
               <h4 className="text-sm font-semibold text-amber-900 mb-3">
                 Parámetros adicionales ({fields.length - templateItems.length})
               </h4>
-              <div className="overflow-x-auto">
-                <Table>
+              <div className="-mx-1 overflow-x-auto">
+                <Table className="min-w-[560px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-12">#</TableHead>

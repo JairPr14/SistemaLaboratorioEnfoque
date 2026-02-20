@@ -22,7 +22,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           sidebarOpen={sidebarOpen}
           onToggleSidebar={() => setSidebarOpen((v) => !v)}
         />
-        <main className="flex-1 p-5 sm:p-6 lg:p-8 min-w-0 overflow-x-hidden dark:bg-slate-950/50 transition-colors duration-200">
+        <main className="flex-1 p-5 sm:p-6 lg:p-8 min-w-0 overflow-x-auto dark:bg-slate-950/50 transition-colors duration-200">
           {children}
         </main>
       </div>

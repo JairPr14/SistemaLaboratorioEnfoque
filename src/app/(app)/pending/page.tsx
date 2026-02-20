@@ -34,8 +34,8 @@ export default async function PendingPage() {
           </p>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto rounded-lg border border-slate-200/80 dark:border-slate-600 overflow-hidden">
-            <Table>
+          <div className="-mx-1 overflow-x-auto rounded-lg border border-slate-200/80 dark:border-slate-600 overflow-hidden">
+            <Table className="min-w-[640px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Orden</TableHead>

@@ -128,8 +128,8 @@ export function DashboardPendingTable({ orders, defaultFilters }: Props) {
         onClear={() => setFilters(initialFilters)}
         hasActiveFilters={hasActiveFilters}
       />
-      <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
-        <Table>
+      <div className="-mx-1 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+        <Table className="min-w-[640px]">
           <TableHeader>
             <TableRow>
               <TableHead>Orden</TableHead>
