@@ -44,7 +44,7 @@ export default async function ResultsPage({
       patient: true,
       items: {
         include: {
-          labTest: true,
+          labTest: { include: { section: true } },
           result: { include: { items: true } },
         },
       },
@@ -172,7 +172,7 @@ export default async function ResultsPage({
                               <TableCell className="font-medium text-slate-900 dark:text-slate-100">{item.labTest.name}</TableCell>
                               <TableCell>
                                 <Badge variant="secondary" className="text-xs">
-                                  {item.labTest.section}
+                                  {item.labTest.section?.name ?? item.labTest.section?.code ?? ""}
                                 </Badge>
                               </TableCell>
                               <TableCell>

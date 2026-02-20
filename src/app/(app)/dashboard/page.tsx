@@ -31,6 +31,7 @@ export default async function DashboardPage() {
     pendingCount,
     testsCount,
     ordersToday,
+    sections,
     pendingOrders,
     recentOrdersForActivity,
   ] = await Promise.all([
@@ -41,12 +42,16 @@ export default async function DashboardPage() {
     }),
     prisma.labTest.count({ where: { deletedAt: null, isActive: true } }),
     prisma.labOrder.count({ where: { createdAt: { gte: startOfToday } } }),
+    prisma.labSection.findMany({
+      where: { isActive: true },
+      orderBy: { order: "asc" },
+    }),
     prisma.labOrder.findMany({
       where: { status: { in: ["PENDIENTE", "EN_PROCESO", "COMPLETADO", "ENTREGADO"] } },
       include: {
         patient: true,
         items: {
-          include: { labTest: { select: { name: true, section: true } } },
+          include: { labTest: { include: { section: true } } },
         },
       },
       orderBy: { createdAt: "desc" },
@@ -91,7 +96,7 @@ export default async function DashboardPage() {
       patient: o.patient,
       items: o.items,
       requestedBy: o.requestedBy,
-      itemsSection: o.items[0]?.labTest?.section ?? undefined,
+      itemsSection: o.items[0]?.labTest?.section?.code ?? undefined,
       totalTests,
       completedTests,
       needsValidation,
@@ -181,7 +186,13 @@ export default async function DashboardPage() {
             </Link>
           </CardHeader>
           <CardContent>
-            <DashboardPendingTable orders={tableOrders} />
+            <DashboardPendingTable
+              orders={tableOrders}
+              sectionOptions={[
+                { value: "", label: "Todas las secciones" },
+                ...sections.map((s) => ({ value: s.code, label: s.name })),
+              ]}
+            />
           </CardContent>
         </Card>
 

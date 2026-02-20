@@ -11,13 +11,6 @@ export type OrdersFilterState = {
   section: string;
 };
 
-type Props = {
-  filters: OrdersFilterState;
-  onChange: (f: OrdersFilterState) => void;
-  onClear: () => void;
-  hasActiveFilters: boolean;
-};
-
 const statusOptions = [
   { value: "", label: "Todos los estados" },
   { value: "PENDIENTE", label: "Pendiente" },
@@ -34,7 +27,7 @@ const dateRangeOptions = [
   { value: "", label: "Todos" },
 ];
 
-const sectionOptions = [
+const defaultSectionOptions = [
   { value: "", label: "Todas las secciones" },
   { value: "BIOQUIMICA", label: "Bioquímica" },
   { value: "HEMATOLOGIA", label: "Hematología" },
@@ -44,7 +37,15 @@ const sectionOptions = [
   { value: "OTROS", label: "Otros" },
 ];
 
-export function OrdersFilters({ filters, onChange, onClear, hasActiveFilters }: Props) {
+type Props = {
+  filters: OrdersFilterState;
+  onChange: (f: OrdersFilterState) => void;
+  onClear: () => void;
+  hasActiveFilters: boolean;
+  sectionOptions?: { value: string; label: string }[];
+};
+
+export function OrdersFilters({ filters, onChange, onClear, hasActiveFilters, sectionOptions = defaultSectionOptions }: Props) {
   return (
     <div className="flex flex-wrap items-center gap-3">
       <select

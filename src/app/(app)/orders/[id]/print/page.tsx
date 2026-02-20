@@ -135,8 +135,9 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
       patient: true,
       items: {
         include: {
-          labTest: { 
-            include: { 
+          labTest: {
+            include: {
+              section: true,
               template: { 
                 include: { 
                   items: {
@@ -170,11 +171,11 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
   // Agrupar items por sección
   const itemsBySection = itemsToPrint.reduce(
     (acc, item) => {
-      const section = item.labTest.section;
-      if (!acc[section]) {
-        acc[section] = [];
+      const sectionKey = item.labTest.section?.name ?? item.labTest.section?.code ?? "OTROS";
+      if (!acc[sectionKey]) {
+        acc[sectionKey] = [];
       }
-      acc[section].push(item);
+      acc[sectionKey].push(item);
       return acc;
     },
     {} as Record<string, typeof itemsToPrint>,
@@ -191,6 +192,7 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
 
   const patientName = `${order.patient.firstName} ${order.patient.lastName}`.trim();
   const analysesNames = itemsToPrint.map((i) => i.labTest.name).join(", ");
+  const analysisCodes = itemsToPrint.map((i) => i.labTest.code).join("-");
   const dateStr = formatDate(order.createdAt);
 
   return (
@@ -199,6 +201,7 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
         patientName={patientName}
         patientPhone={order.patient.phone}
         analysesNames={analysesNames}
+        analysisCodes={analysisCodes || order.orderCode}
         date={dateStr}
       />
       <PrintFitToPage />
@@ -233,9 +236,12 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
 
               <PatientDataBlock order={order} age={age} sexLabel={sexLabel} />
 
-              {/* Barra negra con nombre de sección */}
-              <div className="bg-slate-900 text-white py-2 px-4 mb-3">
-                <h2 className="text-center text-sm font-bold uppercase tracking-wide">
+              {/* Barra de sección: fondo semi-transparente, texto en negrita más grande */}
+              <div
+                className="text-white py-2.5 px-4 mb-3 print-section-bar"
+                style={{ backgroundColor: "rgba(15, 23, 42, 0.7)" }}
+              >
+                <h2 className="text-center text-base font-bold uppercase tracking-wide">
                   SECCIÓN {section}
                 </h2>
               </div>

@@ -8,11 +8,11 @@ import { logger } from "@/lib/logger";
 const includeItems = {
   items: {
     orderBy: { order: "asc" as const },
-    include: { labTest: { select: { id: true, code: true, name: true, section: true, price: true } } },
+    include: { labTest: { include: { section: true } } },
   },
 } as const;
 
-function mapProfile(p: { id: string; name: string; packagePrice: number | null; items: { labTest: { id: string; code: string; name: string; section: string; price: number } }[] }) {
+function mapProfile(p: { id: string; name: string; packagePrice: number | null; items: { labTest: { id: string; code: string; name: string; section: { code: string } | null; price: number } }[] }) {
   return {
     id: p.id,
     name: p.name,
@@ -21,7 +21,7 @@ function mapProfile(p: { id: string; name: string; packagePrice: number | null; 
       id: i.labTest.id,
       code: i.labTest.code,
       name: i.labTest.name,
-      section: i.labTest.section,
+      section: i.labTest.section?.code ?? "",
       price: Number(i.labTest.price),
     })),
   };

@@ -38,6 +38,7 @@ type OrderRow = {
 type Props = {
   orders: OrderRow[];
   defaultFilters?: Partial<OrdersFilterState>;
+  sectionOptions?: { value: string; label: string }[];
 };
 
 const initialFilters: OrdersFilterState = {
@@ -110,7 +111,7 @@ function sortByRiskAndAge(orders: OrderRow[]): OrderRow[] {
   });
 }
 
-export function DashboardPendingTable({ orders, defaultFilters }: Props) {
+export function DashboardPendingTable({ orders, defaultFilters, sectionOptions }: Props) {
   const [filters, setFilters] = useState<OrdersFilterState>({
     ...initialFilters,
     ...defaultFilters,
@@ -127,6 +128,7 @@ export function DashboardPendingTable({ orders, defaultFilters }: Props) {
         onChange={setFilters}
         onClear={() => setFilters(initialFilters)}
         hasActiveFilters={hasActiveFilters}
+        sectionOptions={sectionOptions}
       />
       <div className="-mx-1 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
         <Table className="min-w-[640px]">

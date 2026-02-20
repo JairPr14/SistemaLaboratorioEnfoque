@@ -46,9 +46,11 @@ type Props = {
   recentPatients?: PatientOption[];
   tests: TestOption[];
   profiles?: ProfileOption[];
+  /** ID del paciente a preseleccionar (ej. desde perfil de paciente) */
+  defaultPatientId?: string;
 };
 
-export function OrderForm({ patients, recentPatients = [], tests, profiles = [] }: Props) {
+export function OrderForm({ patients, recentPatients = [], tests, profiles = [], defaultPatientId }: Props) {
   const router = useRouter();
   const [patientSearch, setPatientSearch] = useState("");
   const [testSearch, setTestSearch] = useState("");
@@ -56,7 +58,7 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [] 
   const form = useForm<OrderFormValues>({
     resolver: zodResolver(orderCreateSchema) as Resolver<OrderFormValues>,
     defaultValues: {
-      patientId: "",
+      patientId: defaultPatientId && patients.some((p) => p.id === defaultPatientId) ? defaultPatientId : "",
       requestedBy: "",
       notes: "",
       orderDate: new Date().toISOString().slice(0, 10),

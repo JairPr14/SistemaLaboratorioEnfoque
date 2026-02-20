@@ -13,6 +13,8 @@ type Test = {
   code: string;
   name: string;
   section: string;
+  sectionName?: string;
+  sectionId?: string;
   price: number;
 };
 
@@ -76,7 +78,7 @@ export function CatalogTestsList({ tests }: Props) {
                           </Link>
                         </TableCell>
                         <TableCell>
-                          <span className="text-sm text-slate-600 dark:text-slate-300">{test.section}</span>
+                          <span className="text-sm text-slate-600 dark:text-slate-300">{test.sectionName ?? test.section}</span>
                         </TableCell>
                         <TableCell className="text-slate-900 dark:text-slate-200">{formatCurrency(test.price)}</TableCell>
                         <TableCell className="text-right">

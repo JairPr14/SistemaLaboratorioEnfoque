@@ -1,4 +1,4 @@
-import { PrismaClient, type LabSection, type ValueType } from "@prisma/client";
+import { PrismaClient, type ValueType } from "@prisma/client";
 import * as fs from "fs";
 import * as path from "path";
 import { hash } from "bcryptjs";
@@ -42,8 +42,8 @@ function toTestCode(templateKey: string): string {
   return normalizeStr(templateKey);
 }
 
-/** Mapeo de sección del JSON al enum LabSection. Si es null o no existe -> OTROS. */
-const SECTION_MAP: Record<string, LabSection> = {
+/** Mapeo de sección del JSON al código. Si es null o no existe -> OTROS. */
+const SECTION_MAP: Record<string, string> = {
   BIOQUIMICA: "BIOQUIMICA",
   HEMATOLOGIA: "HEMATOLOGIA",
   INMUNOLOGIA: "INMUNOLOGIA",
@@ -53,7 +53,7 @@ const SECTION_MAP: Record<string, LabSection> = {
   "BIOLOGIA MOLECULAR": "OTROS",
 };
 
-function toLabSection(section: string | null): LabSection {
+function toLabSection(section: string | null): string {
   if (section == null || section === "") return "OTROS";
   const normalized = normalizeStr(section)
     .replace(/^SECCIÓN\s+/i, "")
@@ -85,7 +85,7 @@ function parseRefRange(ref: string | null): { refMin: number | null; refMax: num
 // Análisis más utilizados en laboratorios clínicos (solo catálogo: código, sección, precio 0)
 // Las plantillas las creas tú después.
 // ---------------------------------------------------------------------------
-const CATALOGO_ANALISIS: { code: string; name: string; section: LabSection }[] = [
+const CATALOGO_ANALISIS: { code: string; name: string; section: string }[] = [
   // BIOQUIMICA
   { code: "GLU", name: "Glucosa", section: "BIOQUIMICA" },
   { code: "CRE", name: "Creatinina", section: "BIOQUIMICA" },
@@ -210,15 +210,21 @@ async function main() {
     console.log("Usuario inicial creado:", DEFAULT_USER_EMAIL, "con rol ADMIN");
   }
 
+  // Obtener secciones para mapear código -> id
+  const sections = await prisma.labSection.findMany();
+  const sectionByCode = new Map(sections.map((s) => [s.code, s.id]));
+
   // Catálogo: análisis más utilizados (solo código, sección, nombre; precio 0)
   for (const a of CATALOGO_ANALISIS) {
+    const sectionId = sectionByCode.get(a.section) ?? sectionByCode.get("OTROS");
+    if (!sectionId) throw new Error(`Sección ${a.section} no encontrada. Ejecuta la migración primero.`);
     await prisma.labTest.upsert({
       where: { code: a.code },
-      update: { name: a.name, section: a.section, price: 0 },
+      update: { name: a.name, sectionId, price: 0 },
       create: {
         code: a.code,
         name: a.name,
-        section: a.section,
+        sectionId,
         price: 0,
         estimatedTimeMinutes: null,
         isActive: true,
@@ -236,14 +242,16 @@ async function main() {
   for (const t of templates) {
     const code = toTestCode(t.templateKey);
     const name = normalizeStr(t.analysisName);
-    const section = toLabSection(t.section);
+    const sectionCode = toLabSection(t.section);
+    const sectionId = sectionByCode.get(sectionCode) ?? sectionByCode.get("OTROS");
+    if (!sectionId) throw new Error(`Sección ${sectionCode} no encontrada. Ejecuta la migración primero.`);
 
-    summary.sections.add(section);
+    summary.sections.add(sectionCode);
 
     const testPayload = {
       code,
       name,
-      section,
+      sectionId,
       price: 0,
       estimatedTimeMinutes: null as number | null,
       isActive: true,

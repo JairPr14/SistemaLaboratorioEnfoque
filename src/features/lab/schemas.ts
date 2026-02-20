@@ -10,6 +10,13 @@ export const sectionValues = [
   "HECES",
   "OTROS",
 ] as const;
+
+export const labSectionSchema = z.object({
+  code: z.string().min(2).regex(/^[A-Z0-9_]+$/, "Solo mayúsculas, números y guión bajo"),
+  name: z.string().min(2),
+  order: z.coerce.number().int().min(0).default(0),
+  isActive: z.coerce.boolean().default(true),
+});
 export const valueTypeValues = ["NUMBER", "TEXT", "SELECT"] as const;
 export const orderStatusValues = [
   "PENDIENTE",
@@ -40,7 +47,7 @@ export const patientSchema = z.object({
 export const labTestSchema = z.object({
   code: z.string().min(2),
   name: z.string().min(2),
-  section: z.enum(sectionValues),
+  sectionId: z.string().min(1),
   price: z.coerce.number().min(0),
   estimatedTimeMinutes: z.coerce.number().int().min(0).optional().nullable(),
   isActive: z.coerce.boolean().default(true),

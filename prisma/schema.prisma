@@ -82,13 +82,18 @@ enum Sex {
   O
 }
 
-enum LabSection {
-  BIOQUIMICA
-  HEMATOLOGIA
-  INMUNOLOGIA
-  ORINA
-  HECES
-  OTROS
+model LabSection {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  labTests LabTest[]
+
+  @@index([code])
 }
 
 enum ValueType {
@@ -139,15 +144,16 @@ model Patient {
 }
 
 model LabTest {
-  id                    String   @id @default(cuid())
-  code                  String   @unique
+  id                    String      @id @default(cuid())
+  code                  String      @unique
   name                  String
-  section               LabSection
+  sectionId             String
+  section               LabSection @relation(fields: [sectionId], references: [id], onDelete: Restrict)
   price                 Float
   estimatedTimeMinutes  Int?
-  isActive              Boolean  @default(true)
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  isActive              Boolean    @default(true)
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
   deletedAt             DateTime?
 
   template       LabTemplate?
@@ -155,7 +161,7 @@ model LabTest {
   favoriteUsers  UserFavoriteTest[]
   profileItems   TestProfileItem[]
 
-  @@index([section])
+  @@index([sectionId])
   @@index([isActive])
 }
 

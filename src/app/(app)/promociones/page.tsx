@@ -55,7 +55,16 @@ export default function PromocionesPage() {
     }
     if (testsRes.ok) {
       const data = await testsRes.json();
-      setTests(data.items ?? []);
+      const items = (data.items ?? []).map(
+        (t: { id: string; code: string; name: string; section?: { name?: string; code?: string } | null; price: number }) => ({
+          id: t.id,
+          code: t.code,
+          name: t.name,
+          section: t.section?.name ?? t.section?.code ?? "",
+          price: t.price,
+        }),
+      );
+      setTests(items);
     }
   };
 

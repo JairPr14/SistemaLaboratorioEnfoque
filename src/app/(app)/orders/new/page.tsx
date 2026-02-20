@@ -2,16 +2,10 @@ import { prisma } from "@/lib/prisma";
 import { OrderForm } from "@/components/forms/OrderForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-const SECTION_LABELS: Record<string, string> = {
-  BIOQUIMICA: "Bioquímica",
-  HEMATOLOGIA: "Hematología",
-  INMUNOLOGIA: "Inmunología",
-  ORINA: "Orina",
-  HECES: "Heces",
-  OTROS: "Otros",
-};
+type Props = { searchParams: Promise<{ patientId?: string }> };
 
-export default async function NewOrderPage() {
+export default async function NewOrderPage({ searchParams }: Props) {
+  const { patientId: defaultPatientId } = await searchParams;
   const [patients, recentPatients, tests, profilesData] = await Promise.all([
     prisma.patient.findMany({
       where: { deletedAt: null },
@@ -24,15 +18,15 @@ export default async function NewOrderPage() {
     }),
     prisma.labTest.findMany({
       where: { deletedAt: null, isActive: true },
-      orderBy: [{ section: "asc" }, { name: "asc" }],
-      include: { template: { include: { items: true } } },
+      include: { template: { include: { items: true } }, section: true },
+      orderBy: [{ section: { order: "asc" } }, { name: "asc" }],
     }),
     prisma.testProfile.findMany({
       where: { isActive: true },
       include: {
         items: {
           orderBy: { order: "asc" },
-          include: { labTest: { select: { id: true, code: true, name: true, section: true, price: true } } },
+          include: { labTest: { include: { section: true } } },
         },
       },
       orderBy: { name: "asc" },
@@ -47,7 +41,7 @@ export default async function NewOrderPage() {
       id: i.labTest.id,
       code: i.labTest.code,
       name: i.labTest.name,
-      section: i.labTest.section,
+      section: i.labTest.section?.code ?? "",
       price: Number(i.labTest.price),
     })),
   }));
@@ -72,6 +66,7 @@ export default async function NewOrderPage() {
         </CardHeader>
         <CardContent className="p-4 sm:p-6">
           <OrderForm
+            defaultPatientId={defaultPatientId ?? undefined}
             patients={patients.map((p) => ({
               id: p.id,
               label: `${p.lastName} ${p.firstName} (${p.dni})`,
@@ -91,8 +86,8 @@ export default async function NewOrderPage() {
               label: `${t.code} - ${t.name}`,
               code: t.code,
               name: t.name,
-              section: t.section,
-              sectionLabel: SECTION_LABELS[t.section] ?? t.section,
+              section: t.section?.code ?? "",
+              sectionLabel: t.section?.name ?? t.section?.code ?? "",
               price: Number(t.price),
               hasTemplate: !!t.template,
               templateTitle: t.template?.title ?? null,

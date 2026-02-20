@@ -14,6 +14,7 @@ export async function GET(_request: Request, { params }: Params) {
     const { id } = await params;
     const item = await prisma.labTest.findFirst({
       where: { id, deletedAt: null },
+      include: { section: true },
     });
 
     if (!item) {
@@ -44,10 +45,14 @@ export async function PUT(request: Request, { params }: Params) {
     const item = await prisma.labTest.update({
       where: { id },
       data: {
-        ...parsed,
+        code: parsed.code,
+        name: parsed.name,
+        sectionId: parsed.sectionId,
         price: parsed.price,
         estimatedTimeMinutes: parsed.estimatedTimeMinutes ?? null,
+        isActive: parsed.isActive ?? true,
       },
+      include: { section: true },
     });
 
     return NextResponse.json({ item });

@@ -13,11 +13,26 @@ type PrintActionsProps = {
   patientName: string;
   patientPhone?: string | null;
   analysesNames: string;
+  analysisCodes: string;
   date: string;
 };
 
-export function PrintActions({ patientName, patientPhone, analysesNames, date }: PrintActionsProps) {
+/** Sanitiza texto para usar en nombres de archivo (sin / \\ : * ? " < > |) */
+function sanitizeFilename(s: string): string {
+  return s.replace(/[/\\:*?"<>|]/g, "-").replace(/\s+/g, " ").trim();
+}
+
+export function PrintActions({ patientName, patientPhone, analysesNames, analysisCodes, date }: PrintActionsProps) {
   const openPrintDialog = () => {
+    const baseTitle = document.title;
+    const safeDate = date.replace(/\//g, "-");
+    const pdfTitle = `${sanitizeFilename(patientName)} - ${sanitizeFilename(analysisCodes)} - ${safeDate}`;
+    document.title = pdfTitle;
+    const onAfterPrint = () => {
+      document.title = baseTitle;
+      window.removeEventListener("afterprint", onAfterPrint);
+    };
+    window.addEventListener("afterprint", onAfterPrint);
     window.print();
   };
 

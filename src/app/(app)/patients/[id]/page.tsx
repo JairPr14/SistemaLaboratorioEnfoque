@@ -29,7 +29,7 @@ export default async function PatientDetailPage({ params }: Props) {
       include: {
         items: {
           include: {
-            labTest: true,
+            labTest: { include: { section: true } },
             result: { include: { items: true } },
           },
         },
@@ -73,7 +73,7 @@ export default async function PatientDetailPage({ params }: Props) {
         <CardHeader className="flex flex-row items-center justify-between gap-4">
           <CardTitle>Análisis realizados</CardTitle>
           <Link
-            href="/orders/new"
+            href={`/orders/new?patientId=${patient.id}`}
             className={cn(buttonVariants({ size: "sm" }), "gap-2")}
           >
             <Plus className="h-4 w-4" />
@@ -90,7 +90,7 @@ export default async function PatientDetailPage({ params }: Props) {
                 Este paciente aún no tiene órdenes ni análisis registrados.
               </p>
               <Link
-                href="/orders/new"
+                href={`/orders/new?patientId=${patient.id}`}
                 className={cn(buttonVariants({ size: "lg" }), "gap-2 inline-flex")}
               >
                 <Plus className="h-4 w-4" />
@@ -146,7 +146,7 @@ export default async function PatientDetailPage({ params }: Props) {
                           </TableCell>
                           <TableCell>
                             <Badge variant="secondary" className="text-xs">
-                              {item.labTest.section}
+                              {item.labTest.section?.name ?? item.labTest.section?.code ?? ""}
                             </Badge>
                           </TableCell>
                           <TableCell>

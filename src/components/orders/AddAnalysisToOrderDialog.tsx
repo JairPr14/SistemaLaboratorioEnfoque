@@ -49,7 +49,13 @@ export function AddAnalysisToOrderDialog({
     setSearch("");
     fetch("/api/tests?active=true")
       .then((res) => res.json())
-      .then((data) => setTests(data.items ?? []))
+      .then((data) => {
+        const items = (data.items ?? []).map((t: { section?: { code: string } | string | null }) => ({
+          ...t,
+          section: typeof t.section === "object" && t.section ? t.section.code : (t.section ?? ""),
+        }));
+        setTests(items);
+      })
       .catch(() => {
         toast.error("Error al cargar el catálogo de análisis.");
         setTests([]);

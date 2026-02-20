@@ -94,7 +94,7 @@ export default async function ReportesPage({
   const [orderItems, ordersSummary, revenueResult, byPatientType, ordersList] = await Promise.all([
     prisma.labOrderItem.findMany({
       where: { order: orderWhereWithDate },
-      include: { labTest: true },
+      include: { labTest: { include: { section: true } } },
     }),
     prisma.labOrder.groupBy({
       by: ["status"],
@@ -137,7 +137,7 @@ export default async function ReportesPage({
       byTest.set(key, {
         code: test.code,
         name: test.name,
-        section: test.section,
+        section: test.section?.name ?? test.section?.code ?? "",
         count: 1,
       });
     }

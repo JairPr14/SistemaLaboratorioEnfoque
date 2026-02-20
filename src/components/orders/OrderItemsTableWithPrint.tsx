@@ -33,7 +33,7 @@ type OrderItem = {
     id: string;
     code: string;
     name: string;
-    section: string;
+    section: string | { code: string; name?: string } | null;
     template: {
       items: Array<{
         id: string;
@@ -461,7 +461,9 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteIt
                   </TableCell>
                   <TableCell>
                     <span className="text-xs text-slate-600">
-                      {item.labTest.section}
+                      {typeof item.labTest.section === "object" && item.labTest.section
+                        ? (item.labTest.section.name ?? item.labTest.section.code)
+                        : (item.labTest.section ?? "")}
                     </span>
                   </TableCell>
                   <TableCell>

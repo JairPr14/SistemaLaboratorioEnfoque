@@ -5,7 +5,7 @@ import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
-import { labTestSchema, sectionValues } from "@/features/lab/schemas";
+import { labTestSchema } from "@/features/lab/schemas";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,19 +13,22 @@ import { Label } from "@/components/ui/label";
 
 type LabTestFormValues = z.infer<typeof labTestSchema>;
 
+type SectionOption = { id: string; code: string; name: string };
+
 type Props = {
   testId?: string;
   defaultValues?: Partial<LabTestFormValues>;
+  sections: SectionOption[];
 };
 
-export function LabTestForm({ testId, defaultValues }: Props) {
+export function LabTestForm({ testId, defaultValues, sections }: Props) {
   const router = useRouter();
   const form = useForm<LabTestFormValues>({
     resolver: zodResolver(labTestSchema) as Resolver<LabTestFormValues>,
     defaultValues: {
       code: "",
       name: "",
-      section: "BIOQUIMICA",
+      sectionId: sections[0]?.id ?? "",
       price: 0,
       estimatedTimeMinutes: undefined,
       isActive: true,
@@ -69,11 +72,11 @@ export function LabTestForm({ testId, defaultValues }: Props) {
           <Label>Sección</Label>
           <select
             className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-            {...form.register("section")}
+            {...form.register("sectionId")}
           >
-            {sectionValues.map((section) => (
-              <option key={section} value={section}>
-                {section}
+            {sections.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
               </option>
             ))}
           </select>

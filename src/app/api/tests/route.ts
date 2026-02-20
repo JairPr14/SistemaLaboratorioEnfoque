@@ -20,13 +20,14 @@ export async function GET(request: Request) {
         ...(search
           ? {
               OR: [
-                { name: { contains: search } },
-                { code: { contains: search } },
+                { name: { contains: search, mode: "insensitive" as const } },
+                { code: { contains: search, mode: "insensitive" as const } },
               ],
             }
           : {}),
       },
-      orderBy: { createdAt: "desc" },
+      include: { section: true },
+      orderBy: [{ section: { order: "asc" } }, { name: "asc" }],
     });
 
     return NextResponse.json({ items });
@@ -53,10 +54,14 @@ export async function POST(request: Request) {
 
     const item = await prisma.labTest.create({
       data: {
-        ...parsed,
+        code: parsed.code,
+        name: parsed.name,
+        sectionId: parsed.sectionId,
         price: parsed.price,
         estimatedTimeMinutes: parsed.estimatedTimeMinutes ?? null,
+        isActive: parsed.isActive ?? true,
       },
+      include: { section: true },
     });
 
     return NextResponse.json({ item });

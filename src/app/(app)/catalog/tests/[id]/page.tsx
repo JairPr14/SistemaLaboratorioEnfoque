@@ -9,9 +9,16 @@ type Props = { params: Promise<{ id: string }> };
 
 export default async function TestDetailPage({ params }: Props) {
   const { id } = await params;
-  const test = await prisma.labTest.findFirst({
-    where: { id, deletedAt: null },
-  });
+  const [test, sections] = await Promise.all([
+    prisma.labTest.findFirst({
+      where: { id, deletedAt: null },
+      include: { section: true },
+    }),
+    prisma.labSection.findMany({
+      where: { isActive: true },
+      orderBy: { order: "asc" },
+    }),
+  ]);
 
   if (!test) {
     notFound();
@@ -38,10 +45,11 @@ export default async function TestDetailPage({ params }: Props) {
       <CardContent>
         <LabTestForm
           testId={test.id}
+          sections={sections.map((s) => ({ id: s.id, code: s.code, name: s.name }))}
           defaultValues={{
             code: test.code,
             name: test.name,
-            section: test.section,
+            sectionId: test.sectionId,
             price: Number(test.price),
             estimatedTimeMinutes: test.estimatedTimeMinutes ?? undefined,
             isActive: test.isActive,

@@ -27,8 +27,9 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
       patient: true,
       items: {
         include: {
-          labTest: { 
-            include: { 
+          labTest: {
+            include: {
+              section: true,
               template: { 
                 include: { 
                   items: {

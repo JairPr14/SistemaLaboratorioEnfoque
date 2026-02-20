@@ -139,6 +139,12 @@ body {
     box-sizing: border-box;
   }
 
+  /* Barra de sección: fondo semi-transparente visible al imprimir/PDF */
+  .print-section-bar {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
   /* Sello virtual: incluir al imprimir */
   .print-stamp img {
     -webkit-print-color-adjust: exact !important;

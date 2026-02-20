@@ -334,7 +334,13 @@ export function ResultForm({
                           <TableCell className="text-xs text-slate-500">
                             {form.watch(`items.${formIndex}.order`) || item.order}
                           </TableCell>
-                          <TableCell>
+                          <TableCell
+                            className="cursor-text"
+                            onClick={(e) => {
+                              const field = (e.currentTarget as HTMLTableCellElement).querySelector("input");
+                              (field as HTMLInputElement)?.focus();
+                            }}
+                          >
                             <Input
                               className="h-8 text-xs font-medium border-transparent hover:border-slate-300 focus:border-slate-400"
                               placeholder="Nombre parámetro"
@@ -344,7 +350,13 @@ export function ResultForm({
                               }
                             />
                           </TableCell>
-                          <TableCell>
+                          <TableCell
+                            className="cursor-text"
+                            onClick={(e) => {
+                              const field = (e.currentTarget as HTMLTableCellElement).querySelector("input");
+                              (field as HTMLInputElement)?.focus();
+                            }}
+                          >
                             <Input
                               className="h-8 text-xs w-20 border-transparent hover:border-slate-300 focus:border-slate-400"
                               placeholder="g/dL"
@@ -354,7 +366,14 @@ export function ResultForm({
                               }
                             />
                           </TableCell>
-                          <TableCell>
+                          <TableCell
+                            className="cursor-text"
+                            onClick={(e) => {
+                              if ((e.target as HTMLElement).closest("button")) return;
+                              const field = (e.currentTarget as HTMLTableCellElement).querySelector("input");
+                              (field as HTMLInputElement)?.focus();
+                            }}
+                          >
                             <div className="flex gap-1 items-center">
                               {isEditingRefs ? (
                                 <>
@@ -415,7 +434,16 @@ export function ResultForm({
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="w-40 align-top">
+                          <TableCell
+                            className="w-40 align-top cursor-text"
+                            onClick={(e) => {
+                              const cell = e.currentTarget as HTMLTableCellElement;
+                              const field = cell.querySelector(
+                                "input, select",
+                              ) as HTMLInputElement | HTMLSelectElement | null;
+                              field?.focus();
+                            }}
+                          >
                             {item.valueType === "SELECT" ? (
                               <select
                                 className={`h-9 w-full rounded-md border px-2 text-sm ${
@@ -449,8 +477,8 @@ export function ResultForm({
                                     const nextIndex = formIndex + 1;
                                     if (nextIndex < fields.length) {
                                       const nextInput = document.querySelector(
-                                        `input[name="items.${nextIndex}.value"]`,
-                                      ) as HTMLInputElement;
+                                        `input[name="items.${nextIndex}.value"], select[name="items.${nextIndex}.value"]`,
+                                      ) as HTMLInputElement | HTMLSelectElement;
                                       nextInput?.focus();
                                     }
                                   }
@@ -565,7 +593,13 @@ export function ResultForm({
                           <TableCell className="text-xs text-slate-500">
                             {form.watch(`items.${formIndex}.order`) || formIndex + 1}
                           </TableCell>
-                          <TableCell>
+                          <TableCell
+                            className="cursor-text"
+                            onClick={(e) => {
+                              const fieldEl = (e.currentTarget as HTMLTableCellElement).querySelector("input");
+                              (fieldEl as HTMLInputElement)?.focus();
+                            }}
+                          >
                             <Input
                               className="h-8 text-xs font-medium"
                               placeholder="Nombre parámetro"
@@ -575,7 +609,13 @@ export function ResultForm({
                               }
                             />
                           </TableCell>
-                          <TableCell>
+                          <TableCell
+                            className="cursor-text"
+                            onClick={(e) => {
+                              const fieldEl = (e.currentTarget as HTMLTableCellElement).querySelector("input");
+                              (fieldEl as HTMLInputElement)?.focus();
+                            }}
+                          >
                             <Input
                               className="h-8 text-xs w-20"
                               placeholder="g/dL"
@@ -585,7 +625,14 @@ export function ResultForm({
                               }
                             />
                           </TableCell>
-                          <TableCell>
+                          <TableCell
+                            className="cursor-text"
+                            onClick={(e) => {
+                              if ((e.target as HTMLElement).closest("button")) return;
+                              const fieldEl = (e.currentTarget as HTMLTableCellElement).querySelector("input");
+                              (fieldEl as HTMLInputElement)?.focus();
+                            }}
+                          >
                             <div className="flex gap-1 items-center">
                               {isEditingRefs ? (
                                 <>
@@ -645,7 +692,15 @@ export function ResultForm({
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="w-40 align-top">
+                          <TableCell
+                            className="w-40 align-top cursor-text"
+                            onClick={(e) => {
+                              const field = (e.currentTarget as HTMLTableCellElement).querySelector(
+                                "input",
+                              ) as HTMLInputElement | null;
+                              field?.focus();
+                            }}
+                          >
                             <Input
                               type="text"
                               className="h-9 w-full text-sm"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Dialog,
@@ -27,6 +27,7 @@ type Props = {
 export function QuickOrderModal({ open, onOpenChange }: Props) {
   const router = useRouter();
   const [patientQuery, setPatientQuery] = useState("");
+  const [testSearch, setTestSearch] = useState("");
   const [patientResults, setPatientResults] = useState<PatientResult[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<{ id: string; label: string } | null>(null);
   const [showNewPatient, setShowNewPatient] = useState(false);
@@ -52,7 +53,11 @@ export function QuickOrderModal({ open, onOpenChange }: Props) {
   const fetchTests = useCallback(async () => {
     const res = await fetch("/api/tests?active=true");
     const data = await res.json();
-    setTests(data.items ?? []);
+    const items = (data.items ?? []).map((t: { section?: { code: string } | string | null }) => ({
+      ...t,
+      section: typeof t.section === "object" && t.section ? (t.section as { code: string }).code : (t.section ?? ""),
+    }));
+    setTests(items);
   }, []);
 
   const fetchProfiles = useCallback(async () => {
@@ -249,6 +254,17 @@ export function QuickOrderModal({ open, onOpenChange }: Props) {
       setSubmitting(false);
     }
   };
+
+  const filteredTests = useMemo(() => {
+    const term = testSearch.trim().toLowerCase();
+    if (!term) return tests;
+    return tests.filter(
+      (t) =>
+        t.code.toLowerCase().includes(term) ||
+        t.name.toLowerCase().includes(term) ||
+        t.section.toLowerCase().includes(term),
+    );
+  }, [tests, testSearch]);
 
   const favoriteTests = tests.filter((t) => favoriteIds.has(t.id));
   const selectedProfiles = profiles.filter((p) => selectedProfileIds.has(p.id));
@@ -462,11 +478,27 @@ export function QuickOrderModal({ open, onOpenChange }: Props) {
               </div>
             )}
             <div>
-              <p className="mb-1 text-xs font-medium text-slate-600 dark:text-slate-400">
-                Lista general
-              </p>
+              <div className="mb-2 flex items-center gap-2">
+                <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                  Lista general
+                </p>
+                <div className="relative flex-1 min-w-0">
+                  <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    placeholder="Buscar análisis..."
+                    value={testSearch}
+                    onChange={(e) => setTestSearch(e.target.value)}
+                    className="h-8 pl-8 text-sm"
+                  />
+                </div>
+              </div>
               <div className="max-h-44 overflow-auto rounded border border-slate-200 p-2 dark:border-slate-600">
-                {tests.map((t) => {
+                {filteredTests.length === 0 ? (
+                  <p className="px-2 py-4 text-center text-sm text-slate-500">
+                    {testSearch.trim() ? "Sin resultados" : "No hay análisis"}
+                  </p>
+                ) : (
+                filteredTests.map((t) => {
                   const isInPromo = testIdsInPromos.has(t.id);
                   const promoContaining = profiles.find(
                     (p) => selectedProfileIds.has(p.id) && p.tests.some((x) => x.id === t.id)
@@ -510,7 +542,8 @@ export function QuickOrderModal({ open, onOpenChange }: Props) {
                       </button>
                     </label>
                   );
-                })}
+                })
+                )}
               </div>
             </div>
             {(selectedProfiles.length > 0 || selectedIndividualTests.length > 0) && (
