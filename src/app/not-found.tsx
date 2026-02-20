@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 
 export default function NotFound() {
   return (
@@ -12,12 +12,12 @@ export default function NotFound() {
           Página no encontrada. La ruta que buscas no existe o fue movida.
         </p>
         <div className="flex gap-4 justify-center pt-2">
-          <Button asChild>
-            <Link href="/dashboard">Ir al inicio</Link>
-          </Button>
-          <Button variant="outline" asChild>
-            <Link href="/">Volver</Link>
-          </Button>
+          <Link href="/dashboard" className={buttonVariants()}>
+            Ir al inicio
+          </Link>
+          <Link href="/" className={buttonVariants({ variant: "outline" })}>
+            Volver
+          </Link>
         </div>
       </div>
     </div>
