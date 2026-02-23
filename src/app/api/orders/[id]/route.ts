@@ -121,6 +121,16 @@ export async function DELETE(_request: Request, { params }: Params) {
     }
 
     await prisma.$transaction(async (tx) => {
+      if (order.admissionRequestId) {
+        await tx.admissionRequest.update({
+          where: { id: order.admissionRequestId },
+          data: {
+            status: "PENDIENTE",
+            convertedOrderId: null,
+            convertedAt: null,
+          },
+        });
+      }
       for (const item of order.items) {
         if (item.result) {
           await tx.labResultItem.deleteMany({ where: { resultId: item.result.id } });

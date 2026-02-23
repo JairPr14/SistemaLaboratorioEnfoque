@@ -68,11 +68,11 @@ export function AdmissionActions({
   }
 
   return (
-    <div className="flex items-center justify-end gap-2">
+    <div className="flex flex-wrap items-center justify-end gap-2">
       {convertedOrderId && (
         <Link
           href={`/orders/${convertedOrderId}`}
-          className="text-sm text-slate-600 hover:underline dark:text-slate-300"
+          className="inline-flex items-center rounded-md border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-teal-600 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-teal-400"
         >
           Ver orden
         </Link>

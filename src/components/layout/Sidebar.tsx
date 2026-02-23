@@ -165,14 +165,14 @@ export function Sidebar({
       className={cn(
         "sticky top-0 flex h-screen shrink-0 flex-col overflow-hidden border-r border-slate-200/80 bg-white/95 shadow-xl shadow-slate-200/60 backdrop-blur-md transition-all duration-300 ease-out dark:border-slate-700/80 dark:bg-slate-900/95 dark:shadow-slate-950/30",
         !isMobile && (open ? "w-64 min-w-64" : "w-0 min-w-0 border-r-0"),
-        isMobile && "fixed inset-y-0 left-0 z-50 w-64 min-w-0 max-w-[85vw]",
+        isMobile && "fixed inset-y-0 left-0 z-50 w-[min(16rem,85vw)]",
         isMobile && (open ? "translate-x-0" : "-translate-x-full"),
       )}
     >
-      <div className={cn("flex h-full min-w-64 flex-col", !open && !isMobile && "invisible")}>
-      <div className="border-b border-slate-200/80 bg-gradient-to-r from-teal-600 to-cyan-600 px-5 py-5 text-white dark:border-slate-700/80">
+      <div className={cn("flex h-full min-w-0 flex-1 flex-col overflow-hidden", !open && !isMobile && "invisible")}>
+      <div className="shrink-0 border-b border-slate-200/80 bg-gradient-to-r from-teal-600 to-cyan-600 px-4 py-4 text-white dark:border-slate-700/80 sm:px-5 sm:py-5">
         <p className="text-[11px] uppercase tracking-[0.18em] text-white/80">Sistema</p>
-        <p className="mt-1 text-base font-semibold tracking-tight">Clínica Enfoque Salud</p>
+        <p className="mt-1 truncate text-sm font-semibold tracking-tight sm:text-base">Clínica Enfoque Salud</p>
         <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-white/20 px-2.5 py-1 text-[11px]">
           <span className="h-2 w-2 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,0.8)]" />
           Laboratorio en línea

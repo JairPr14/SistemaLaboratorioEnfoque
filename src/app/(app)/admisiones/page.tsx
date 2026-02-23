@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
+import { Search, Filter, RotateCcw, Clock, CheckCircle, XCircle, FileText } from "lucide-react";
 
 import { prisma } from "@/lib/prisma";
 import {
@@ -22,6 +23,8 @@ type SearchParams = Promise<{
   search?: string;
 }>;
 
+export const dynamic = "force-dynamic";
+
 export default async function AdmisionesPage({ searchParams }: { searchParams: SearchParams }) {
   const session = await getServerSession(authOptions);
   const canView = hasPermission(session, PERMISSION_VER_ADMISION);
@@ -33,10 +36,11 @@ export default async function AdmisionesPage({ searchParams }: { searchParams: S
   }
 
   const params = await searchParams;
-  const status = params.status?.trim() || "";
+  const status = params.status?.trim() ?? "PENDIENTE";
   const search = params.search?.trim() || "";
 
-  const [items, summary] = await Promise.all([
+  const statusOrder = { PENDIENTE: 0, CONVERTIDA: 1, CANCELADA: 2 };
+  const [itemsRaw, summary] = await Promise.all([
     prisma.admissionRequest.findMany({
       where: {
         ...(status ? { status: status as any } : {}),
@@ -71,6 +75,13 @@ export default async function AdmisionesPage({ searchParams }: { searchParams: S
     canceladas: summary.find((row) => row.status === "CANCELADA")?._count.id ?? 0,
   };
 
+  const items = [...itemsRaw].sort((a, b) => {
+    const ordA = statusOrder[a.status as keyof typeof statusOrder] ?? 99;
+    const ordB = statusOrder[b.status as keyof typeof statusOrder] ?? 99;
+    if (ordA !== ordB) return ordA - ordB;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+
   return (
     <div className={pageLayoutClasses.wrapper}>
       <PageHeader
@@ -88,104 +99,197 @@ export default async function AdmisionesPage({ searchParams }: { searchParams: S
         }
       />
 
-      <Card>
-        <CardContent className="pt-4">
-          <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <input
-              name="search"
-              defaultValue={search}
-              placeholder="Buscar por código, paciente o DNI"
-              className="h-9 rounded-md border border-slate-200 px-3 text-sm dark:border-slate-600 dark:bg-slate-800"
-            />
-            <select
-              name="status"
-              defaultValue={status}
-              className="h-9 rounded-md border border-slate-200 px-3 text-sm dark:border-slate-600 dark:bg-slate-800"
-            >
-              <option value="">Todos los estados</option>
-              <option value="PENDIENTE">Pendiente</option>
-              <option value="CONVERTIDA">Convertida</option>
-              <option value="CANCELADA">Cancelada</option>
-            </select>
-            <button
-              type="submit"
-              className="h-9 rounded-md bg-slate-900 px-3 text-sm font-medium text-white dark:bg-teal-600"
-            >
-              Filtrar
-            </button>
-            {(search || status) && (
-              <Link
-                href="/admisiones"
-                className="inline-flex h-9 items-center justify-center rounded-md border border-slate-200 px-3 text-sm dark:border-slate-600"
+      <Card className="overflow-hidden">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Filter className="h-4 w-4 text-slate-500" />
+            Filtros de búsqueda
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form method="get" action="/admisiones" className="flex flex-wrap items-end gap-3">
+            <div className="min-w-0 flex-1 sm:min-w-[200px]">
+              <label htmlFor="adm-search" className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+                Buscar
+              </label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  id="adm-search"
+                  name="search"
+                  defaultValue={search}
+                  placeholder="Código, paciente o DNI"
+                  className="h-10 w-full rounded-lg border border-slate-200 pl-9 pr-3 text-sm transition-colors focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                />
+              </div>
+            </div>
+            <div className="min-w-[140px]">
+              <label htmlFor="adm-status" className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+                Estado
+              </label>
+              <select
+                id="adm-status"
+                name="status"
+                defaultValue={status}
+                className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm transition-colors focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
               >
-                Limpiar
-              </Link>
-            )}
+                <option value="PENDIENTE">Pendiente</option>
+                <option value="CONVERTIDA">Convertida</option>
+                <option value="CANCELADA">Cancelada</option>
+                <option value="">Todos</option>
+              </select>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                className="inline-flex h-10 items-center gap-2 rounded-lg bg-teal-600 px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-teal-700 dark:bg-teal-600 dark:hover:bg-teal-500"
+              >
+                <Filter className="h-4 w-4" />
+                Filtrar
+              </button>
+              {(search || status !== "PENDIENTE") && (
+                <Link
+                  href="/admisiones"
+                  className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 px-4 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Limpiar
+                </Link>
+              )}
+            </div>
           </form>
         </CardContent>
       </Card>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Pendientes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold text-amber-600">{summaryCount.pendientes}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Convertidas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold text-emerald-600">{summaryCount.convertidas}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Canceladas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold text-slate-500">{summaryCount.canceladas}</p>
-          </CardContent>
-        </Card>
+        <Link
+          href="/admisiones?status=PENDIENTE"
+          className={`rounded-xl border-2 transition-all hover:shadow-md ${
+            status === "PENDIENTE"
+              ? "border-amber-400 bg-amber-50 dark:border-amber-500 dark:bg-amber-900/20"
+              : "border-slate-200 hover:border-amber-300 dark:border-slate-700 dark:hover:border-amber-700"
+          }`}
+        >
+          <div className="flex items-center justify-between p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/40">
+                <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Pendientes</p>
+                <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{summaryCount.pendientes}</p>
+              </div>
+            </div>
+          </div>
+        </Link>
+        <Link
+          href="/admisiones?status=CONVERTIDA"
+          className={`rounded-xl border-2 transition-all hover:shadow-md ${
+            status === "CONVERTIDA"
+              ? "border-emerald-400 bg-emerald-50 dark:border-emerald-500 dark:bg-emerald-900/20"
+              : "border-slate-200 hover:border-emerald-300 dark:border-slate-700 dark:hover:border-emerald-700"
+          }`}
+        >
+          <div className="flex items-center justify-between p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/40">
+                <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Convertidas</p>
+                <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{summaryCount.convertidas}</p>
+              </div>
+            </div>
+          </div>
+        </Link>
+        <Link
+          href="/admisiones?status=CANCELADA"
+          className={`rounded-xl border-2 transition-all hover:shadow-md ${
+            status === "CANCELADA"
+              ? "border-slate-400 bg-slate-100 dark:border-slate-600 dark:bg-slate-800/50"
+              : "border-slate-200 hover:border-slate-300 dark:border-slate-700"
+          }`}
+        >
+          <div className="flex items-center justify-between p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800">
+                <XCircle className="h-5 w-5 text-slate-500 dark:text-slate-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Canceladas</p>
+                <p className="text-2xl font-bold text-slate-600 dark:text-slate-300">{summaryCount.canceladas}</p>
+              </div>
+            </div>
+          </div>
+        </Link>
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Bandeja de pre-órdenes</CardTitle>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-slate-500" />
+            <CardTitle className="text-base">Bandeja de pre-órdenes</CardTitle>
+          </div>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            {items.length > 0
+              ? `Mostrando ${items.length} pre-orden${items.length === 1 ? "" : "es"}`
+              : "Ajusta los filtros para ver resultados"}
+          </p>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+          <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
             <Table>
               <TableHeader>
                 <TableRow className="bg-slate-50 dark:bg-slate-800/50">
-                  <TableHead>Código</TableHead>
-                  <TableHead>Paciente</TableHead>
-                  <TableHead>Sede</TableHead>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
+                  <TableHead className="w-12 text-center font-semibold">#</TableHead>
+                  <TableHead className="font-semibold">Código</TableHead>
+                  <TableHead className="font-semibold">Paciente</TableHead>
+                  <TableHead className="font-semibold">Sede</TableHead>
+                  <TableHead className="font-semibold">Fecha</TableHead>
+                  <TableHead className="font-semibold">Estado</TableHead>
+                  <TableHead className="text-right font-semibold">Total</TableHead>
+                  <TableHead className="text-right font-semibold">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {items.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="py-10 text-center text-sm text-slate-500">
-                      No hay pre-órdenes con esos filtros.
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={8} className="py-16">
+                      <div className="flex flex-col items-center justify-center text-center">
+                        <FileText className="mb-3 h-12 w-12 text-slate-300 dark:text-slate-600" />
+                        <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                          No hay pre-órdenes con esos filtros
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                          {status === "PENDIENTE"
+                            ? "Las pre-órdenes pendientes aparecerán aquí. Prueba con otro estado o crea una nueva."
+                            : "Cambia el estado del filtro o la búsqueda para ver más resultados."}
+                        </p>
+                        {canManage && (
+                          <Link
+                            href="/admisiones/nueva"
+                            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-teal-700"
+                          >
+                            Nueva pre-orden
+                          </Link>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  items.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium">{item.requestCode}</TableCell>
+                  items.map((item, index) => (
+                    <TableRow key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                      <TableCell className="text-center text-slate-500">{index + 1}</TableCell>
                       <TableCell>
-                        {item.patient.lastName} {item.patient.firstName}
-                        <p className="text-xs text-slate-500">DNI {item.patient.dni}</p>
+                        <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-sm font-medium text-slate-800 dark:bg-slate-700 dark:text-slate-200">
+                          {item.requestCode}
+                        </code>
                       </TableCell>
-                      <TableCell>{item.branch?.name ?? "Sin sede"}</TableCell>
+                      <TableCell>
+                        <p className="font-medium">{item.patient.lastName} {item.patient.firstName}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">DNI {item.patient.dni}</p>
+                      </TableCell>
+                      <TableCell className="text-slate-600 dark:text-slate-400">{item.branch?.name ?? "—"}</TableCell>
                       <TableCell>{formatDate(item.createdAt)}</TableCell>
                       <TableCell>
                         <Badge

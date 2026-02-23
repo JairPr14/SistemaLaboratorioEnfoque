@@ -25,7 +25,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             sidebarOpen={sidebarOpen}
             onToggleSidebar={() => setSidebarOpen((v) => !v)}
           />
-          <main className="min-w-0 flex-1 overflow-x-auto p-5 sm:p-6 lg:p-8">
+          <main className="min-w-0 flex-1 overflow-x-hidden p-5 sm:p-6 lg:p-8">
             {children}
           </main>
           <footer className="border-t border-slate-200/80 bg-white/70 px-5 py-3 backdrop-blur-md transition-colors dark:border-slate-700/80 dark:bg-slate-900/60 sm:px-6 lg:px-8">

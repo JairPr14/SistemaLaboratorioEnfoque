@@ -19,6 +19,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import { GlobalSearch } from "@/components/dashboard/GlobalSearch";
+import { NotificationBell } from "@/components/layout/NotificationBell";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import {
   ADMIN_ROLE_CODE,
@@ -73,8 +74,8 @@ export function Topbar({
   return (
     <>
     <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/85 px-4 py-3 backdrop-blur-md transition-colors duration-200 dark:border-slate-700/80 dark:bg-slate-900/80 sm:px-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-      <div className="flex min-w-0 items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-3 sm:flex-nowrap sm:gap-4">
+      <div className="flex min-w-0 shrink-0 items-center gap-2">
         <Button
           variant="ghost"
           size="icon"
@@ -97,9 +98,9 @@ export function Topbar({
         </p>
       </div>
       </div>
-      <div className="flex w-full flex-1 shrink-0 items-center justify-end gap-2 sm:w-auto sm:flex-initial sm:gap-3">
+      <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 sm:flex-nowrap sm:gap-3">
         {(canReception || canAnalyst || canDelivery || canManageAdmission) && (
-          <div className="hidden lg:flex items-center gap-1.5 rounded-2xl border border-slate-200/90 bg-gradient-to-r from-white to-slate-50 px-2 py-1.5 shadow-sm dark:border-slate-700/80 dark:from-slate-900 dark:to-slate-800">
+          <div className="hidden shrink-0 lg:flex items-center gap-1.5 rounded-2xl border border-slate-200/90 bg-gradient-to-r from-white to-slate-50 px-2 py-1.5 shadow-sm dark:border-slate-700/80 dark:from-slate-900 dark:to-slate-800">
             <span className="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
               <Bolt className="h-3.5 w-3.5" />
               1 clic
@@ -134,8 +135,12 @@ export function Topbar({
             )}
           </div>
         )}
-        <GlobalSearch />
-        <ThemeToggle />
+        <div className="w-full min-w-0 shrink sm:w-auto sm:max-w-md sm:flex-1">
+          <GlobalSearch />
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <NotificationBell session={session ?? null} />
+          <ThemeToggle />
         {session?.user && (
           <div className="flex items-center gap-2 border-l border-slate-200/80 pl-3 dark:border-slate-600/80">
             <div className="hidden items-center gap-2 rounded-xl border border-slate-200/80 bg-slate-50 px-2.5 py-1.5 dark:border-slate-700/70 dark:bg-slate-800 sm:flex">
@@ -172,8 +177,9 @@ export function Topbar({
             </Button>
           </div>
         )}
+        </div>
       </div>
-      </div>
+    </div>
     </header>
     <QuickOrderModal open={quickOrderOpen} onOpenChange={setQuickOrderOpen} />
     </>

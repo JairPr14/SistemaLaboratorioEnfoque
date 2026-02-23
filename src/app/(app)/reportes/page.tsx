@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { PageHeader, pageLayoutClasses } from "@/components/layout/PageHeader";
 import { ReportesFilterForm } from "./ReportesFilterForm";
-import { Building2, TrendingUp, FileText, DollarSign, CalendarDays, Activity, BarChart3 } from "lucide-react";
+import { Building2, TrendingUp, FileText, DollarSign, CalendarDays, Activity, BarChart3, UserPlus } from "lucide-react";
 
 type SearchParams = {
   dateFrom?: string;
@@ -75,6 +75,8 @@ function parseDateRange(params: SearchParams) {
   return { dateFrom, dateTo };
 }
 
+export const dynamic = "force-dynamic";
+
 export default async function ReportesPage({
   searchParams,
 }: {
@@ -127,7 +129,7 @@ export default async function ReportesPage({
     };
   }
 
-  const [orderItems, ordersSummary, revenueResult, byPatientType, byBranch, ordersList, branches] = await Promise.all([
+  const [orderItems, ordersSummary, revenueResult, byPatientType, byBranch, ordersList, branches, admissionSummary] = await Promise.all([
     prisma.labOrderItem.findMany({
       where: { order: orderWhereFinal },
       include: { labTest: { include: { section: true } } },
@@ -164,6 +166,14 @@ export default async function ReportesPage({
     }),
     prisma.branch.findMany({
       orderBy: [{ order: "asc" }, { name: "asc" }],
+    }),
+    prisma.admissionRequest.groupBy({
+      by: ["status"],
+      where: {
+        createdAt: { gte: dateFrom, lte: dateTo },
+      },
+      _count: { id: true },
+      _sum: { totalPrice: true },
     }),
   ]);
 
@@ -326,6 +336,48 @@ export default async function ReportesPage({
           </CardContent>
         </Card>
       </div>
+
+      {/* Pre-órdenes de Admisión */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <UserPlus className="h-4 w-4 text-slate-500" />
+            <CardTitle className="text-base">Pre-órdenes de Admisión</CardTitle>
+          </div>
+          <p className="text-sm text-slate-500 mt-1">
+            Resumen de pre-órdenes creadas en el período.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {admissionSummary.length === 0 ? (
+            <p className="text-sm text-slate-500">Sin pre-órdenes en el período</p>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-3">
+              {admissionSummary.map((row) => {
+                const admLabels: Record<string, string> = {
+                  PENDIENTE: "Pendientes",
+                  CONVERTIDA: "Convertidas",
+                  CANCELADA: "Canceladas",
+                };
+                const admConfig: Record<string, { bg: string; text: string }> = {
+                  PENDIENTE: { bg: "bg-amber-50 dark:bg-amber-900/20", text: "text-amber-700 dark:text-amber-400" },
+                  CONVERTIDA: { bg: "bg-emerald-50 dark:bg-emerald-900/20", text: "text-emerald-700 dark:text-emerald-400" },
+                  CANCELADA: { bg: "bg-slate-100 dark:bg-slate-800", text: "text-slate-600 dark:text-slate-400" },
+                };
+                const cfg = admConfig[row.status] ?? { bg: "bg-slate-50", text: "text-slate-700" };
+                const total = Number(row._sum.totalPrice ?? 0);
+                return (
+                  <div key={row.status} className={`rounded-xl border border-slate-200 p-4 dark:border-slate-700 ${cfg.bg}`}>
+                    <p className={`text-sm font-medium ${cfg.text}`}>{admLabels[row.status] ?? row.status}</p>
+                    <p className={`mt-2 text-2xl font-bold ${cfg.text}`}>{row._count.id}</p>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{formatCurrency(total)} facturado</p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Órdenes por estado */}
       <Card>
@@ -491,6 +543,7 @@ export default async function ReportesPage({
               <Table>
                 <TableHeader>
                   <TableRow className="bg-slate-50 dark:bg-slate-800/50">
+                    <TableHead className="w-12 text-center font-semibold">#</TableHead>
                     <TableHead className="font-semibold">Orden</TableHead>
                     <TableHead className="font-semibold">{statusFilter === "ENTREGADO" ? "Fecha entrega" : "Fecha"}</TableHead>
                     <TableHead className="font-semibold">Paciente</TableHead>
@@ -500,7 +553,7 @@ export default async function ReportesPage({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {ordersList.map((order) => {
+                  {ordersList.map((order, idx) => {
                     const branchName = order.branch?.name ?? "Sin sede";
                     const statusColors: Record<string, string> = {
                       PENDIENTE: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
@@ -511,6 +564,7 @@ export default async function ReportesPage({
                     };
                     return (
                       <TableRow key={order.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                        <TableCell className="text-center text-slate-500">{idx + 1}</TableCell>
                         <TableCell>
                           <Link
                             href={`/orders/${order.id}`}
@@ -553,7 +607,7 @@ export default async function ReportesPage({
         </CardContent>
       </Card>
 
-      {/* Análisis más solicitados - Diseño mejorado */}
+      {/* Análisis más solicitados */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">

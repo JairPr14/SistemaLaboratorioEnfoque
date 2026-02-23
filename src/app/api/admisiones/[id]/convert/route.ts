@@ -128,6 +128,16 @@ export async function POST(_: Request, { params }: Params) {
         },
       });
 
+      await tx.notification.create({
+        data: {
+          type: "ADMISSION_CONVERTED",
+          title: "Nueva orden desde Admisión",
+          message: `La pre-orden fue convertida en orden ${order.orderCode}.`,
+          linkTo: `/orders/${order.id}`,
+          relatedOrderId: order.id,
+        },
+      });
+
       return order;
     });
 

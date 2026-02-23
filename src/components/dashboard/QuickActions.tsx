@@ -137,7 +137,7 @@ export function QuickActions({ sectionOptions }: Props) {
           <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Acciones rápidas</p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex min-w-0 flex-wrap gap-2">
           {canReception && (
             <>
               <Button size="sm" className="gap-2" onClick={() => setQuickOrderOpen(true)}>
