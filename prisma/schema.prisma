@@ -34,6 +34,7 @@ model User {
   updatedAt    DateTime @updatedAt
   favoriteTests UserFavoriteTest[]
   payments      Payment[]
+  admissionRequestsCreated AdmissionRequest[]
 
   @@index([email])
   @@index([roleId])
@@ -99,6 +100,8 @@ model LabSection {
 
 enum ValueType {
   NUMBER
+  DECIMAL
+  PERCENTAGE
   TEXT
   SELECT
 }
@@ -130,6 +133,12 @@ enum OrderItemStatus {
   COMPLETADO
 }
 
+enum AdmissionStatus {
+  PENDIENTE
+  CONVERTIDA
+  CANCELADA
+}
+
 model Patient {
   id        String   @id @default(cuid())
   code      String   @unique
@@ -145,7 +154,8 @@ model Patient {
   updatedAt DateTime @updatedAt
   deletedAt DateTime?
 
-  orders LabOrder[]
+  orders             LabOrder[]
+  admissionRequests  AdmissionRequest[]
 
   @@index([dni])
   @@index([code])
@@ -166,6 +176,7 @@ model LabTest {
 
   template       LabTemplate?
   items          LabOrderItem[]
+  admissionItems AdmissionRequestItem[]
   favoriteUsers  UserFavoriteTest[]
   profileItems   TestProfileItem[]
 
@@ -231,6 +242,8 @@ model LabOrder {
   notes       String?
   preAnalyticNote String?
   patientType OrderPatientType?
+  branchId    String?
+  admissionRequestId String?           @unique
   status      OrderStatus       @default(PENDIENTE)
   totalPrice  Float
   createdAt   DateTime          @default(now())
@@ -238,12 +251,17 @@ model LabOrder {
   deliveredAt DateTime?
 
   patient Patient        @relation(fields: [patientId], references: [id])
+  branch  Branch?        @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  admissionRequest AdmissionRequest? @relation("LabOrderFromAdmissionRequest", fields: [admissionRequestId], references: [id], onDelete: SetNull)
+  convertedFromAdmissionRequest AdmissionRequest? @relation("AdmissionConvertedOrder")
   items   LabOrderItem[]
   payments Payment[]
 
   @@index([status])
   @@index([createdAt])
   @@index([patientType])
+  @@index([branchId])
+  @@index([admissionRequestId])
 }
 
 model Payment {
@@ -300,6 +318,71 @@ model AppConfig {
   id    String   @id @default(cuid())
   key   String   @unique
   value String
+}
+
+model Branch {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  address   String?
+  phone     String?
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders            LabOrder[]
+  admissionRequests AdmissionRequest[]
+
+  @@index([code])
+  @@index([order])
+}
+
+model AdmissionRequest {
+  id             String          @id @default(cuid())
+  requestCode    String          @unique
+  patientId      String
+  requestedBy    String?
+  notes          String?
+  patientType    OrderPatientType?
+  branchId       String?
+  createdById    String?
+  status         AdmissionStatus @default(PENDIENTE)
+  totalPrice     Float
+  convertedOrderId String?       @unique
+  convertedAt    DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  patient        Patient         @relation(fields: [patientId], references: [id])
+  branch         Branch?         @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  createdBy      User?           @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  convertedOrder LabOrder?       @relation("AdmissionConvertedOrder", fields: [convertedOrderId], references: [id], onDelete: SetNull)
+  items          AdmissionRequestItem[]
+  labOrder       LabOrder?       @relation("LabOrderFromAdmissionRequest")
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([patientId])
+  @@index([branchId])
+}
+
+model AdmissionRequestItem {
+  id                String   @id @default(cuid())
+  admissionRequestId String
+  labTestId         String
+  order             Int      @default(0)
+  priceBase         Float
+  priceApplied      Float
+  adjustmentReason  String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  admissionRequest AdmissionRequest @relation(fields: [admissionRequestId], references: [id], onDelete: Cascade)
+  labTest          LabTest          @relation(fields: [labTestId], references: [id], onDelete: Restrict)
+
+  @@index([admissionRequestId])
+  @@index([labTestId])
 }
 
 model PreAnalyticNoteTemplate {

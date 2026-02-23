@@ -17,7 +17,16 @@ export const labSectionSchema = z.object({
   order: z.coerce.number().int().min(0).default(0),
   isActive: z.coerce.boolean().default(true),
 });
-export const valueTypeValues = ["NUMBER", "TEXT", "SELECT"] as const;
+export const valueTypeValues = ["NUMBER", "DECIMAL", "PERCENTAGE", "TEXT", "SELECT"] as const;
+
+/** Etiquetas legibles para el selector de tipo de dato en plantillas */
+export const valueTypeLabels: Record<(typeof valueTypeValues)[number], string> = {
+  NUMBER: "Número",
+  DECIMAL: "Decimal",
+  PERCENTAGE: "Porcentaje",
+  TEXT: "Texto",
+  SELECT: "Selección",
+};
 export const orderStatusValues = [
   "PENDIENTE",
   "EN_PROCESO",
@@ -154,6 +163,50 @@ export const quickOrderSchema = z.object({
   (data) => data.tests.length > 0 || data.profileIds.length > 0,
   { message: "Selecciona al menos un análisis o una promoción", path: ["tests"] }
 );
+
+export const admissionStatusValues = ["PENDIENTE", "CONVERTIDA", "CANCELADA"] as const;
+
+export const admissionItemAdjustmentSchema = z.object({
+  testId: z.string().min(1),
+  priceApplied: z.coerce.number().min(0),
+  adjustmentReason: z.string().max(200).optional().nullable(),
+});
+
+export const admissionCreateSchema = z.object({
+  patientId: z.string().optional(),
+  patientDraft: patientDraftSchema.optional(),
+  requestedBy: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  patientType: z.preprocess(
+    (v) => (v === "" || v === undefined ? null : v),
+    z.enum(orderPatientTypeValues).nullable()
+  ).optional(),
+  branchId: z.preprocess(
+    (v) => (v === "" || v === undefined ? null : v),
+    z.string().nullable()
+  ).optional(),
+  tests: z.array(z.string().min(1)).optional().default([]),
+  profileIds: z.array(z.string().min(1)).optional().default([]),
+  itemAdjustments: z.array(admissionItemAdjustmentSchema).optional().default([]),
+}).refine(
+  (data) => data.tests.length > 0 || data.profileIds.length > 0,
+  { message: "Selecciona al menos un análisis o una promoción", path: ["tests"] }
+);
+
+export const admissionUpdateSchema = z.object({
+  requestedBy: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  patientType: z.preprocess(
+    (v) => (v === "" || v === undefined ? null : v),
+    z.enum(orderPatientTypeValues).nullable()
+  ).optional(),
+  branchId: z.preprocess(
+    (v) => (v === "" || v === undefined ? null : v),
+    z.string().nullable()
+  ).optional(),
+  status: z.enum(admissionStatusValues).optional(),
+  itemAdjustments: z.array(admissionItemAdjustmentSchema).optional().default([]),
+});
 
 export const testProfileSchema = z.object({
   name: z.string().min(2, "Nombre mínimo 2 caracteres"),

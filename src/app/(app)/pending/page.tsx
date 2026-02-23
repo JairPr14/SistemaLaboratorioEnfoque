@@ -29,9 +29,7 @@ export default async function PendingPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Listado</CardTitle>
-          <p className="text-sm text-slate-500 dark:text-slate-400 font-normal mt-0.5">
-            Solo se muestran órdenes con estado PENDIENTE o EN_PROCESO.
-          </p>
+
         </CardHeader>
         <CardContent>
           <div className="-mx-1 overflow-x-auto rounded-lg border border-slate-200/80 dark:border-slate-600 overflow-hidden">

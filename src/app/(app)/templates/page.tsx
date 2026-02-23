@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { pageLayoutClasses } from "@/components/layout/PageHeader";
 import { TemplateForm } from "@/components/forms/TemplateForm";
 import { TemplatesList } from "@/components/templates/TemplatesList";
@@ -47,17 +46,9 @@ export default async function TemplatesPage() {
         <h2 className={pageLayoutClasses.sectionTitle}>
           Nueva plantilla
         </h2>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Agregar plantilla al catálogo</CardTitle>
-            <p className="text-sm text-slate-500 dark:text-slate-400 font-normal mt-0.5">
-              Elige un análisis y define sus parámetros.
-            </p>
-          </CardHeader>
-          <CardContent>
-            <TemplateForm labTests={labTestsForForm} />
-          </CardContent>
-        </Card>
+        <div className="rounded-2xl border border-slate-200/80 bg-white/80 shadow-sm backdrop-blur-sm dark:border-slate-700/80 dark:bg-slate-900/60">
+          <TemplateForm labTests={labTestsForForm} />
+        </div>
       </section>
     </div>
   );

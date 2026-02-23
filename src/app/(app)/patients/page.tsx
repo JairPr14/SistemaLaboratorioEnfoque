@@ -52,17 +52,9 @@ export default async function PatientsPage({ searchParams }: Props) {
         <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">
           Nuevo paciente
         </h2>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Registro de paciente</CardTitle>
-            <p className="text-sm text-slate-500 dark:text-slate-400 font-normal mt-0.5">
-              Complete los datos para dar de alta un paciente.
-            </p>
-          </CardHeader>
-          <CardContent>
-            <PatientForm />
-          </CardContent>
-        </Card>
+        <div className="rounded-2xl border border-slate-200/80 bg-white/80 shadow-sm backdrop-blur-sm dark:border-slate-700/80 dark:bg-slate-900/60">
+          <PatientForm />
+        </div>
       </section>
 
       {/* 2. Buscar paciente */}

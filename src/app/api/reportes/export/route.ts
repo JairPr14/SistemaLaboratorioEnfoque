@@ -57,16 +57,19 @@ export async function GET(request: Request) {
   const { dateFrom, dateTo } = parseDateRange(searchParams);
   const statusFilter = searchParams.get("status")?.trim() || undefined;
   const paymentStatusFilter = searchParams.get("paymentStatus")?.trim() || undefined;
+  const branchIdFilter = searchParams.get("branchId")?.trim() || undefined;
 
   const useDeliveredDate = statusFilter === "ENTREGADO";
   const orderWhereWithDate: Prisma.LabOrderWhereInput = useDeliveredDate
     ? {
         status: "ENTREGADO",
         deliveredAt: { not: null, gte: dateFrom, lte: dateTo },
+        ...(branchIdFilter ? { branchId: branchIdFilter } : {}),
       }
     : {
         ...(statusFilter ? { status: statusFilter as OrderStatus } : { status: { not: "ANULADO" } }),
         createdAt: { gte: dateFrom, lte: dateTo },
+        ...(branchIdFilter ? { branchId: branchIdFilter } : {}),
       };
 
   let orderWhereFinal: Prisma.LabOrderWhereInput = orderWhereWithDate;
@@ -94,7 +97,7 @@ export async function GET(request: Request) {
 
   const orders = await prisma.labOrder.findMany({
     where: orderWhereFinal,
-    include: { patient: true },
+    include: { patient: true, branch: true },
     orderBy: useDeliveredDate
       ? [{ deliveredAt: "desc" }, { updatedAt: "desc" }]
       : { createdAt: "desc" },
@@ -109,7 +112,7 @@ export async function GET(request: Request) {
       "Orden",
       "Fecha",
       "Paciente",
-      "TipoPaciente",
+      "Sede",
       "EstadoOrden",
       "TotalFacturado",
       "TotalCobrado",
@@ -125,11 +128,12 @@ export async function GET(request: Request) {
       const date = (useDeliveredDate && o.deliveredAt ? o.deliveredAt : o.createdAt)
         .toISOString()
         .slice(0, 10);
+      const branchName = o.branch?.name ?? o.patientType ?? "";
       return [
         o.orderCode,
         date,
         patient,
-        o.patientType ?? "",
+        branchName,
         o.status,
         total.toFixed(2),
         paid.toFixed(2),

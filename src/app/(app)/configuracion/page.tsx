@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -14,9 +15,30 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Pencil, Users, Shield, UserPlus, Trash2, Stamp, FlaskConical, Plus } from "lucide-react";
+import { Pencil, Users, Shield, UserPlus, Trash2, Stamp, FlaskConical, Plus, Building2, GripVertical } from "lucide-react";
 import Link from "next/link";
-import { ALL_PERMISSIONS, PERMISSION_GROUPS } from "@/lib/auth";
+import {
+  ALL_PERMISSIONS,
+  PERMISSION_GROUPS,
+  ADMIN_ROLE_CODE,
+  PERMISSION_GESTIONAR_ROLES,
+  PERMISSION_GESTIONAR_USUARIOS,
+  PERMISSION_GESTIONAR_SEDES,
+  PERMISSION_GESTIONAR_SECCIONES,
+  PERMISSION_GESTIONAR_PREANALITICOS,
+  PERMISSION_GESTIONAR_SELLO,
+} from "@/lib/auth";
+
+function hasPermissionClient(
+  session: { user?: { roleCode?: string | null; permissions?: string[] } } | null,
+  permission: string
+): boolean {
+  if (!session?.user) return false;
+  const perms = session.user.permissions ?? [];
+  if (perms.includes(permission)) return true;
+  if (session.user.roleCode === ADMIN_ROLE_CODE && perms.length === 0) return true;
+  return false;
+}
 
 type Role = {
   id: string;
@@ -47,17 +69,39 @@ type User = {
   role: { id: string; code: string; name: string } | null;
 };
 
+type Branch = {
+  id: string;
+  code: string;
+  name: string;
+  address: string | null;
+  phone: string | null;
+  order: number;
+  isActive: boolean;
+};
+
 export default function ConfiguracionPage() {
+  const { data: session } = useSession();
   const [roles, setRoles] = useState<Role[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   const [roleEdit, setRoleEdit] = useState<Role | null>(null);
   const [roleCreate, setRoleCreate] = useState(false);
   const [userEdit, setUserEdit] = useState<User | null>(null);
   const [userCreate, setUserCreate] = useState(false);
+  const [branchEdit, setBranchEdit] = useState<Branch | null>(null);
+  const [branchCreate, setBranchCreate] = useState(false);
   const [saving, setSaving] = useState(false);
   const [printConfig, setPrintConfig] = useState<{ stampEnabled: boolean; stampImageUrl: string | null } | null>(null);
   const [stampUploading, setStampUploading] = useState(false);
+
+  // Permisos del usuario actual
+  const canManageRoles = hasPermissionClient(session, PERMISSION_GESTIONAR_ROLES);
+  const canManageUsers = hasPermissionClient(session, PERMISSION_GESTIONAR_USUARIOS);
+  const canManageBranches = hasPermissionClient(session, PERMISSION_GESTIONAR_SEDES);
+  const canManageSections = hasPermissionClient(session, PERMISSION_GESTIONAR_SECCIONES);
+  const canManagePreanalytics = hasPermissionClient(session, PERMISSION_GESTIONAR_PREANALITICOS);
+  const canManageStamp = hasPermissionClient(session, PERMISSION_GESTIONAR_SELLO);
 
   const loadRoles = async () => {
     const res = await fetch("/api/roles");
@@ -83,8 +127,16 @@ export default function ConfiguracionPage() {
     }
   };
 
+  const loadBranches = async () => {
+    const res = await fetch("/api/config/branches");
+    if (res.ok) {
+      const data = await res.json();
+      setBranches(data ?? []);
+    }
+  };
+
   useEffect(() => {
-    Promise.all([loadRoles(), loadUsers(), loadPrintConfig()]).finally(() => setLoading(false));
+    Promise.all([loadRoles(), loadUsers(), loadPrintConfig(), loadBranches()]).finally(() => setLoading(false));
   }, []);
 
   const handleSaveRole = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -329,6 +381,88 @@ export default function ConfiguracionPage() {
     }
   };
 
+  const handleCreateBranch = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setSaving(true);
+    const form = e.currentTarget;
+    const code = (form.elements.namedItem("newBranchCode") as HTMLInputElement).value.trim().toUpperCase();
+    const name = (form.elements.namedItem("newBranchName") as HTMLInputElement).value.trim();
+    const address = (form.elements.namedItem("newBranchAddress") as HTMLInputElement).value.trim() || null;
+    const phone = (form.elements.namedItem("newBranchPhone") as HTMLInputElement).value.trim() || null;
+    const order = parseInt((form.elements.namedItem("newBranchOrder") as HTMLInputElement).value) || 0;
+    const isActive = (form.elements.namedItem("newBranchActive") as HTMLInputElement).checked;
+    try {
+      const res = await fetch("/api/config/branches", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, name, address, phone, order, isActive }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.error ?? "Error al crear la sede");
+        return;
+      }
+      toast.success("Sede creada");
+      setBranchCreate(false);
+      await loadBranches();
+    } catch {
+      toast.error("Error de conexión");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveBranch = async (e: React.FormEvent<HTMLFormElement>) => {
+    if (!branchEdit) return;
+    e.preventDefault();
+    setSaving(true);
+    const form = e.currentTarget;
+    const code = (form.elements.namedItem("branchCode") as HTMLInputElement).value.trim().toUpperCase();
+    const name = (form.elements.namedItem("branchName") as HTMLInputElement).value.trim();
+    const address = (form.elements.namedItem("branchAddress") as HTMLInputElement).value.trim() || null;
+    const phone = (form.elements.namedItem("branchPhone") as HTMLInputElement).value.trim() || null;
+    const order = parseInt((form.elements.namedItem("branchOrder") as HTMLInputElement).value) || 0;
+    const isActive = (form.elements.namedItem("branchActive") as HTMLInputElement).checked;
+    try {
+      const res = await fetch(`/api/config/branches/${branchEdit.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, name, address, phone, order, isActive }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.error ?? "Error al guardar");
+        return;
+      }
+      toast.success("Sede actualizada");
+      setBranchEdit(null);
+      await loadBranches();
+    } catch {
+      toast.error("No se pudo actualizar la sede");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteBranch = async (branch: Branch) => {
+    if (!confirm(`¿Eliminar la sede "${branch.name}" (${branch.code})?`)) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/config/branches/${branch.id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.error ?? "Error al eliminar");
+        return;
+      }
+      toast.success("Sede eliminada");
+      await loadBranches();
+    } catch {
+      toast.error("No se pudo eliminar la sede");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const rolePerms = roleEdit ? parseRolePermissions(roleEdit.permissions) : [];
 
   if (loading) {
@@ -349,116 +483,123 @@ export default function ConfiguracionPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Link href="/configuracion/preanaliticos">
-            <Button variant="outline" size="sm">
-              Gestión de preanalíticos
-            </Button>
-          </Link>
-          <Link href="/configuracion/secciones">
-            <Button variant="outline" size="sm">
-              <FlaskConical className="h-4 w-4 mr-2" />
-              Gestión de Secciones
-            </Button>
-          </Link>
+          {canManagePreanalytics && (
+            <Link href="/configuracion/preanaliticos">
+              <Button variant="outline" size="sm">
+                Gestión de preanalíticos
+              </Button>
+            </Link>
+          )}
+          {canManageSections && (
+            <Link href="/configuracion/secciones">
+              <Button variant="outline" size="sm">
+                <FlaskConical className="h-4 w-4 mr-2" />
+                Gestión de Secciones
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
 
-      <Card>
-        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-            <CardTitle>Roles</CardTitle>
-          </div>
-          <Button onClick={() => setRoleCreate(true)} size="sm">
-            <Plus className="h-4 w-4 mr-2" />
-            Nuevo rol
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto -mx-1">
-          <Table className="min-w-[540px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Código</TableHead>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Descripción</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Usuarios</TableHead>
-                <TableHead className="w-12" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {roles.length === 0 ? (
+      {canManageRoles && (
+        <Card>
+          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+              <CardTitle>Roles</CardTitle>
+            </div>
+            <Button onClick={() => setRoleCreate(true)} size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Nuevo rol
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto -mx-1">
+            <Table className="min-w-[540px]">
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-slate-500 dark:text-slate-400">
-                    No hay roles.
-                  </TableCell>
+                  <TableHead>Código</TableHead>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Descripción</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Usuarios</TableHead>
+                  <TableHead className="w-12" />
                 </TableRow>
-              ) : (
-                roles.map((role) => (
-                  <TableRow key={role.id}>
-                    <TableCell className="font-medium">{role.code}</TableCell>
-                    <TableCell>{role.name}</TableCell>
-                    <TableCell className="text-slate-500 dark:text-slate-400 max-w-xs truncate">
-                      {role.description ?? "—"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={role.isActive ? "success" : "secondary"}>
-                        {role.isActive ? "Activo" : "Inactivo"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{role._count.users}</TableCell>
-                    <TableCell>
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setRoleEdit(role)}
-                          title="Editar rol"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteRole(role)}
-                          disabled={saving || role._count.users > 0}
-                          title={role._count.users > 0 ? "No se puede eliminar: tiene usuarios asignados" : "Eliminar rol"}
-                          className="text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+              </TableHeader>
+              <TableBody>
+                {roles.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="py-8 text-center text-slate-500 dark:text-slate-400">
+                      No hay roles.
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-          </div>
-        </CardContent>
-      </Card>
+                ) : (
+                  roles.map((role) => (
+                    <TableRow key={role.id}>
+                      <TableCell className="font-medium">{role.code}</TableCell>
+                      <TableCell>{role.name}</TableCell>
+                      <TableCell className="text-slate-500 dark:text-slate-400 max-w-xs truncate">
+                        {role.description ?? "—"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={role.isActive ? "success" : "secondary"}>
+                          {role.isActive ? "Activo" : "Inactivo"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{role._count.users}</TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setRoleEdit(role)}
+                            title="Editar rol"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteRole(role)}
+                            disabled={saving || role._count.users > 0}
+                            title={role._count.users > 0 ? "No se puede eliminar: tiene usuarios asignados" : "Eliminar rol"}
+                            className="text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-      <Card>
-        <CardHeader className="flex flex-row items-center gap-2">
-          <Stamp className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-          <CardTitle>Sello virtual para PDFs</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-slate-600 dark:text-slate-300">
-            Incluya un sello o firma digital en cada hoja de los informes de laboratorio exportados a PDF.
-          </p>
-          <div className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              id="stampEnabled"
-              checked={printConfig?.stampEnabled ?? false}
-              disabled={!printConfig?.stampImageUrl || saving}
-              onChange={(e) => handleStampEnabledChange(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300"
-            />
-            <Label htmlFor="stampEnabled">
-              Incluir sello en los PDFs
+      {canManageStamp && (
+        <Card>
+          <CardHeader className="flex flex-row items-center gap-2">
+            <Stamp className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+            <CardTitle>Sello virtual para PDFs</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              Incluya un sello o firma digital en cada hoja de los informes de laboratorio exportados a PDF.
+            </p>
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="stampEnabled"
+                checked={printConfig?.stampEnabled ?? false}
+                disabled={!printConfig?.stampImageUrl || saving}
+                onChange={(e) => handleStampEnabledChange(e.target.checked)}
+                className="h-4 w-4 rounded border-slate-300"
+              />
+              <Label htmlFor="stampEnabled">
+                Incluir sello en los PDFs
               {!printConfig?.stampImageUrl && (
                 <span className="ml-2 text-xs text-amber-600">(Suba una imagen primero)</span>
               )}
@@ -505,86 +646,179 @@ export default function ConfiguracionPage() {
               </>
             )}
           </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
-      <Card>
-        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-            <CardTitle>Usuarios</CardTitle>
-          </div>
-          <Button onClick={() => setUserCreate(true)} size="sm">
-            <UserPlus className="h-4 w-4 mr-2" />
-            Nuevo usuario
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto -mx-1">
-          <Table className="min-w-[520px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Email</TableHead>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Rol</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead className="w-24 text-right">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.length === 0 ? (
+      {canManageUsers && (
+        <Card>
+          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+              <CardTitle>Usuarios</CardTitle>
+            </div>
+            <Button onClick={() => setUserCreate(true)} size="sm">
+              <UserPlus className="h-4 w-4 mr-2" />
+              Nuevo usuario
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto -mx-1">
+            <Table className="min-w-[520px]">
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={5} className="py-8 text-center text-slate-500 dark:text-slate-400">
-                    No hay usuarios.
-                  </TableCell>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Rol</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead className="w-24 text-right">Acciones</TableHead>
                 </TableRow>
-              ) : (
-                users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.email}</TableCell>
-                    <TableCell>{user.name ?? "—"}</TableCell>
-                    <TableCell>
-                      {user.role ? (
-                        <Badge variant="secondary">{user.role.name}</Badge>
-                      ) : (
-                        <span className="text-slate-400 dark:text-slate-500">Sin rol</span>
-                      )}
+              </TableHeader>
+              <TableBody>
+                {users.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="py-8 text-center text-slate-500 dark:text-slate-400">
+                      No hay usuarios.
                     </TableCell>
-                    <TableCell>
-                      <Badge variant={user.isActive ? "success" : "secondary"}>
-                        {user.isActive ? "Activo" : "Inactivo"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setUserEdit(user)}
-                          title="Editar usuario"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteUser(user)}
-                          disabled={saving}
-                          title="Eliminar usuario"
-                          className="text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                  </TableRow>
+                ) : (
+                  users.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell className="font-medium">{user.email}</TableCell>
+                      <TableCell>{user.name ?? "—"}</TableCell>
+                      <TableCell>
+                        {user.role ? (
+                          <Badge variant="secondary">{user.role.name}</Badge>
+                        ) : (
+                          <span className="text-slate-400 dark:text-slate-500">Sin rol</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={user.isActive ? "success" : "secondary"}>
+                          {user.isActive ? "Activo" : "Inactivo"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setUserEdit(user)}
+                            title="Editar usuario"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteUser(user)}
+                            disabled={saving}
+                            title="Eliminar usuario"
+                            className="text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                     </TableCell>
                   </TableRow>
                 ))
               )}
             </TableBody>
           </Table>
-          </div>
-        </CardContent>
-      </Card>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Sección Sedes */}
+      {canManageBranches && (
+        <Card>
+          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+              <CardTitle>Sedes</CardTitle>
+            </div>
+            <Button onClick={() => setBranchCreate(true)} size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Nueva sede
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto -mx-1">
+              <Table className="min-w-[600px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12">Orden</TableHead>
+                    <TableHead>Código</TableHead>
+                    <TableHead>Nombre</TableHead>
+                    <TableHead>Dirección</TableHead>
+                    <TableHead>Teléfono</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead className="w-24 text-right">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {branches.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="py-8 text-center text-slate-500 dark:text-slate-400">
+                        No hay sedes configuradas.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    branches.map((branch) => (
+                      <TableRow key={branch.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-1 text-slate-400">
+                            <GripVertical className="h-4 w-4" />
+                            <span className="text-sm">{branch.order}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-medium font-mono text-xs">
+                          {branch.code}
+                        </TableCell>
+                        <TableCell className="font-medium">{branch.name}</TableCell>
+                        <TableCell className="text-slate-600 dark:text-slate-400 max-w-xs truncate">
+                          {branch.address ?? "—"}
+                        </TableCell>
+                        <TableCell className="text-slate-600 dark:text-slate-400">
+                          {branch.phone ?? "—"}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={branch.isActive ? "success" : "secondary"}>
+                            {branch.isActive ? "Activa" : "Inactiva"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setBranchEdit(branch)}
+                              title="Editar sede"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteBranch(branch)}
+                              disabled={saving}
+                              title="Eliminar sede"
+                              className="text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Diálogo nuevo rol */}
       <Dialog open={roleCreate} onOpenChange={(open) => !open && setRoleCreate(false)}>
@@ -870,6 +1104,168 @@ export default function ConfiguracionPage() {
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="button" variant="outline" onClick={() => setUserEdit(null)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={saving}>
+                  {saving ? "Guardando..." : "Guardar"}
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo nueva sede */}
+      <Dialog open={branchCreate} onOpenChange={(open) => !open && setBranchCreate(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nueva sede</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreateBranch} className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="newBranchCode">Código</Label>
+                <Input
+                  id="newBranchCode"
+                  name="newBranchCode"
+                  placeholder="Ej: SEDE_CENTRAL"
+                  required
+                  pattern="[A-Z0-9_]+"
+                  title="Solo letras mayúsculas, números y guiones bajos"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="newBranchName">Nombre</Label>
+                <Input
+                  id="newBranchName"
+                  name="newBranchName"
+                  placeholder="Ej: Sede Central"
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="newBranchAddress">Dirección (opcional)</Label>
+              <Input
+                id="newBranchAddress"
+                name="newBranchAddress"
+                placeholder="Ej: Av. Principal 123"
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="newBranchPhone">Teléfono (opcional)</Label>
+                <Input
+                  id="newBranchPhone"
+                  name="newBranchPhone"
+                  placeholder="Ej: +51 999 999 999"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="newBranchOrder">Orden</Label>
+                <Input
+                  id="newBranchOrder"
+                  name="newBranchOrder"
+                  type="number"
+                  defaultValue="0"
+                  min="0"
+                />
+                <p className="text-xs text-slate-500 dark:text-slate-400">Menor número = aparece primero</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="newBranchActive"
+                name="newBranchActive"
+                defaultChecked={true}
+                className="h-4 w-4 rounded border-slate-300"
+              />
+              <Label htmlFor="newBranchActive">Activa</Label>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => setBranchCreate(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={saving}>
+                {saving ? "Creando..." : "Crear sede"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo editar sede */}
+      <Dialog open={!!branchEdit} onOpenChange={(open) => !open && setBranchEdit(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar sede</DialogTitle>
+          </DialogHeader>
+          {branchEdit && (
+            <form onSubmit={handleSaveBranch} className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="branchCode">Código</Label>
+                  <Input
+                    id="branchCode"
+                    name="branchCode"
+                    defaultValue={branchEdit.code}
+                    required
+                    pattern="[A-Z0-9_]+"
+                    title="Solo letras mayúsculas, números y guiones bajos"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="branchName">Nombre</Label>
+                  <Input
+                    id="branchName"
+                    name="branchName"
+                    defaultValue={branchEdit.name}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="branchAddress">Dirección (opcional)</Label>
+                <Input
+                  id="branchAddress"
+                  name="branchAddress"
+                  defaultValue={branchEdit.address ?? ""}
+                />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="branchPhone">Teléfono (opcional)</Label>
+                  <Input
+                    id="branchPhone"
+                    name="branchPhone"
+                    defaultValue={branchEdit.phone ?? ""}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="branchOrder">Orden</Label>
+                  <Input
+                    id="branchOrder"
+                    name="branchOrder"
+                    type="number"
+                    defaultValue={branchEdit.order}
+                    min="0"
+                  />
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Menor número = aparece primero</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="branchActive"
+                  name="branchActive"
+                  defaultChecked={branchEdit.isActive}
+                  className="h-4 w-4 rounded border-slate-300"
+                />
+                <Label htmlFor="branchActive">Activa</Label>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={() => setBranchEdit(null)}>
                   Cancelar
                 </Button>
                 <Button type="submit" disabled={saving}>

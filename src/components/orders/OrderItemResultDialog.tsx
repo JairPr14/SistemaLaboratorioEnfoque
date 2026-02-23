@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { ResultForm } from "@/components/forms/ResultForm";
 
 type TemplateItem = {
@@ -13,7 +14,7 @@ type TemplateItem = {
   refRangeText: string | null;
   refMin: number | null;
   refMax: number | null;
-  valueType: "NUMBER" | "TEXT" | "SELECT";
+  valueType: "NUMBER" | "DECIMAL" | "PERCENTAGE" | "TEXT" | "SELECT";
   selectOptions: string[];
   order: number;
 };
@@ -61,66 +62,53 @@ export function OrderItemResultDialog({
   const open = isControlled ? controlledOpen : internalOpen;
   const setOpen = isControlled ? (onOpenChange ?? (() => {})) : setInternalOpen;
 
-
-  const hasItems = templateItems.length > 0 || (existing && existing.items.length > 0);
-
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant={existing ? "secondary" : "default"}>
+        <Button size="sm" variant={existing ? "outline" : "default"}>
           {existing ? "Ver/Editar resultados" : "Capturar resultados"}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-lg">
-            {testCode} - {testName}
-          </DialogTitle>
-          <div className="mt-2 space-y-1">
-            <p className="text-sm font-medium text-slate-700">
-              {existing ? "📋 Plantilla del paciente (editable)" : "📋 Copiando plantilla estándar para este paciente"}
-            </p>
-            <p className="text-xs text-slate-500">
-              {existing 
-                ? "Esta es una copia personalizada de la plantilla para este paciente. Puedes modificarla sin afectar la plantilla original."
-                : "Se creará una copia de la plantilla estándar que podrás personalizar solo para este paciente."}
-            </p>
+      <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto p-0">
+        <DialogHeader className="border-b border-slate-200 px-6 py-4 dark:border-slate-700">
+          <div className="flex flex-wrap items-center gap-2">
+            <DialogTitle className="text-lg">
+              {testCode} - {testName}
+            </DialogTitle>
+            <Badge variant="secondary" className="text-xs">
+              {existing ? "Resultado en edición" : "Nueva captura"}
+            </Badge>
           </div>
+          <p className="text-xs text-slate-500">
+            Registro de resultados por parámetro. Puedes ajustar campos referenciales para este paciente.
+          </p>
         </DialogHeader>
-        <div className="mt-4">
-          {hasItems ? (
-            <ResultForm
-              orderId={orderId}
-              itemId={itemId}
-              templateItems={templateItems}
-              defaultValues={
-                existing
-                  ? {
-                      reportedBy: existing.reportedBy ?? "",
-                      comment: existing.comment ?? "",
-                      items: existing.items.map((item) => ({
-                        templateItemId: item.templateItemId ?? undefined,
-                        paramNameSnapshot: item.paramNameSnapshot,
-                        unitSnapshot: item.unitSnapshot ?? undefined,
-                        refTextSnapshot: item.refTextSnapshot ?? undefined,
-                        refMinSnapshot: item.refMinSnapshot ?? undefined,
-                        refMaxSnapshot: item.refMaxSnapshot ?? undefined,
-                        value: item.value,
-                        isOutOfRange: item.isOutOfRange,
-                        order: item.order,
-                      })),
-                    }
-                  : undefined
-              }
-            />
-          ) : (
-            <div className="py-8 text-center text-slate-500">
-              <p className="mb-2">No hay parámetros en la plantilla.</p>
-              <p className="text-sm">
-                Puedes agregar parámetros usando el botón &quot;+ Agregar parámetro adicional&quot; una vez abierto el formulario.
-              </p>
-            </div>
-          )}
+        <div className="p-6">
+          <ResultForm
+            orderId={orderId}
+            itemId={itemId}
+            templateItems={templateItems}
+            onSaved={() => setOpen(false)}
+            defaultValues={
+              existing
+                ? {
+                    reportedBy: existing.reportedBy ?? "",
+                    comment: existing.comment ?? "",
+                    items: existing.items.map((item) => ({
+                      templateItemId: item.templateItemId ?? undefined,
+                      paramNameSnapshot: item.paramNameSnapshot,
+                      unitSnapshot: item.unitSnapshot ?? undefined,
+                      refTextSnapshot: item.refTextSnapshot ?? undefined,
+                      refMinSnapshot: item.refMinSnapshot ?? undefined,
+                      refMaxSnapshot: item.refMaxSnapshot ?? undefined,
+                      value: item.value,
+                      isOutOfRange: item.isOutOfRange,
+                      order: item.order,
+                    })),
+                  }
+                : undefined
+            }
+          />
         </div>
       </DialogContent>
     </Dialog>

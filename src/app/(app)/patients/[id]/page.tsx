@@ -46,12 +46,8 @@ export default async function PatientDetailPage({ params }: Props) {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>{canEditPatient ? "Editar paciente" : "Datos del paciente"}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <PatientForm
+      <div className="rounded-2xl border border-slate-200/80 bg-white/80 shadow-sm backdrop-blur-sm dark:border-slate-700/80 dark:bg-slate-900/60">
+        <PatientForm
             patientId={patient.id}
             canEdit={canEditPatient}
             defaultValues={{
@@ -66,8 +62,7 @@ export default async function PatientDetailPage({ params }: Props) {
               email: patient.email ?? "",
             }}
           />
-        </CardContent>
-      </Card>
+      </div>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-4">

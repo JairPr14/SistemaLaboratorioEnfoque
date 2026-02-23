@@ -134,7 +134,7 @@ export function QuickActions({ sectionOptions }: Props) {
       <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800/70">
         <div className="mb-2 flex items-center gap-2">
           <Bolt className="h-4 w-4 text-teal-600 dark:text-teal-400" />
-          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Flujo 1 clic</p>
+          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Acciones rápidas</p>
         </div>
 
         <div className="flex flex-wrap gap-2">

@@ -10,7 +10,9 @@
     "postinstall": "prisma generate",
     "migrate:deploy": "prisma migrate deploy",
     "migrate:dev": "prisma migrate dev",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "db:seed:patients": "tsx scripts/seed-patients.ts",
+    "db:seed:templates:complete": "tsx scripts/seed-complete-templates.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

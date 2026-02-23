@@ -50,7 +50,7 @@ function LoginForm() {
       <div className="w-full max-w-sm space-y-8 rounded-xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <div className="text-center">
           <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-            Sistema LIS
+            Sistema de Laboratorio Clínico
           </h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             Inicia sesión para continuar

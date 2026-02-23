@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useFieldArray, useForm, type Resolver, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { Search, Check, FileText } from "lucide-react";
 
-import { templateSchema, valueTypeValues } from "@/features/lab/schemas";
+import { templateSchema, valueTypeValues, valueTypeLabels } from "@/features/lab/schemas";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +37,8 @@ type Props = {
 export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
   const router = useRouter();
   const [viewMode, setViewMode] = useState<"table" | "form">("form");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isAnalysisModalOpen, setIsAnalysisModalOpen] = useState(false);
   const defaultLabTestId =
     labTests.find((t) => !t.hasTemplate)?.id ?? labTests[0]?.id ?? "";
 
@@ -67,6 +70,20 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
     control: form.control,
     name: "items",
   });
+
+  const watchedLabTestId = form.watch("labTestId");
+  
+  const filteredLabTests = useMemo(() => {
+    if (!searchTerm.trim()) return labTests;
+    const term = searchTerm.toLowerCase();
+    return labTests.filter(
+      (t) =>
+        t.name.toLowerCase().includes(term) ||
+        t.code.toLowerCase().includes(term)
+    );
+  }, [labTests, searchTerm]);
+
+  const selectedTest = labTests.find((t) => t.id === watchedLabTestId);
 
   const moveUp = (index: number) => {
     if (index <= 0) return;
@@ -239,46 +256,187 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label className="text-slate-700 dark:text-slate-300">Análisis</Label>
-            <select
-              className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-slate-400 focus:ring-1 focus:ring-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-500"
-              {...form.register("labTestId")}
+            
+            {/* Botón para abrir modal de búsqueda */}
+            <button
+              type="button"
+              onClick={() => {
+                setSearchTerm("");
+                setIsAnalysisModalOpen(true);
+              }}
+              className="w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-left flex items-center gap-2 hover:border-slate-300 dark:hover:border-slate-500 transition-colors"
             >
-              {(() => {
-                const withoutTemplate = labTests.filter((t) => !t.hasTemplate);
-                const withTemplate = labTests.filter((t) => t.hasTemplate);
-                return (
-                  <>
-                    {withoutTemplate.length > 0 && (
-                      <optgroup label="Sin plantilla (elegir para crear)">
-                        {withoutTemplate.map((test) => (
-                          <option key={test.id} value={test.id}>
-                            {test.code} — {test.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                    )}
-                    {withTemplate.length > 0 && (
-                      <optgroup label="Ya tienen plantilla">
-                        {withTemplate.map((test) => (
-                          <option key={test.id} value={test.id}>
-                            {test.code} — {test.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                    )}
-                    {labTests.length === 0 && (
-                      <option value="">No hay análisis en el catálogo</option>
-                    )}
-                  </>
-                );
-              })()}
-            </select>
+              <Search className="h-4 w-4 text-slate-400 flex-shrink-0" />
+              {selectedTest ? (
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                    {selectedTest.code}
+                  </span>
+                  <span className="text-sm text-slate-900 dark:text-slate-100 truncate">
+                    {selectedTest.name}
+                  </span>
+                  {selectedTest.hasTemplate && (
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 flex-shrink-0">
+                      Con plantilla
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <span className="text-sm text-slate-500 dark:text-slate-400">Buscar análisis...</span>
+              )}
+            </button>
+            
+            {/* Input hidden para el formulario */}
+            <input type="hidden" {...form.register("labTestId")} />
+            
             {labTests.some((t) => !t.hasTemplate) && (
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Los análisis &quot;Sin plantilla&quot; son los que aún no tienen parámetros definidos; al elegir uno podrás crear su plantilla.
+                Haz clic para buscar y seleccionar un análisis.
               </p>
             )}
+            
+            {/* Modal de búsqueda de análisis */}
+            <Dialog open={isAnalysisModalOpen} onOpenChange={setIsAnalysisModalOpen}>
+              <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
+                <DialogHeader>
+                  <DialogTitle>Seleccionar análisis</DialogTitle>
+                </DialogHeader>
+                
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input
+                    type="text"
+                    placeholder="Buscar por nombre o código..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9 h-10 rounded-lg"
+                    autoFocus
+                  />
+                </div>
+                
+                {/* Lista de análisis */}
+                <div className="flex-1 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 min-h-[300px] max-h-[400px]">
+                  {(() => {
+                    const withoutTemplate = filteredLabTests.filter((t) => !t.hasTemplate);
+                    const withTemplate = filteredLabTests.filter((t) => t.hasTemplate);
+                    
+                    if (filteredLabTests.length === 0 && searchTerm) {
+                      return (
+                        <div className="p-8 text-center text-sm text-slate-500 dark:text-slate-400">
+                          <Search className="h-8 w-8 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
+                          No se encontraron análisis para &quot;{searchTerm}&quot;
+                        </div>
+                      );
+                    }
+                    
+                    if (labTests.length === 0) {
+                      return (
+                        <div className="p-8 text-center text-sm text-slate-500 dark:text-slate-400">
+                          No hay análisis en el catálogo
+                        </div>
+                      );
+                    }
+                    
+                    return (
+                      <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                        {withoutTemplate.length > 0 && (
+                          <div>
+                            <div className="px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-100 dark:border-amber-800/30 sticky top-0 z-10">
+                              <span className="text-xs font-medium text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                                <FileText className="h-3.5 w-3.5" />
+                                Sin plantilla — elegir para crear ({withoutTemplate.length})
+                              </span>
+                            </div>
+                            <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                              {withoutTemplate.map((test) => (
+                                <button
+                                  key={test.id}
+                                  type="button"
+                                  onClick={() => {
+                                    form.setValue("labTestId", test.id);
+                                    setIsAnalysisModalOpen(false);
+                                  }}
+                                  className={`w-full px-3 py-3 text-left transition-colors flex items-center gap-3 ${
+                                    watchedLabTestId === test.id
+                                      ? "bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-500"
+                                      : "hover:bg-slate-50 dark:hover:bg-slate-700/50 border-l-4 border-transparent"
+                                  }`}
+                                >
+                                  <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${
+                                    watchedLabTestId === test.id
+                                      ? "bg-blue-500 text-white"
+                                      : "bg-slate-200 dark:bg-slate-600"
+                                  }`}>
+                                    {watchedLabTestId === test.id && <Check className="h-3.5 w-3.5" />}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                                        {test.code}
+                                      </span>
+                                      <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                                        {test.name}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {withTemplate.length > 0 && (
+                          <div>
+                            <div className="px-3 py-2 bg-green-50 dark:bg-green-900/20 border-b border-green-100 dark:border-green-800/30 sticky top-0 z-10">
+                              <span className="text-xs font-medium text-green-700 dark:text-green-400 flex items-center gap-1.5">
+                                <Check className="h-3.5 w-3.5" />
+                                Ya tienen plantilla ({withTemplate.length})
+                              </span>
+                            </div>
+                            <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                              {withTemplate.map((test) => (
+                                <button
+                                  key={test.id}
+                                  type="button"
+                                  onClick={() => {
+                                    form.setValue("labTestId", test.id);
+                                    setIsAnalysisModalOpen(false);
+                                  }}
+                                  className={`w-full px-3 py-3 text-left transition-colors flex items-center gap-3 ${
+                                    watchedLabTestId === test.id
+                                      ? "bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-500"
+                                      : "hover:bg-slate-50 dark:hover:bg-slate-700/50 border-l-4 border-transparent"
+                                  }`}
+                                >
+                                  <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${
+                                    watchedLabTestId === test.id
+                                      ? "bg-blue-500 text-white"
+                                      : "bg-green-100 dark:bg-green-800/50 text-green-600 dark:text-green-400"
+                                  }`}>
+                                    <Check className="h-3.5 w-3.5" />
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                                        {test.code}
+                                      </span>
+                                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                        {test.name}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
+          
           <div className="space-y-2">
             <Label className="text-slate-700 dark:text-slate-300">Título</Label>
             <Input
@@ -432,10 +590,11 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
                         <select
                           className="h-8 w-full rounded-md border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 text-xs text-slate-900 dark:text-slate-100"
                           {...form.register(`items.${index}.valueType`)}
+                          title="Tipo de dato para la captura de resultados"
                         >
                           {valueTypeValues.map((value) => (
                             <option key={value} value={value}>
-                              {value}
+                              {valueTypeLabels[value]}
                             </option>
                           ))}
                         </select>
@@ -615,13 +774,14 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-slate-600 dark:text-slate-300">Tipo</Label>
+                      <Label className="text-xs text-slate-600 dark:text-slate-300">Tipo de dato</Label>
                       <select
                         className="h-9 w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 text-sm text-slate-900 dark:text-slate-100"
                         {...form.register(`items.${index}.valueType`)}
+                        title="Define el tipo de valor que se capturará (modificable en cualquier momento)"
                       >
                         {valueTypeValues.map((v) => (
-                          <option key={v} value={v}>{v}</option>
+                          <option key={v} value={v}>{valueTypeLabels[v]}</option>
                         ))}
                       </select>
                     </div>

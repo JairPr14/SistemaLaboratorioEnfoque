@@ -32,7 +32,7 @@ export type TemplateItem = {
   refRangeText: string | null;
   refMin: number | null;
   refMax: number | null;
-  valueType: "NUMBER" | "TEXT" | "SELECT";
+  valueType: "NUMBER" | "DECIMAL" | "PERCENTAGE" | "TEXT" | "SELECT";
   selectOptions: string[];
   order: number;
   refRanges?: RefRange[];
@@ -120,7 +120,7 @@ export function getTemplateItemsForPatient(
       refRangeText: item.refRangeText,
       refMin: item.refMin,
       refMax: item.refMax,
-      valueType: (item.valueType || "NUMBER") as "NUMBER" | "TEXT" | "SELECT",
+      valueType: (item.valueType || "NUMBER") as TemplateItem["valueType"],
       selectOptions: Array.isArray(item.selectOptions)
         ? item.selectOptions
         : typeof item.selectOptions === "string"

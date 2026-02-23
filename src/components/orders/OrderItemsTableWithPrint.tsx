@@ -316,7 +316,7 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteIt
                               refRangeText: t.refRangeText,
                               refMin: t.refMin ? Number(t.refMin) : null,
                               refMax: t.refMax ? Number(t.refMax) : null,
-                              valueType: t.valueType as "NUMBER" | "TEXT" | "SELECT",
+                              valueType: t.valueType as "NUMBER" | "DECIMAL" | "PERCENTAGE" | "TEXT" | "SELECT",
                               selectOptions: parseSelectOptions(t.selectOptions),
                               order: t.order,
                               refRanges: ((t as { refRanges?: import("@/lib/template-helpers").RefRange[] }).refRanges ?? []) as import("@/lib/template-helpers").RefRange[],
@@ -345,6 +345,8 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteIt
                         refMax: r.refMaxSnapshot ? Number(r.refMaxSnapshot) : null,
                         valueType: (originalItem?.valueType || "NUMBER") as
                           | "NUMBER"
+                          | "DECIMAL"
+                          | "PERCENTAGE"
                           | "TEXT"
                           | "SELECT",
                         selectOptions: originalItem?.selectOptions || [],
@@ -371,7 +373,7 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteIt
                             refRangeText: t.refRangeText,
                             refMin: t.refMin ? Number(t.refMin) : null,
                             refMax: t.refMax ? Number(t.refMax) : null,
-                            valueType: t.valueType as "NUMBER" | "TEXT" | "SELECT",
+                            valueType: t.valueType as "NUMBER" | "DECIMAL" | "PERCENTAGE" | "TEXT" | "SELECT",
                             selectOptions: parseSelectOptions(t.selectOptions),
                             order: t.order,
                             refRanges: ((t as { refRanges?: import("@/lib/template-helpers").RefRange[] }).refRanges ?? []) as import("@/lib/template-helpers").RefRange[],
@@ -413,7 +415,7 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteIt
                       refRangeText: t.refRangeText,
                       refMin: t.refMin ? Number(t.refMin) : null,
                       refMax: t.refMax ? Number(t.refMax) : null,
-                      valueType: t.valueType as "NUMBER" | "TEXT" | "SELECT",
+                      valueType: t.valueType as "NUMBER" | "DECIMAL" | "PERCENTAGE" | "TEXT" | "SELECT",
                       selectOptions: parseSelectOptions(t.selectOptions),
                       order: t.order,
                       refRanges: ((t as { refRanges?: import("@/lib/template-helpers").RefRange[] }).refRanges ?? []) as import("@/lib/template-helpers").RefRange[],

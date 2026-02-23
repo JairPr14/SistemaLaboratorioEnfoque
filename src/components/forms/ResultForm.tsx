@@ -13,6 +13,7 @@ import { AutosaveIndicator } from "./AutosaveIndicator";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumericInput } from "@/components/ui/numeric-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -38,17 +39,23 @@ type TemplateItem = {
   refRangeText: string | null;
   refMin: number | null;
   refMax: number | null;
-  valueType: "NUMBER" | "TEXT" | "SELECT";
+  valueType: "NUMBER" | "DECIMAL" | "PERCENTAGE" | "TEXT" | "SELECT";
   selectOptions: string[];
   order: number;
   refRanges?: RefRange[];
 };
+
+const NUMERIC_VALUE_TYPES = ["NUMBER", "DECIMAL", "PERCENTAGE"] as const;
+function isNumericValueType(t: string): t is (typeof NUMERIC_VALUE_TYPES)[number] {
+  return NUMERIC_VALUE_TYPES.includes(t as (typeof NUMERIC_VALUE_TYPES)[number]);
+}
 
 type Props = {
   orderId: string;
   itemId: string;
   templateItems: TemplateItem[];
   defaultValues?: ResultFormValues;
+  onSaved?: () => void;
 };
 
 function checkOutOfRange(value: string, refMin: number | null, refMax: number | null): boolean {
@@ -65,10 +72,11 @@ export function ResultForm({
   itemId,
   templateItems,
   defaultValues,
+  onSaved,
 }: Props) {
   const router = useRouter();
   const { data: session } = useSession();
-  const [viewMode, setViewMode] = useState<"table" | "form">("table");
+  const [viewMode, setViewMode] = useState<"table" | "print" | "form">("table");
   const [editableRefs, setEditableRefs] = useState<Record<number, boolean>>({});
 
   const form = useForm<ResultFormValues>({
@@ -226,6 +234,7 @@ export function ResultForm({
       }
 
       toast.success("Resultado guardado.");
+      onSaved?.();
       router.refresh();
     } catch (error) {
       console.error("Error submitting result form:", error);
@@ -290,40 +299,49 @@ export function ResultForm({
         </div>
       </div>
 
-      {/* Selector de vista solo para análisis complejos */}
-      {!isSimple && (
-        <div className="flex justify-between items-center bg-blue-50 border border-blue-200 rounded-md p-3">
-          <div className="text-xs text-blue-800">
-            💡 <strong>Plantilla personalizada del paciente:</strong> Esta es una copia editable de la plantilla estándar. 
-            Puedes modificar nombres, valores referenciales, unidades o agregar parámetros adicionales. 
-            Los cambios solo afectan a este paciente, la plantilla original permanece intacta.
-          </div>
-          <div className="flex gap-2 rounded-md border border-slate-200 p-1">
-            <button
-              type="button"
-              onClick={() => setViewMode("table")}
-              className={`px-3 py-1 text-xs rounded ${
-                viewMode === "table"
-                  ? "bg-slate-900 text-white"
-                  : "text-slate-600 hover:bg-slate-100"
-              }`}
-            >
-              Vista Tabla
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("form")}
-              className={`px-3 py-1 text-xs rounded ${
-                viewMode === "form"
-                  ? "bg-slate-900 text-white"
-                  : "text-slate-600 hover:bg-slate-100"
-              }`}
-            >
-              Vista Formulario
-            </button>
-          </div>
+      {/* Selector de vista */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/40">
+        <div className="text-xs text-slate-600 dark:text-slate-300">
+          {isSimple
+            ? "Captura en modo simple. También puedes usar vista de impresión."
+            : "Plantilla del paciente editable. Los cambios no afectan la plantilla estándar."}
         </div>
-      )}
+        <div className="flex gap-1 rounded-md border border-slate-200 bg-white p-1 dark:border-slate-600 dark:bg-slate-800">
+          <button
+            type="button"
+            onClick={() => setViewMode("table")}
+            className={`px-3 py-1 text-xs rounded ${
+              viewMode === "table"
+                ? "bg-slate-900 text-white dark:bg-teal-600"
+                : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
+            }`}
+          >
+            Vista Tabla
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("print")}
+            className={`px-3 py-1 text-xs rounded ${
+              viewMode === "print"
+                ? "bg-slate-900 text-white dark:bg-teal-600"
+                : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
+            }`}
+          >
+            Vista Impresión
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("form")}
+            className={`px-3 py-1 text-xs rounded ${
+              viewMode === "form"
+                ? "bg-slate-900 text-white dark:bg-teal-600"
+                : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
+            }`}
+          >
+            Vista Formulario
+          </button>
+        </div>
+      </div>
 
       {viewMode === "table" ? (
         <div className="space-y-6">
@@ -497,14 +515,38 @@ export function ResultForm({
                                   </option>
                                 ))}
                               </select>
-                            ) : (
-                              <Input
-                                type={item.valueType === "NUMBER" ? "number" : "text"}
-                                step={item.valueType === "NUMBER" ? "0.01" : undefined}
+                            ) : isNumericValueType(item.valueType) ? (
+                              <NumericInput
+                                name={`items.${formIndex}.value`}
+                                value={form.watch(`items.${formIndex}.value`) ?? ""}
+                                onChange={(v) => form.setValue(`items.${formIndex}.value`, v)}
+                                suffix={item.valueType === "PERCENTAGE" ? "%" : undefined}
                                 className={`h-9 w-full text-sm ${
                                   hasValue && isOutOfRange
-                                    ? "border-red-500 bg-red-50 font-bold underline"
-                                    : ""
+                                    ? "border-red-500 bg-red-50 font-bold underline text-red-900 dark:bg-red-950/20 dark:text-red-200"
+                                    : "text-slate-900 dark:text-slate-100"
+                                }`}
+                                placeholder="-"
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    const nextIndex = formIndex + 1;
+                                    if (nextIndex < fields.length) {
+                                      const nextInput = document.querySelector(
+                                        `input[name="items.${nextIndex}.value"], select[name="items.${nextIndex}.value"]`,
+                                      ) as HTMLInputElement | HTMLSelectElement;
+                                      nextInput?.focus();
+                                    }
+                                  }
+                                }}
+                              />
+                            ) : (
+                              <Input
+                                type="text"
+                                className={`h-9 w-full text-sm ${
+                                  hasValue && isOutOfRange
+                                    ? "border-red-500 bg-red-50 font-bold underline text-red-900 dark:bg-red-950/20 dark:text-red-200"
+                                    : "text-slate-900 dark:text-slate-100"
                                 }`}
                                 placeholder="-"
                                 {...form.register(`items.${formIndex}.value`)}
@@ -815,6 +857,178 @@ export function ResultForm({
             </div>
           )}
         </div>
+      ) : viewMode === "print" ? (
+        <div className="space-y-4">
+          <div className="relative overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+            <div
+              className="pointer-events-none absolute inset-0 opacity-[0.14]"
+              style={{
+                backgroundImage: "url(/watermark-clinica.png)",
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                backgroundRepeat: "no-repeat",
+              }}
+              aria-hidden
+            />
+            <div className="relative z-10 border-b border-slate-200 bg-white/80 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/80">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
+                Vista final (tipo impresión)
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Representación estilo hoja de reporte. Puedes capturar resultados en línea.
+              </p>
+            </div>
+
+            <div className="relative z-10 p-4">
+              {Object.entries(groupedItems).map(([groupName, items]) => (
+                <div key={groupName} className="mb-5 last:mb-0">
+                  <div className="bg-slate-800/80 px-3 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-white dark:bg-slate-700/90">
+                    {groupName === "Sin grupo" ? "SECCIÓN GENERAL" : `SECCIÓN ${groupName}`}
+                  </div>
+                  <Table className="border border-slate-300 bg-white/95 dark:border-slate-600 dark:bg-slate-900/95">
+                    <TableHeader>
+                      <TableRow className="border-b border-slate-300 bg-slate-100/90 dark:border-slate-600 dark:bg-slate-800/90">
+                        <TableHead className="w-1/3 text-[11px] font-semibold uppercase">Análisis</TableHead>
+                        <TableHead className="w-1/4 text-[11px] font-semibold uppercase">Resultados</TableHead>
+                        <TableHead className="w-1/6 text-[11px] font-semibold uppercase">Unidad</TableHead>
+                        <TableHead className="w-1/4 text-[11px] font-semibold uppercase">Valor referencial</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {items.map((item) => {
+                        const formIndex = item.index;
+                        const currentValue = form.watch(`items.${formIndex}.value`);
+                        const currentRefText = form.watch(`items.${formIndex}.refTextSnapshot`);
+                        const currentUnit = form.watch(`items.${formIndex}.unitSnapshot`);
+                        const currentRefMin = form.watch(`items.${formIndex}.refMinSnapshot`);
+                        const currentRefMax = form.watch(`items.${formIndex}.refMaxSnapshot`);
+                        const isOutOfRange = checkOutOfRange(
+                          currentValue,
+                          currentRefMin ?? null,
+                          currentRefMax ?? null,
+                        );
+                        const hasValue = currentValue && currentValue.trim() !== "";
+
+                        return (
+                          <TableRow key={item.id} className="border-b border-slate-200 dark:border-slate-700">
+                            <TableCell className="align-top text-sm font-medium text-slate-900 dark:text-slate-100">
+                              {form.watch(`items.${formIndex}.paramNameSnapshot`) || item.paramName}
+                            </TableCell>
+                            <TableCell className="align-top">
+                              {item.valueType === "SELECT" ? (
+                                <select
+                                  className={`h-9 w-full rounded-md border px-2 text-sm ${
+                                    hasValue && isOutOfRange
+                                      ? "border-red-500 bg-red-50 font-semibold text-red-900 dark:bg-red-950/20 dark:text-red-200"
+                                      : "border-slate-300 bg-white text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                                  }`}
+                                  {...form.register(`items.${formIndex}.value`)}
+                                >
+                                  <option value="">-</option>
+                                  {item.selectOptions.map((opt) => (
+                                    <option key={opt} value={opt}>
+                                      {opt}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : item.valueType === "NUMBER" ? (
+                                <NumericInput
+                                  name={`items.${formIndex}.value`}
+                                  value={form.watch(`items.${formIndex}.value`) ?? ""}
+                                  onChange={(v) => form.setValue(`items.${formIndex}.value`, v)}
+                                  className={`h-9 ${
+                                    hasValue && isOutOfRange
+                                      ? "border-red-500 bg-red-50 font-semibold text-red-900 dark:bg-red-950/20 dark:text-red-200"
+                                      : "border-slate-300 text-slate-900 dark:border-slate-600 dark:text-slate-100"
+                                  }`}
+                                  placeholder="-"
+                                />
+                              ) : (
+                                <Input
+                                  type="text"
+                                  className={`h-9 ${
+                                    hasValue && isOutOfRange
+                                      ? "border-red-500 bg-red-50 font-semibold text-red-900 dark:bg-red-950/20 dark:text-red-200"
+                                      : "border-slate-300 text-slate-900 dark:border-slate-600 dark:text-slate-100"
+                                  }`}
+                                  placeholder="-"
+                                  {...form.register(`items.${formIndex}.value`)}
+                                />
+                              )}
+                            </TableCell>
+                            <TableCell className="align-top text-sm text-slate-700 dark:text-slate-300">
+                              {currentUnit || item.unit || "-"}
+                            </TableCell>
+                            <TableCell className="align-top text-xs text-slate-700 dark:text-slate-300">
+                              <div className="space-y-1">
+                                <div className="font-medium">
+                                  {currentRefText || item.refRangeText || "-"}
+                                </div>
+                                {item.refRanges && item.refRanges.length > 0 && (
+                                  <div className="space-y-0.5 text-[10px]">
+                                    {item.refRanges.map((range, rangeIdx) => {
+                                      const ageGroupLabels: Record<string, string> = {
+                                        NIÑOS: "Niños",
+                                        JOVENES: "Jóvenes",
+                                        ADULTOS: "Adultos",
+                                      };
+                                      const sexLabels: Record<string, string> = {
+                                        M: "Hombres",
+                                        F: "Mujeres",
+                                        O: "Otros",
+                                      };
+                                      const criteria = [
+                                        range.ageGroup ? ageGroupLabels[range.ageGroup] || range.ageGroup : null,
+                                        range.sex ? sexLabels[range.sex] || range.sex : null,
+                                      ].filter(Boolean);
+
+                                      const rangeDisplay =
+                                        range.refRangeText ||
+                                        (range.refMin !== null && range.refMax !== null
+                                          ? `${range.refMin} - ${range.refMax}`
+                                          : "");
+
+                                      if (!rangeDisplay) return null;
+
+                                      return (
+                                        <div key={rangeIdx} className="leading-tight">
+                                          {criteria.length > 0 ? (
+                                            <span>
+                                              <span className="font-semibold text-slate-800 dark:text-slate-200">
+                                                {criteria.join(" + ")}:
+                                              </span>
+                                              <span className="ml-1 text-slate-600 dark:text-slate-300">
+                                                {rangeDisplay}
+                                              </span>
+                                            </span>
+                                          ) : (
+                                            <span className="text-slate-600 dark:text-slate-300">
+                                              {rangeDisplay}
+                                            </span>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <Button type="button" variant="outline" onClick={addNewParameter}>
+              + Agregar parámetro adicional
+            </Button>
+          </div>
+        </div>
       ) : (
         <div className="space-y-6">
           {Object.entries(groupedItems).map(([groupName, items]) => (
@@ -929,7 +1143,7 @@ export function ResultForm({
                           </div>
                           {hasValue && isOutOfRange && (
                             <Badge variant="danger" className="mt-2 text-xs">
-                              ⚠️ Fuera de rango
+                              Fuera de rango
                             </Badge>
                           )}
                         </div>
@@ -939,10 +1153,10 @@ export function ResultForm({
                             <div>
                               {item.valueType === "SELECT" ? (
                                 <select
-                                  className={`h-10 w-full rounded-md border bg-white px-3 text-sm ${
+                                  className={`h-10 w-full rounded-md border bg-white px-3 text-sm text-slate-900 dark:bg-slate-800 dark:text-slate-100 ${
                                     hasValue && isOutOfRange
-                                      ? "border-red-500 font-bold underline"
-                                      : "border-slate-200"
+                                      ? "border-red-500 font-bold underline text-red-900 dark:bg-red-950/20 dark:text-red-200"
+                                      : "border-slate-200 dark:border-slate-600"
                                   }`}
                                   {...form.register(`items.${formIndex}.value`)}
                                 >
@@ -953,15 +1167,27 @@ export function ResultForm({
                                     </option>
                                   ))}
                                 </select>
-                              ) : (
-                                <Input
-                                  type={item.valueType === "NUMBER" ? "number" : "text"}
-                                  step={item.valueType === "NUMBER" ? "0.01" : undefined}
+                              ) : isNumericValueType(item.valueType) ? (
+                                <NumericInput
+                                  name={`items.${formIndex}.value`}
+                                  value={form.watch(`items.${formIndex}.value`) ?? ""}
+                                  onChange={(v) => form.setValue(`items.${formIndex}.value`, v)}
+                                  suffix={item.valueType === "PERCENTAGE" ? "%" : undefined}
                                   placeholder="Ingrese el resultado"
                                   className={
                                     hasValue && isOutOfRange
-                                      ? "border-red-500 font-bold underline"
-                                      : ""
+                                      ? "border-red-500 bg-red-50 font-bold underline text-red-900 dark:bg-red-950/20 dark:text-red-200"
+                                      : "text-slate-900 dark:text-slate-100"
+                                  }
+                                />
+                              ) : (
+                                <Input
+                                  type="text"
+                                  placeholder="Ingrese el resultado"
+                                  className={
+                                    hasValue && isOutOfRange
+                                      ? "border-red-500 bg-red-50 font-bold underline text-red-900 dark:bg-red-950/20 dark:text-red-200"
+                                      : "text-slate-900 dark:text-slate-100"
                                   }
                                   {...form.register(`items.${formIndex}.value`)}
                                 />

@@ -3,7 +3,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { labTestSchema } from "@/features/lab/schemas";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import {
+  authOptions,
+  hasPermission,
+  PERMISSION_EDITAR_PRECIO_CATALOGO,
+  PERMISSION_GESTIONAR_CATALOGO,
+} from "@/lib/auth";
 import { logger } from "@/lib/logger";
 
 type Params = { params: Promise<{ id: string }> };
@@ -36,11 +41,30 @@ export async function PUT(request: Request, { params }: Params) {
   if (!session?.user) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
+  if (!hasPermission(session, PERMISSION_GESTIONAR_CATALOGO)) {
+    return NextResponse.json({ error: "Sin permiso para actualizar análisis" }, { status: 403 });
+  }
 
   try {
     const { id } = await params;
     const payload = await request.json();
     const parsed = labTestSchema.parse(payload);
+    const current = await prisma.labTest.findUnique({
+      where: { id },
+      select: { price: true },
+    });
+    if (!current) {
+      return NextResponse.json({ error: "Análisis no encontrado" }, { status: 404 });
+    }
+    const requestedPrice = Number(parsed.price);
+    const currentPrice = Number(current.price);
+    const priceChanged = Math.abs(requestedPrice - currentPrice) > 0.0001;
+    if (priceChanged && !hasPermission(session, PERMISSION_EDITAR_PRECIO_CATALOGO)) {
+      return NextResponse.json(
+        { error: "No tienes permiso para editar el precio global del catálogo." },
+        { status: 403 },
+      );
+    }
 
     const item = await prisma.labTest.update({
       where: { id },
@@ -78,6 +102,9 @@ export async function DELETE(_request: Request, { params }: Params) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+  if (!hasPermission(session, PERMISSION_GESTIONAR_CATALOGO)) {
+    return NextResponse.json({ error: "Sin permiso para eliminar análisis" }, { status: 403 });
   }
 
   try {

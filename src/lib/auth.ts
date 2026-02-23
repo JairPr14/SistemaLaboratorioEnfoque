@@ -78,6 +78,9 @@ export const PERMISSION_ELIMINAR_REGISTROS = "ELIMINAR_REGISTROS";
 export const PERMISSION_VER_PAGOS = "VER_PAGOS";
 export const PERMISSION_REGISTRAR_PAGOS = "REGISTRAR_PAGOS";
 export const PERMISSION_IMPRIMIR_TICKET_PAGO = "IMPRIMIR_TICKET_PAGO";
+export const PERMISSION_VER_ORDENES = "VER_ORDENES";
+export const PERMISSION_VER_PACIENTES = "VER_PACIENTES";
+export const PERMISSION_VER_CATALOGO = "VER_CATALOGO";
 export const PERMISSION_QUICK_ACTIONS_RECEPCION = "QUICK_ACTIONS_RECEPCION";
 export const PERMISSION_QUICK_ACTIONS_ANALISTA = "QUICK_ACTIONS_ANALISTA";
 export const PERMISSION_QUICK_ACTIONS_ENTREGA = "QUICK_ACTIONS_ENTREGA";
@@ -85,8 +88,54 @@ export const PERMISSION_CAPTURAR_RESULTADOS = "CAPTURAR_RESULTADOS";
 export const PERMISSION_VALIDAR_RESULTADOS = "VALIDAR_RESULTADOS";
 export const PERMISSION_IMPRIMIR_RESULTADOS = "IMPRIMIR_RESULTADOS";
 
+// Permisos de Configuración
+export const PERMISSION_VER_CONFIGURACION = "VER_CONFIGURACION";
+export const PERMISSION_GESTIONAR_ROLES = "GESTIONAR_ROLES";
+export const PERMISSION_GESTIONAR_USUARIOS = "GESTIONAR_USUARIOS";
+export const PERMISSION_GESTIONAR_SEDES = "GESTIONAR_SEDES";
+export const PERMISSION_GESTIONAR_SECCIONES = "GESTIONAR_SECCIONES";
+export const PERMISSION_GESTIONAR_PREANALITICOS = "GESTIONAR_PREANALITICOS";
+export const PERMISSION_GESTIONAR_CATALOGO = "GESTIONAR_CATALOGO";
+export const PERMISSION_EDITAR_PRECIO_CATALOGO = "EDITAR_PRECIO_CATALOGO";
+export const PERMISSION_GESTIONAR_PLANTILLAS = "GESTIONAR_PLANTILLAS";
+export const PERMISSION_GESTIONAR_SELLO = "GESTIONAR_SELLO";
+export const PERMISSION_VER_ADMISION = "VER_ADMISION";
+export const PERMISSION_GESTIONAR_ADMISION = "GESTIONAR_ADMISION";
+export const PERMISSION_CONVERTIR_ADMISION_A_ORDEN = "CONVERTIR_ADMISION_A_ORDEN";
+export const PERMISSION_AJUSTAR_PRECIO_ADMISION = "AJUSTAR_PRECIO_ADMISION";
+
 /** Permisos agrupados por módulo para la configuración de roles. */
 export const PERMISSION_GROUPS = [
+  {
+    label: "Configuración del Sistema",
+    permissions: [
+      { code: PERMISSION_VER_CONFIGURACION, label: "Ver panel de configuración" },
+      { code: PERMISSION_GESTIONAR_ROLES, label: "Gestionar roles" },
+      { code: PERMISSION_GESTIONAR_USUARIOS, label: "Gestionar usuarios" },
+      { code: PERMISSION_GESTIONAR_SEDES, label: "Gestionar sedes" },
+      { code: PERMISSION_GESTIONAR_SECCIONES, label: "Gestionar secciones de laboratorio" },
+      { code: PERMISSION_GESTIONAR_PREANALITICOS, label: "Gestionar notas preanalíticas" },
+      { code: PERMISSION_GESTIONAR_SELLO, label: "Gestionar sello virtual de PDFs" },
+    ],
+  },
+  {
+    label: "Catálogo y Plantillas",
+    permissions: [
+      { code: PERMISSION_VER_CATALOGO, label: "Ver catálogo y promociones" },
+      { code: PERMISSION_GESTIONAR_CATALOGO, label: "Gestionar catálogo de análisis" },
+      { code: PERMISSION_EDITAR_PRECIO_CATALOGO, label: "Editar precio global del catálogo" },
+      { code: PERMISSION_GESTIONAR_PLANTILLAS, label: "Gestionar plantillas de resultados" },
+    ],
+  },
+  {
+    label: "Admisión",
+    permissions: [
+      { code: PERMISSION_VER_ADMISION, label: "Ver bandeja de admisión" },
+      { code: PERMISSION_GESTIONAR_ADMISION, label: "Crear y gestionar pre-órdenes de admisión" },
+      { code: PERMISSION_CONVERTIR_ADMISION_A_ORDEN, label: "Convertir pre-orden de admisión a orden de laboratorio" },
+      { code: PERMISSION_AJUSTAR_PRECIO_ADMISION, label: "Ajustar precio puntual en pre-orden de admisión" },
+    ],
+  },
   {
     label: "Reportes",
     permissions: [
@@ -96,6 +145,7 @@ export const PERMISSION_GROUPS = [
   {
     label: "Pacientes",
     permissions: [
+      { code: PERMISSION_VER_PACIENTES, label: "Ver y buscar pacientes" },
       { code: PERMISSION_EDITAR_PACIENTES, label: "Modificar datos de pacientes" },
     ],
   },
@@ -111,6 +161,12 @@ export const PERMISSION_GROUPS = [
       { code: PERMISSION_VER_PAGOS, label: "Ver módulo Pagos (lista, ticket de pago)" },
       { code: PERMISSION_REGISTRAR_PAGOS, label: "Registrar pagos" },
       { code: PERMISSION_IMPRIMIR_TICKET_PAGO, label: "Generar ticket de pago" },
+    ],
+  },
+  {
+    label: "Órdenes y Flujo",
+    permissions: [
+      { code: PERMISSION_VER_ORDENES, label: "Ver órdenes, pendientes y entregados" },
     ],
   },
   {
@@ -163,6 +219,25 @@ export function hasPermission(
   if (perms.includes(permission)) return true;
   if (session.user.roleCode === ADMIN_ROLE_CODE && perms.length === 0) return true;
   return false;
+}
+
+/** Verifica si el usuario tiene al menos uno de los permisos indicados. */
+export function hasAnyPermission(
+  session: { user?: { roleCode?: string | null; permissions?: string[] } } | null,
+  permissions: string[],
+): boolean {
+  if (!session?.user || permissions.length === 0) return false;
+  return permissions.some((p) => hasPermission(session, p));
+}
+
+/** Devuelve true si el usuario tiene rol asignado con permisos (o es ADMIN). */
+export function hasRoleWithPermissions(
+  session: { user?: { roleCode?: string | null; permissions?: string[] } } | null,
+): boolean {
+  if (!session?.user) return false;
+  if (session.user.roleCode === ADMIN_ROLE_CODE) return true;
+  const perms = session.user.permissions ?? [];
+  return perms.length > 0;
 }
 
 /** @deprecated Usar hasPermission(session, PERMISSION_*) según el caso. */

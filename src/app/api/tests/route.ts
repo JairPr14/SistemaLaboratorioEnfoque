@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { labTestSchema } from "@/features/lab/schemas";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { authOptions, hasPermission, PERMISSION_GESTIONAR_CATALOGO } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 
 export async function GET(request: Request) {
@@ -45,8 +45,9 @@ export async function POST(request: Request) {
   if (!session?.user) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
-  // Crear análisis requiere permisos administrativos (puede ser ajustado según necesidad)
-  // Por ahora solo requiere autenticación
+  if (!hasPermission(session, PERMISSION_GESTIONAR_CATALOGO)) {
+    return NextResponse.json({ error: "Sin permiso para crear análisis" }, { status: 403 });
+  }
 
   try {
     const payload = await request.json();

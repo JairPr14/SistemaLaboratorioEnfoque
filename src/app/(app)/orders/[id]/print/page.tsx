@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/format";
+import { formatWithThousands } from "@/lib/formatNumber";
 import { getPrintConfig } from "@/lib/print-config";
 import { getPaidTotalByOrderId } from "@/lib/payments";
 import { PrintActions } from "@/components/orders/PrintActions";
@@ -306,11 +307,16 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                           </thead>
                           <tbody>
                             {item.result!.items.map((res) => {
-                              // Buscar el templateItem original para obtener refRanges
+                              // Buscar el templateItem original para obtener refRanges y valueType
                               const templateItem = res.templateItemId 
                                 ? item.labTest.template?.items.find((t) => t.id === res.templateItemId)
                                 : null;
                               const refRanges: RefRangeItem[] = (templateItem && "refRanges" in templateItem ? (templateItem.refRanges as RefRangeItem[]) : []) ?? [];
+                              const valueType = (templateItem as { valueType?: string } | null)?.valueType;
+                              const isNumeric = ["NUMBER", "DECIMAL", "PERCENTAGE"].includes(valueType ?? "");
+                              const displayValue = isNumeric && res.value
+                                ? formatWithThousands(res.value) + (valueType === "PERCENTAGE" ? " %" : "")
+                                : res.value;
                               
                               return (
                                 <tr key={res.id} className="border-b border-slate-200 last:border-b-0">
@@ -322,7 +328,7 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                                       res.isOutOfRange ? "font-bold underline" : ""
                                     }`}
                                   >
-                                    {res.value}
+                                    {displayValue}
                                   </td>
                                   <td className="py-2 px-3 text-slate-700 align-top">
                                     {res.unitSnapshot || "-"}

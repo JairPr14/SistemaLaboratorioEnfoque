@@ -5,12 +5,15 @@ import { useRouter } from "next/navigation";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { Search, UserRound, FlaskConical, Tag, Stethoscope, FileText } from "lucide-react";
 
 import { orderCreateSchema } from "@/features/lab/schemas";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FormSection } from "@/components/ui/form-section";
+import { FormFooter } from "@/components/ui/form-footer";
 
 type OrderFormValues = z.infer<typeof orderCreateSchema>;
 
@@ -226,24 +229,21 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [],
   const total = totalFromProfiles + totalFromTests;
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-      {/* Paciente y datos de solicitud */}
-      <section className="space-y-5 rounded-xl border border-slate-200/80 bg-slate-50/30 p-4 sm:p-5">
-        <h2 className="text-sm font-semibold text-slate-700">
-          Paciente y solicitud
-        </h2>
+    <form onSubmit={form.handleSubmit(onSubmit)} className="divide-y divide-slate-100 dark:divide-slate-800">
+      <FormSection title="Paciente y solicitud" icon={UserRound} iconBg="teal">
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="space-y-2 min-w-0">
-            <Label className="text-slate-700">Paciente</Label>
+            <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">Paciente</Label>
             {selectedPatient ? (
-              <div className="flex items-center gap-2 sm:gap-3 rounded-lg border border-slate-200 bg-white px-3 sm:px-4 py-3 shadow-sm min-w-0">
-                <span className="flex-1 text-sm font-medium text-slate-900 truncate min-w-0">
+              <div className="flex items-center gap-2 sm:gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm min-w-0 dark:border-slate-700 dark:bg-slate-800/50">
+                <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
+                <span className="flex-1 text-sm font-medium text-slate-900 truncate min-w-0 dark:text-slate-100">
                   {selectedPatient.label}
                 </span>
                 <button
                   type="button"
                   onClick={handleClearPatient}
-                  className="text-sm font-medium text-slate-600 hover:text-slate-900 hover:underline"
+                  className="text-sm font-medium text-teal-600 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300"
                 >
                   Cambiar
                 </button>
@@ -271,19 +271,17 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [],
                   </div>
                 )}
                 <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <Input
                     type="text"
                     placeholder="Buscar por DNI o nombre..."
                     value={patientSearch}
                     onChange={(e) => setPatientSearch(e.target.value)}
                     autoComplete="off"
-                    className="rounded-lg border-slate-200 pr-9"
+                    className="pl-9 rounded-xl"
                   />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden>
-                  🔍
-                </span>
                 {patientSearch.trim() && (
-                  <ul className="absolute z-10 mt-1 w-full rounded-lg border border-slate-200 bg-white py-1 shadow-lg max-h-52 overflow-y-auto">
+                  <ul className="absolute z-10 mt-1 w-full rounded-xl border border-slate-200 bg-white py-1 shadow-lg max-h-52 overflow-y-auto dark:border-slate-700 dark:bg-slate-900">
                     {filteredPatients.length === 0 ? (
                       <li className="px-4 py-3 text-sm text-slate-500">
                         Sin coincidencias. Pruebe DNI, nombre o apellido.
@@ -294,7 +292,7 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [],
                           <button
                             type="button"
                             onClick={() => handleSelectPatient(patient)}
-                            className="w-full px-4 py-2.5 text-left text-sm hover:bg-slate-50 focus:bg-slate-50 focus:outline-none"
+                            className="w-full px-4 py-2.5 text-left text-sm transition-colors hover:bg-teal-50/80 dark:hover:bg-teal-900/20 focus:outline-none"
                           >
                             <span className="font-medium text-slate-900">
                               {patient.label}
@@ -313,18 +311,18 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [],
             )}
           </div>
           <div className="space-y-2">
-            <Label className="text-slate-700">Fecha de la orden</Label>
+            <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">Fecha de la orden</Label>
             <Input
               type="date"
               {...form.register("orderDate")}
-              className="rounded-lg"
+              className="rounded-xl"
             />
           </div>
           <div className="space-y-2">
-            <Label className="text-slate-700">Tipo de paciente (sede)</Label>
+            <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">Tipo de paciente</Label>
             <select
               {...form.register("patientType")}
-              className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             >
               <option value="">Sin especificar</option>
               <option value="CLINICA">Paciente Clínica</option>
@@ -334,30 +332,33 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [],
             <p className="text-xs text-slate-500">Solo para reportes; no se muestra en PDF.</p>
           </div>
           <div className="space-y-2">
-            <Label className="text-slate-700">Médico solicitante</Label>
+            <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              <Stethoscope className="mr-1 inline-block h-3.5 w-3.5" />
+              Médico solicitante
+            </Label>
             <Input
               {...form.register("requestedBy")}
               placeholder="Ej: Dr. García"
-              className="rounded-lg"
+              className="rounded-xl"
             />
           </div>
         </div>
         <div className="space-y-2">
-          <Label className="text-slate-700">Notas (opcional)</Label>
+          <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">
+            <FileText className="mr-1 inline-block h-3.5 w-3.5" />
+            Notas (opcional)
+          </Label>
           <Input
             {...form.register("notes")}
             placeholder="Indicaciones o observaciones"
-            className="rounded-lg"
+            className="rounded-xl"
           />
         </div>
-      </section>
+      </FormSection>
 
-      {/* Análisis */}
-      <section className="space-y-4 min-w-0">
+      <FormSection title="Análisis a solicitar" icon={FlaskConical} iconBg="cyan">
+        <div className="space-y-4 min-w-0">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-sm font-semibold text-slate-700">
-            Análisis a solicitar
-          </h2>
           {(selectedIndividualTests.length > 0 || selectedProfiles.length > 0) && (
             <p className="text-sm text-slate-500">
               {selectedProfiles.length > 0 && (
@@ -380,10 +381,10 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [],
         </div>
 
         {profiles.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-amber-50/50 px-3 py-2">
-            <span className="text-xs font-medium text-slate-600">Agregar promoción:</span>
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200/80 bg-slate-50/80 p-3 dark:border-slate-700 dark:bg-slate-800/40">
+            <Tag className="h-4 w-4 text-slate-500" />
             <select
-              className="h-8 rounded border border-slate-200 bg-white px-2 text-sm"
+              className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
               onChange={(e) => {
                 const id = e.target.value;
                 if (id) {
@@ -392,7 +393,7 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [],
                 }
               }}
             >
-              <option value="">Seleccionar paquete</option>
+              <option value="">+ Agregar promoción</option>
               {profiles.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
@@ -404,7 +405,7 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [],
             {selectedProfiles.map((p) => (
               <span
                 key={p.id}
-                className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-700 border border-slate-200"
+                className="inline-flex items-center gap-1.5 rounded-full bg-teal-100 px-3 py-1 text-xs font-medium text-teal-700 dark:bg-teal-900/50 dark:text-teal-300"
               >
                 {p.name}
                 <button
@@ -421,23 +422,18 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [],
         )}
 
         <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <Input
             type="text"
-            placeholder="Buscar análisis por nombre, código o sección..."
+            placeholder="Buscar por código, nombre o sección..."
             value={testSearch}
             onChange={(e) => setTestSearch(e.target.value)}
             autoComplete="off"
-            className="rounded-lg border-slate-200 pl-10"
+            className="pl-9 rounded-xl"
           />
-          <span
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            aria-hidden
-          >
-            🔍
-          </span>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden min-w-0">
+        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden min-w-0 shadow-inner dark:border-slate-700 dark:bg-slate-900/30">
           <div className="max-h-[420px] overflow-y-auto overflow-x-hidden">
             {filteredTestsBySection.length === 0 ? (
               <div className="px-5 py-8 text-center text-sm text-slate-500">
@@ -449,7 +445,7 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [],
               <ul className="divide-y divide-slate-100">
                 {filteredTestsBySection.map(([sectionLabel, sectionTests]) => (
                   <li key={sectionLabel}>
-                    <div className="sticky top-0 z-[1] bg-slate-100/95 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                    <div className="sticky top-0 z-[1] bg-teal-50/90 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-teal-700 dark:bg-teal-900/40 dark:text-teal-300">
                       {sectionLabel}
                     </div>
                     <ul className="py-1">
@@ -461,16 +457,16 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [],
                         return (
                           <li key={test.id}>
                             <label
-                              className={`flex items-center gap-3 px-4 py-3 transition-colors ${
-                                isDisabled ? "cursor-default opacity-90" : "cursor-pointer hover:bg-slate-50/80"
-                              } ${isSelected ? "bg-blue-50/80" : ""} ${isInPromo ? "bg-amber-50/50" : ""}`}
+                              className={`flex items-center gap-4 px-4 py-3 transition-colors ${
+                                isDisabled ? "cursor-default opacity-90" : "cursor-pointer hover:bg-slate-50/80 dark:hover:bg-slate-800/30"
+                              } ${isSelected ? "bg-teal-50/50 dark:bg-teal-900/20" : ""} ${isInPromo ? "bg-amber-50/70 dark:bg-amber-950/25" : ""}`}
                             >
                               <input
                                 type="checkbox"
                                 checked={isSelected || isInPromo}
                                 disabled={isDisabled}
                                 onChange={() => !isDisabled && toggleTest(test.id)}
-                                className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400 disabled:opacity-70"
+                                className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 disabled:opacity-70"
                                 title={isInPromo ? `Incluido en promoción: ${promoContaining?.name ?? ""}` : undefined}
                               />
                               <span className="flex-1 min-w-0">
@@ -507,7 +503,7 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [],
         </div>
 
         {(selectedIndividualTests.length > 0 || selectedProfiles.length > 0) && (
-          <div className="rounded-lg border border-slate-200 bg-slate-50/80 px-4 py-3 space-y-3">
+          <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-4 py-3 space-y-3 dark:border-slate-700 dark:bg-slate-800/30">
             <p className="text-xs font-medium text-slate-500">
               Resumen (promociones encapsuladas, análisis sueltos aparte)
             </p>
@@ -562,22 +558,27 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [],
             )}
           </div>
         )}
-      </section>
+        </div>
+      </FormSection>
 
-      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end sm:items-center pt-2 border-t border-slate-200 min-w-0">
-        {(selectedProfileIds.length > 0 || selectedIds.size > 0) && (
-          <span className="text-sm text-slate-600 sm:mr-4">
-            Total: <strong>S/ {total.toFixed(2)}</strong>
-          </span>
-        )}
+      <FormFooter
+        total={
+          (selectedProfileIds.length > 0 || selectedIds.size > 0) && (
+            <div className="flex items-baseline gap-2">
+              <span className="text-sm text-slate-600 dark:text-slate-400">Total:</span>
+              <span className="text-xl font-bold text-teal-600 dark:text-teal-400">S/ {total.toFixed(2)}</span>
+            </div>
+          )
+        }
+      >
         <Button
           type="submit"
-          className="w-full sm:w-auto min-w-[160px]"
+          className="min-w-[140px] bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-500 hover:to-cyan-500"
           disabled={selectedProfileIds.length === 0 && selectedIds.size === 0}
         >
           Crear orden
         </Button>
-      </div>
+      </FormFooter>
     </form>
   );
 }
