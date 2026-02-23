@@ -143,6 +143,7 @@ export const quickOrderSchema = z.object({
   patientDraft: patientDraftSchema.optional(),
   doctorName: z.string().optional().nullable(),
   indication: z.string().optional().nullable(),
+  priority: z.enum(["NORMAL", "URGENTE"]).optional().default("NORMAL"),
   patientType: z.preprocess(
     (v) => (v === "" || v === undefined ? null : v),
     z.enum(orderPatientTypeValues).nullable()
@@ -167,11 +168,28 @@ export const orderUpdateSchema = z.object({
   status: z.enum(orderStatusValues).optional(),
   deliveredAt: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  preAnalyticNote: z.string().optional().nullable(),
   requestedBy: z.string().optional().nullable(),
   patientType: z.preprocess(
     (v) => (v === "" || v === undefined ? null : v),
     z.enum(orderPatientTypeValues).nullable()
   ).optional(),
+});
+
+export const preAnalyticNoteTemplateSchema = z.object({
+  code: z.string().min(2).regex(/^[A-Z0-9_]+$/, "Solo mayúsculas, números y guión bajo"),
+  title: z.string().min(2),
+  text: z.string().min(3),
+  isActive: z.coerce.boolean().default(true),
+});
+
+export const paymentMethodValues = ["EFECTIVO", "TARJETA", "TRANSFERENCIA", "CREDITO"] as const;
+
+export const orderPaymentSchema = z.object({
+  amount: z.coerce.number().positive("El monto debe ser mayor a 0"),
+  method: z.enum(paymentMethodValues),
+  notes: z.string().max(300).optional().nullable(),
+  paidAt: z.string().optional(),
 });
 
 export const resultItemSchema = z.object({

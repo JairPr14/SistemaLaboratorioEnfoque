@@ -10,7 +10,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Sistema LIS",
+  title: "Sistema de Laboratorio Clínico",
   description: "Gestión de Laboratorio Clínico",
 };
 

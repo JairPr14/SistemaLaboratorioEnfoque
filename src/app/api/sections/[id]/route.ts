@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { labSectionSchema } from "@/features/lab/schemas";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 
 type Params = { params: Promise<{ id: string }> };
@@ -29,10 +28,8 @@ export async function GET(_request: Request, { params }: Params) {
 }
 
 export async function PUT(request: Request, { params }: Params) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireAdmin();
+  if (auth.response) return auth.response;
 
   try {
     const { id } = await params;
@@ -78,10 +75,8 @@ export async function PUT(request: Request, { params }: Params) {
 }
 
 export async function DELETE(_request: Request, { params }: Params) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireAdmin();
+  if (auth.response) return auth.response;
 
   try {
     const { id } = await params;

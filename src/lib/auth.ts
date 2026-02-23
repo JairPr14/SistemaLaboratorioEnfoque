@@ -75,12 +75,76 @@ export const authOptions: NextAuthOptions = {
 export const PERMISSION_REPORTES = "REPORTES";
 export const PERMISSION_EDITAR_PACIENTES = "EDITAR_PACIENTES";
 export const PERMISSION_ELIMINAR_REGISTROS = "ELIMINAR_REGISTROS";
+export const PERMISSION_VER_PAGOS = "VER_PAGOS";
+export const PERMISSION_REGISTRAR_PAGOS = "REGISTRAR_PAGOS";
+export const PERMISSION_IMPRIMIR_TICKET_PAGO = "IMPRIMIR_TICKET_PAGO";
+export const PERMISSION_QUICK_ACTIONS_RECEPCION = "QUICK_ACTIONS_RECEPCION";
+export const PERMISSION_QUICK_ACTIONS_ANALISTA = "QUICK_ACTIONS_ANALISTA";
+export const PERMISSION_QUICK_ACTIONS_ENTREGA = "QUICK_ACTIONS_ENTREGA";
+export const PERMISSION_CAPTURAR_RESULTADOS = "CAPTURAR_RESULTADOS";
+export const PERMISSION_VALIDAR_RESULTADOS = "VALIDAR_RESULTADOS";
+export const PERMISSION_IMPRIMIR_RESULTADOS = "IMPRIMIR_RESULTADOS";
 
-export const ALL_PERMISSIONS = [
-  { code: PERMISSION_REPORTES, label: "Ver reportes" },
-  { code: PERMISSION_EDITAR_PACIENTES, label: "Modificar datos de pacientes" },
-  { code: PERMISSION_ELIMINAR_REGISTROS, label: "Eliminar registros (pacientes, órdenes, ítems)" },
+/** Permisos agrupados por módulo para la configuración de roles. */
+export const PERMISSION_GROUPS = [
+  {
+    label: "Reportes",
+    permissions: [
+      { code: PERMISSION_REPORTES, label: "Ver reportes" },
+    ],
+  },
+  {
+    label: "Pacientes",
+    permissions: [
+      { code: PERMISSION_EDITAR_PACIENTES, label: "Modificar datos de pacientes" },
+    ],
+  },
+  {
+    label: "Registros",
+    permissions: [
+      { code: PERMISSION_ELIMINAR_REGISTROS, label: "Eliminar registros (pacientes, órdenes, ítems)" },
+    ],
+  },
+  {
+    label: "Pagos / Cobros",
+    permissions: [
+      { code: PERMISSION_VER_PAGOS, label: "Ver módulo Pagos (lista, ticket de pago)" },
+      { code: PERMISSION_REGISTRAR_PAGOS, label: "Registrar pagos" },
+      { code: PERMISSION_IMPRIMIR_TICKET_PAGO, label: "Generar ticket de pago" },
+    ],
+  },
+  {
+    label: "Recepción",
+    permissions: [
+      { code: PERMISSION_QUICK_ACTIONS_RECEPCION, label: "Acciones rápidas de recepción" },
+    ],
+  },
+  {
+    label: "Análisis",
+    permissions: [
+      { code: PERMISSION_QUICK_ACTIONS_ANALISTA, label: "Acciones rápidas de analista" },
+      { code: PERMISSION_CAPTURAR_RESULTADOS, label: "Capturar resultados" },
+      { code: PERMISSION_VALIDAR_RESULTADOS, label: "Validar resultados" },
+    ],
+  },
+  {
+    label: "Entrega",
+    permissions: [
+      { code: PERMISSION_QUICK_ACTIONS_ENTREGA, label: "Acciones rápidas de entrega" },
+    ],
+  },
+  {
+    label: "Resultados",
+    permissions: [
+      { code: PERMISSION_IMPRIMIR_RESULTADOS, label: "Imprimir resultados" },
+    ],
+  },
 ] as const;
+
+/** Lista plana de todos los permisos (compatibilidad). */
+export const ALL_PERMISSIONS = PERMISSION_GROUPS.flatMap((g) =>
+  g.permissions.map((p) => ({ code: p.code, label: p.label })),
+);
 
 /** Código del rol administrador (compatibilidad: si el rol no tiene permisos configurados, ADMIN tiene todos). */
 export const ADMIN_ROLE_CODE = "ADMIN";

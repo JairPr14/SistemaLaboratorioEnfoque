@@ -82,6 +82,18 @@ body {
   margin: 0;
 }
 
+/* Ticket de pago: formato A4 */
+@page ticket-a4 {
+  size: A4;
+  margin: 10mm;
+}
+
+/* Ticket de pago: formato 80mm (térmico) */
+@page ticket-80mm {
+  size: 80mm auto;
+  margin: 2mm;
+}
+
 @media print {
   /* Incluir fondos e imágenes al imprimir/guardar como PDF */
   * {
@@ -184,5 +196,36 @@ body {
 
   tfoot {
     display: table-footer-group;
+  }
+
+  /* Ticket de pago: formato A4 */
+  body.print-ticket-a4 .print-ticket-content {
+    page: ticket-a4;
+  }
+
+  body.print-ticket-a4 .print-ticket-inner {
+    max-width: 210mm;
+  }
+
+  /* Ticket de pago: formato 80mm térmico */
+  body.print-ticket-80mm .print-ticket-content {
+    page: ticket-80mm;
+  }
+
+  body.print-ticket-80mm .print-ticket-inner {
+    width: 76mm !important;
+    max-width: 76mm !important;
+    min-width: 76mm !important;
+    padding: 4mm !important;
+    font-size: 10px !important;
+  }
+
+  body.print-ticket-80mm .print-ticket-inner h1 {
+    font-size: 12px !important;
+  }
+
+  body.print-ticket-80mm .print-ticket-inner p,
+  body.print-ticket-80mm .print-ticket-inner li {
+    font-size: 9px !important;
   }
 }

@@ -233,6 +233,43 @@ export function ResultForm({
     }
   };
 
+  useEffect(() => {
+    const onSaveDraftShortcut = () => {
+      saveOnBlur();
+      toast.success("Borrador guardado");
+    };
+
+    const onValidateShortcut = async () => {
+      const ok = window.confirm("¿Validar resultados de esta orden?");
+      if (!ok) return;
+      try {
+        const res = await fetch(`/api/orders/${orderId}/validate`, { method: "POST" });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          toast.error(data.error ?? "No se pudo validar");
+          return;
+        }
+        toast.success("Orden validada");
+        router.refresh();
+      } catch {
+        toast.error("Error de conexión al validar");
+      }
+    };
+
+    const onPrintShortcut = () => {
+      window.open(`/orders/${orderId}/print`, "_blank", "noopener,noreferrer");
+    };
+
+    window.addEventListener("shortcuts:save-draft", onSaveDraftShortcut);
+    window.addEventListener("shortcuts:validate", onValidateShortcut);
+    window.addEventListener("shortcuts:print", onPrintShortcut);
+    return () => {
+      window.removeEventListener("shortcuts:save-draft", onSaveDraftShortcut);
+      window.removeEventListener("shortcuts:validate", onValidateShortcut);
+      window.removeEventListener("shortcuts:print", onPrintShortcut);
+    };
+  }, [orderId, router, saveOnBlur]);
+
   return (
     <form
       onSubmit={form.handleSubmit(onSubmit)}

@@ -45,6 +45,7 @@ export function QuickOrderModal({ open, onOpenChange }: Props) {
   const [selectedProfileIds, setSelectedProfileIds] = useState<Set<string>>(new Set());
   const [doctorName, setDoctorName] = useState("");
   const [indication, setIndication] = useState("");
+  const [priority, setPriority] = useState<"NORMAL" | "URGENTE">("NORMAL");
   const [patientType, setPatientType] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -225,6 +226,7 @@ export function QuickOrderModal({ open, onOpenChange }: Props) {
           patientDraft: patientDraftPayload,
           doctorName: doctorName || null,
           indication: indication || null,
+          priority,
           patientType: patientType || null,
           profileIds: Array.from(selectedProfileIds),
           tests: individualTestIds,
@@ -394,8 +396,8 @@ export function QuickOrderModal({ open, onOpenChange }: Props) {
             )}
           </div>
 
-          {/* Médico e indicación */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Médico, indicación y prioridad */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="space-y-2">
               <Label>Médico (opcional)</Label>
               <Input
@@ -411,6 +413,17 @@ export function QuickOrderModal({ open, onOpenChange }: Props) {
                 value={indication}
                 onChange={(e) => setIndication(e.target.value)}
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Prioridad</Label>
+              <select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value as "NORMAL" | "URGENTE")}
+                className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm dark:border-slate-600 dark:bg-slate-800"
+              >
+                <option value="NORMAL">Normal</option>
+                <option value="URGENTE">Urgente</option>
+              </select>
             </div>
           </div>
 

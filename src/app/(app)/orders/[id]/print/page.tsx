@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/format";
 import { getPrintConfig } from "@/lib/print-config";
+import { getPaidTotalByOrderId } from "@/lib/payments";
 import { PrintActions } from "@/components/orders/PrintActions";
 import { PrintFitToPage } from "@/components/orders/PrintFitToPage";
 
@@ -25,9 +26,11 @@ function calculateAge(birthDate: Date): number {
 type OrderForPrint = {
   patient: { lastName: string; firstName: string; dni: string; birthDate: Date; sex: string | null };
   requestedBy: string | null;
+  preAnalyticNote?: string | null;
   createdAt: Date;
   orderCode: string;
   deliveredAt: Date | null;
+  totalPrice: number;
   items: Array<{
     id: string;
     result: { reportedBy?: string | null } | null;
@@ -40,10 +43,12 @@ function PatientDataBlock({
   order,
   age,
   sexLabel,
+  payment,
 }: {
   order: OrderForPrint;
   age: number;
   sexLabel: string;
+  payment: { paidTotal: number; balance: number; paymentStatus: "PENDIENTE" | "PARCIAL" | "PAGADO" };
 }) {
   return (
     <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm mb-6">
@@ -76,6 +81,20 @@ function PatientDataBlock({
       <div className="flex gap-2">
         <span className="text-slate-500 font-medium shrink-0">N° REGISTRO:</span>
         <span className="font-mono">{order.orderCode}</span>
+      </div>
+      <div className="flex gap-2">
+        <span className="text-slate-500 font-medium shrink-0">ESTADO COBRO:</span>
+        <span>{payment.paymentStatus}</span>
+      </div>
+      <div className="flex gap-2">
+        <span className="text-slate-500 font-medium shrink-0">TOTAL / COBRADO:</span>
+        <span>
+          S/ {order.totalPrice.toFixed(2)} / S/ {payment.paidTotal.toFixed(2)}
+        </span>
+      </div>
+      <div className="flex gap-2">
+        <span className="text-slate-500 font-medium shrink-0">SALDO:</span>
+        <span>S/ {payment.balance.toFixed(2)}</span>
       </div>
     </div>
   );
@@ -183,6 +202,11 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
 
   const age = calculateAge(order.patient.birthDate);
   const sexLabel = order.patient.sex === "M" ? "Masculino" : order.patient.sex === "F" ? "Femenino" : "Otro";
+  const paidTotal = await getPaidTotalByOrderId(prisma, order.id);
+  const totalPrice = Number(order.totalPrice);
+  const balance = Math.max(0, totalPrice - paidTotal);
+  const paymentStatus =
+    paidTotal <= 0 ? "PENDIENTE" : paidTotal + 0.0001 < totalPrice ? "PARCIAL" : "PAGADO";
   const sectionsEntries = Object.entries(itemsBySection);
   const printConfig = await getPrintConfig();
   const showStamp = printConfig.stampEnabled && printConfig.stampImageUrl;
@@ -234,7 +258,12 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                 <div className="min-w-0 flex-1" aria-hidden />
               </header>
 
-              <PatientDataBlock order={order} age={age} sexLabel={sexLabel} />
+              <PatientDataBlock
+                order={{ ...order, totalPrice }}
+                age={age}
+                sexLabel={sexLabel}
+                payment={{ paidTotal, balance, paymentStatus }}
+              />
 
               {/* Barra de sección: fondo semi-transparente, texto en negrita más grande */}
               <div
@@ -370,6 +399,15 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                 );
               })}
 
+              {order.preAnalyticNote && (
+                <div className="mt-3 rounded border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                  <p className="font-semibold uppercase tracking-wide text-slate-800">
+                    Observaciones preanalíticas
+                  </p>
+                  <p className="mt-1 whitespace-pre-wrap">{order.preAnalyticNote}</p>
+                </div>
+              )}
+
               <FooterBlock items={items} order={order} showStamp={!!(showStamp && printConfig.stampImageUrl)} stampImageUrl={printConfig.stampImageUrl} />
 
               <div className="mt-6 pt-3 text-center text-xs min-h-[1.5rem]" aria-hidden />
@@ -397,7 +435,12 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
               style={{ paddingTop: "29.7mm", paddingBottom: "29.7mm" }}
             >
               <header className="flex items-start justify-between gap-4 mb-6 pb-4 border-b border-slate-300 min-h-[3.5rem]" />
-              <PatientDataBlock order={order} age={age} sexLabel={sexLabel} />
+              <PatientDataBlock
+                order={{ ...order, totalPrice }}
+                age={age}
+                sexLabel={sexLabel}
+                payment={{ paidTotal, balance, paymentStatus }}
+              />
               <p className="text-center text-slate-500 py-12">No hay análisis seleccionados para imprimir.</p>
               <FooterBlock items={[]} order={order} showStamp={!!(showStamp && printConfig.stampImageUrl)} stampImageUrl={printConfig.stampImageUrl} />
             </div>

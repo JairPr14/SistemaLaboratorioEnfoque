@@ -29,6 +29,7 @@ type OrderRow = {
   items?: { labTest: { name: string } }[];
   requestedBy?: string | null;
   itemsSection?: string;
+  paymentStatus?: "PENDIENTE" | "PARCIAL" | "PAGADO";
   totalTests: number;
   completedTests: number;
   needsValidation: boolean;
@@ -138,6 +139,7 @@ export function DashboardPendingTable({ orders, defaultFilters, sectionOptions }
               <TableHead>Paciente</TableHead>
               <TableHead>Fecha</TableHead>
               <TableHead>Estado</TableHead>
+              <TableHead>Cobro</TableHead>
               <TableHead>Análisis</TableHead>
               <TableHead>Alerta</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
@@ -146,7 +148,7 @@ export function DashboardPendingTable({ orders, defaultFilters, sectionOptions }
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="py-12 text-center">
+                <TableCell colSpan={8} className="py-12 text-center">
                   <p className="text-slate-500 dark:text-slate-300">No hay órdenes pendientes</p>
                   <p className="mt-1 text-sm text-slate-400 dark:text-slate-500">
                     Crea una nueva orden o ajusta los filtros
@@ -184,6 +186,19 @@ export function DashboardPendingTable({ orders, defaultFilters, sectionOptions }
                     <TableCell>
                       <Badge variant={statusBadgeVariant(order.status)}>
                         {order.status.replace("_", " ")}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          order.paymentStatus === "PAGADO"
+                            ? "success"
+                            : order.paymentStatus === "PARCIAL"
+                              ? "warning"
+                              : "secondary"
+                        }
+                      >
+                        {order.paymentStatus ?? "PENDIENTE"}
                       </Badge>
                     </TableCell>
                     <TableCell className="max-w-[200px] truncate text-slate-600 dark:text-slate-300">

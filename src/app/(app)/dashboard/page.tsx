@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { prisma } from "@/lib/prisma";
+import { getPaidTotalsByOrderIds } from "@/lib/payments";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,14 +14,19 @@ import {
   UserPlus,
 } from "lucide-react";
 import { MetricCard } from "@/components/dashboard/MetricCard";
-import { QuickActionsBar } from "@/components/dashboard/QuickActionsBar";
+import { QuickActions } from "@/components/dashboard/QuickActions";
 import { QuickOrderButton } from "@/components/dashboard/QuickOrderButton";
 import { DashboardPendingTable } from "@/components/dashboard/DashboardPendingTable";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
 
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ pendingStatus?: string; pendingDate?: string; pendingSection?: string }>;
+}) {
+  const params = await searchParams;
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -96,11 +102,25 @@ export default async function DashboardPage() {
       patient: o.patient,
       items: o.items,
       requestedBy: o.requestedBy,
+      totalPrice: Number(o.totalPrice),
       itemsSection: o.items[0]?.labTest?.section?.code ?? undefined,
       totalTests,
       completedTests,
       needsValidation,
       missingCount,
+    };
+  });
+
+  const pendingOrderIds = tableOrders.map((o) => o.id);
+  const paidByOrder = await getPaidTotalsByOrderIds(prisma, pendingOrderIds);
+  const tableOrdersWithPayment = tableOrders.map((order) => {
+    const paid = paidByOrder.get(order.id) ?? 0;
+    const total = order.totalPrice;
+    const paymentStatus =
+      paid <= 0 ? "PENDIENTE" : paid + 0.0001 < total ? "PARCIAL" : "PAGADO";
+    return {
+      ...order,
+      paymentStatus: paymentStatus as "PENDIENTE" | "PARCIAL" | "PAGADO",
     };
   });
 
@@ -120,7 +140,9 @@ export default async function DashboardPage() {
       </div>
 
       {/* Acciones rápidas */}
-      <QuickActionsBar />
+      <QuickActions
+        sectionOptions={sections.map((s) => ({ value: s.code, label: s.name }))}
+      />
 
       {/* Métricas */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
@@ -187,7 +209,12 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <DashboardPendingTable
-              orders={tableOrders}
+              orders={tableOrdersWithPayment}
+              defaultFilters={{
+                status: params.pendingStatus ?? "",
+                dateRange: params.pendingDate ?? "7d",
+                section: params.pendingSection ?? "",
+              }}
               sectionOptions={[
                 { value: "", label: "Todas las secciones" },
                 ...sections.map((s) => ({ value: s.code, label: s.name })),

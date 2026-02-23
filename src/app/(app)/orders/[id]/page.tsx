@@ -1,15 +1,26 @@
 import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 
-import { authOptions, hasPermission, PERMISSION_ELIMINAR_REGISTROS } from "@/lib/auth";
+import {
+  authOptions,
+  hasPermission,
+  PERMISSION_CAPTURAR_RESULTADOS,
+  PERMISSION_ELIMINAR_REGISTROS,
+  PERMISSION_IMPRIMIR_TICKET_PAGO,
+  PERMISSION_REGISTRAR_PAGOS,
+  PERMISSION_VER_PAGOS,
+} from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { getPaidTotalByOrderId } from "@/lib/payments";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { OrderStatusActions } from "@/components/orders/OrderStatusActions";
 import { OrderItemsTableWithPrint } from "@/components/orders/OrderItemsTableWithPrint";
 import { RepeatOrderButton } from "@/components/orders/RepeatOrderButton";
 import { EditOrderButton } from "@/components/orders/EditOrderButton";
+import { PreAnalyticNotePicker } from "@/components/orders/PreAnalyticNotePicker";
+import { OrderPaymentPanel } from "@/components/orders/OrderPaymentPanel";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -21,6 +32,12 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
   const { captureItem } = await searchParams;
   const session = await getServerSession(authOptions);
   const canDeleteOrderItems = hasPermission(session, PERMISSION_ELIMINAR_REGISTROS);
+  const canEditPreAnalytic = hasPermission(session, PERMISSION_CAPTURAR_RESULTADOS);
+  const canRegisterPayment = hasPermission(session, PERMISSION_REGISTRAR_PAGOS);
+  const canPrintTicket =
+    hasPermission(session, PERMISSION_IMPRIMIR_TICKET_PAGO) ||
+    hasPermission(session, PERMISSION_VER_PAGOS) ||
+    hasPermission(session, PERMISSION_REGISTRAR_PAGOS);
   const order = await prisma.labOrder.findFirst({
     where: { id },
     include: {
@@ -51,6 +68,11 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
     notFound();
   }
 
+  const paidTotal = await getPaidTotalByOrderId(prisma, order.id);
+  const balance = Math.max(0, Number(order.totalPrice) - paidTotal);
+  const paymentStatus =
+    paidTotal <= 0 ? "PENDIENTE" : paidTotal + 0.0001 < Number(order.totalPrice) ? "PARCIAL" : "PAGADO";
+
   return (
     <div className="space-y-6">
       <Card>
@@ -60,8 +82,26 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
             <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
               Cambiar estado de la orden
             </p>
+            <div className="mt-2">
+              <Badge
+                variant={
+                  paymentStatus === "PAGADO"
+                    ? "success"
+                    : paymentStatus === "PARCIAL"
+                      ? "warning"
+                      : "secondary"
+                }
+              >
+                Cobro {paymentStatus}
+              </Badge>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <PreAnalyticNotePicker
+              orderId={order.id}
+              initialValue={order.preAnalyticNote ?? null}
+              canEdit={canEditPreAnalytic}
+            />
             <EditOrderButton
               orderId={order.id}
               patientType={order.patientType}
@@ -120,6 +160,18 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
                       : "—"}
               </p>
             </div>
+            <div>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Cobrado</p>
+              <p className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                {formatCurrency(paidTotal)}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Saldo pendiente</p>
+              <p className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                {formatCurrency(balance)}
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -128,6 +180,13 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
         order={order}
         defaultOpenItemId={captureItem ?? undefined}
         canDeleteItems={canDeleteOrderItems}
+      />
+      <OrderPaymentPanel
+        orderId={order.id}
+        orderCode={order.orderCode}
+        orderTotal={Number(order.totalPrice)}
+        canRegisterPayment={canRegisterPayment}
+        canPrintTicket={canPrintTicket}
       />
     </div>
   );

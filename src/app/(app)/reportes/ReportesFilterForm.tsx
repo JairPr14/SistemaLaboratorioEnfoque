@@ -26,9 +26,15 @@ type Props = {
   defaultDateFrom: string;
   defaultDateTo: string;
   defaultStatus?: string;
+  defaultPaymentStatus?: string;
 };
 
-export function ReportesFilterForm({ defaultDateFrom, defaultDateTo, defaultStatus = "" }: Props) {
+export function ReportesFilterForm({
+  defaultDateFrom,
+  defaultDateTo,
+  defaultStatus = "",
+  defaultPaymentStatus = "",
+}: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
@@ -39,10 +45,13 @@ export function ReportesFilterForm({ defaultDateFrom, defaultDateTo, defaultStat
     const from = (form.elements.namedItem("dateFrom") as HTMLInputElement)?.value?.trim() ?? "";
     const to = (form.elements.namedItem("dateTo") as HTMLInputElement)?.value?.trim() ?? "";
     const status = (form.elements.namedItem("status") as HTMLSelectElement)?.value?.trim() ?? "";
+    const paymentStatus =
+      (form.elements.namedItem("paymentStatus") as HTMLSelectElement)?.value?.trim() ?? "";
     const params = new URLSearchParams();
     if (from) params.set("dateFrom", from);
     if (to) params.set("dateTo", to);
     if (status) params.set("status", status);
+    if (paymentStatus) params.set("paymentStatus", paymentStatus);
     const query = params.toString();
     startTransition(() => {
       router.push(query ? `/reportes?${query}` : "/reportes");
@@ -50,7 +59,10 @@ export function ReportesFilterForm({ defaultDateFrom, defaultDateTo, defaultStat
   }
 
   const hasActiveFilters =
-    searchParams.has("dateFrom") || searchParams.has("dateTo") || searchParams.has("status");
+    searchParams.has("dateFrom") ||
+    searchParams.has("dateTo") ||
+    searchParams.has("status") ||
+    searchParams.has("paymentStatus");
 
   function resetFilters() {
     startTransition(() => {
@@ -66,7 +78,9 @@ export function ReportesFilterForm({ defaultDateFrom, defaultDateTo, defaultStat
     params.set("dateFrom", toYYYYMMDD(from));
     params.set("dateTo", toYYYYMMDD(to));
     const status = searchParams.get("status");
+    const paymentStatus = searchParams.get("paymentStatus");
     if (status) params.set("status", status);
+    if (paymentStatus) params.set("paymentStatus", paymentStatus);
     startTransition(() => {
       router.push(`/reportes?${params.toString()}`);
     });
@@ -90,6 +104,22 @@ export function ReportesFilterForm({ defaultDateFrom, defaultDateTo, defaultStat
                 {o.label}
               </option>
             ))}
+          </select>
+        </div>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="reportes-payment-status" className="text-sm text-slate-600">
+            Cobro
+          </Label>
+          <select
+            id="reportes-payment-status"
+            name="paymentStatus"
+            defaultValue={defaultPaymentStatus}
+            className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm sm:w-44"
+          >
+            <option value="">Todos</option>
+            <option value="PENDIENTE">Pendiente</option>
+            <option value="PARCIAL">Parcial</option>
+            <option value="PAGADO">Pagado</option>
           </select>
         </div>
         <div className="flex items-center gap-2">

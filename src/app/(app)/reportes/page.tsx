@@ -6,6 +6,7 @@ import { getServerSession } from "next-auth";
 import type { OrderStatus, Prisma } from "@prisma/client";
 import { authOptions, hasPermission, PERMISSION_REPORTES } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getPaidTotalsByOrderIds } from "@/lib/payments";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -13,7 +14,12 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader, pageLayoutClasses } from "@/components/layout/PageHeader";
 import { ReportesFilterForm } from "./ReportesFilterForm";
 
-type SearchParams = { dateFrom?: string; dateTo?: string; status?: string };
+type SearchParams = {
+  dateFrom?: string;
+  dateTo?: string;
+  status?: string;
+  paymentStatus?: "PENDIENTE" | "PARCIAL" | "PAGADO" | string;
+};
 
 function toYYYYMMDD(d: Date): string {
   const y = d.getFullYear();
@@ -78,6 +84,7 @@ export default async function ReportesPage({
   const params = await searchParams;
   const { dateFrom, dateTo } = parseDateRange(params);
   const statusFilter = params.status?.trim() || undefined;
+  const paymentStatusFilter = params.paymentStatus?.trim() || undefined;
 
   // Para "Entregados" usamos fecha de entrega (deliveredAt); para el resto, fecha de creación (createdAt)
   const useDeliveredDate = statusFilter === "ENTREGADO";
@@ -91,29 +98,53 @@ export default async function ReportesPage({
         createdAt: { gte: dateFrom, lte: dateTo },
       };
 
+  let orderWhereFinal: Prisma.LabOrderWhereInput = orderWhereWithDate;
+  if (paymentStatusFilter) {
+    const baseOrders = await prisma.labOrder.findMany({
+      where: orderWhereWithDate,
+      select: { id: true, totalPrice: true },
+    });
+    const baseIds = baseOrders.map((o) => o.id);
+    const paidByOrder = await getPaidTotalsByOrderIds(prisma, baseIds);
+
+    const filteredIds = baseOrders
+      .filter((o) => {
+        const paid = paidByOrder.get(o.id) ?? 0;
+        const total = Number(o.totalPrice);
+        const state = paid <= 0 ? "PENDIENTE" : paid + 0.0001 < total ? "PARCIAL" : "PAGADO";
+        return state === paymentStatusFilter;
+      })
+      .map((o) => o.id);
+
+    orderWhereFinal = {
+      ...orderWhereWithDate,
+      id: { in: filteredIds.length > 0 ? filteredIds : ["__none__"] },
+    };
+  }
+
   const [orderItems, ordersSummary, revenueResult, byPatientType, ordersList] = await Promise.all([
     prisma.labOrderItem.findMany({
-      where: { order: orderWhereWithDate },
+      where: { order: orderWhereFinal },
       include: { labTest: { include: { section: true } } },
     }),
     prisma.labOrder.groupBy({
       by: ["status"],
-      where: orderWhereWithDate,
+      where: orderWhereFinal,
       _count: { id: true },
     }),
     prisma.labOrder.aggregate({
       _sum: { totalPrice: true },
       _count: { id: true },
-      where: orderWhereWithDate,
+      where: orderWhereFinal,
     }),
     prisma.labOrder.groupBy({
       by: ["patientType"],
-      where: orderWhereWithDate,
+      where: orderWhereFinal,
       _count: { id: true },
       _sum: { totalPrice: true },
     }),
     prisma.labOrder.findMany({
-      where: orderWhereWithDate,
+      where: orderWhereFinal,
       include: { patient: true },
       orderBy: useDeliveredDate
         ? [{ deliveredAt: "desc" }, { updatedAt: "desc" }]
@@ -147,6 +178,9 @@ export default async function ReportesPage({
   const totalSolicitudes = orderItems.length;
   const totalOrdenes = revenueResult._count.id ?? 0;
   const ingresos = Number(revenueResult._sum.totalPrice ?? 0);
+  const orderIds = ordersList.map((o) => o.id);
+  const paidMap = await getPaidTotalsByOrderIds(prisma, orderIds);
+  const cobrado = [...paidMap.values()].reduce((acc, v) => acc + v, 0);
 
   const statusLabels: Record<string, string> = {
     PENDIENTE: "Pendientes",
@@ -171,14 +205,23 @@ export default async function ReportesPage({
         title="Reportes"
         description="Análisis más solicitados y resumen por período"
         actions={
-          <Suspense fallback={<div className="h-10 w-48 rounded-md bg-slate-100 dark:bg-slate-700" />}>
-            <ReportesFilterForm
-            key={`${params.dateFrom ?? ""}-${params.dateTo ?? ""}-${params.status ?? ""}`}
-            defaultDateFrom={params.dateFrom ?? toYYYYMMDD(dateFrom)}
-            defaultDateTo={params.dateTo ?? toYYYYMMDD(dateTo)}
-            defaultStatus={statusFilter ?? ""}
-          />
-          </Suspense>
+          <div className="flex flex-wrap items-center gap-2">
+            <Suspense fallback={<div className="h-10 w-48 rounded-md bg-slate-100 dark:bg-slate-700" />}>
+              <ReportesFilterForm
+                key={`${params.dateFrom ?? ""}-${params.dateTo ?? ""}-${params.status ?? ""}-${params.paymentStatus ?? ""}`}
+                defaultDateFrom={params.dateFrom ?? toYYYYMMDD(dateFrom)}
+                defaultDateTo={params.dateTo ?? toYYYYMMDD(dateTo)}
+                defaultStatus={statusFilter ?? ""}
+                defaultPaymentStatus={paymentStatusFilter ?? ""}
+              />
+            </Suspense>
+            <Link
+              href={`/api/reportes/export?dateFrom=${encodeURIComponent(params.dateFrom ?? toYYYYMMDD(dateFrom))}&dateTo=${encodeURIComponent(params.dateTo ?? toYYYYMMDD(dateTo))}&status=${encodeURIComponent(params.status ?? "")}&paymentStatus=${encodeURIComponent(params.paymentStatus ?? "")}`}
+              className="inline-flex h-9 items-center rounded-md border border-slate-200 px-3 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+            >
+              Exportar CSV
+            </Link>
+          </div>
         }
       />
 
@@ -203,7 +246,9 @@ export default async function ReportesPage({
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{totalOrdenes}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Ingresos: {formatCurrency(ingresos)}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Facturado: {formatCurrency(ingresos)} - Cobrado: {formatCurrency(cobrado)}
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -242,7 +287,7 @@ export default async function ReportesPage({
         <CardHeader>
           <CardTitle className="text-base">Por sede (tipo de paciente)</CardTitle>
           <p className="text-sm text-slate-500 mt-1">
-            Órdenes e ingresos según tipo: Clínica, Externo, Izaga.
+            Órdenes e ingresos facturados según tipo: Clínica, Externo, Izaga.
           </p>
         </CardHeader>
         <CardContent>

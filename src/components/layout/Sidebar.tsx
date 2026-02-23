@@ -6,16 +6,17 @@ import { useSession } from "next-auth/react";
 import { Settings } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { ADMIN_ROLE_CODE, hasPermission, PERMISSION_REPORTES } from "@/lib/auth";
+import { ADMIN_ROLE_CODE, hasPermission, PERMISSION_REGISTRAR_PAGOS, PERMISSION_REPORTES, PERMISSION_VER_PAGOS } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 
-const navItemsBase: { href: string; label: string; adminOnly?: boolean }[] = [
+const navItemsBase: { href: string; label: string; adminOnly?: boolean; paymentOnly?: boolean }[] = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/patients", label: "Pacientes" },
   { href: "/catalog/tests", label: "Catálogo" },
   { href: "/promociones", label: "Promociones" },
   { href: "/templates", label: "Plantillas" },
   { href: "/orders", label: "Órdenes" },
+  { href: "/pagos", label: "Pagos", paymentOnly: true },
   { href: "/results", label: "Resultados" },
   { href: "/pending", label: "Pendientes" },
   { href: "/delivered", label: "Entregados" },
@@ -33,7 +34,12 @@ export function Sidebar({
   const isMobile = useIsMobile();
   const { data: session } = useSession();
   const canSeeReportes = hasPermission(session ?? null, PERMISSION_REPORTES);
-  const navItems = navItemsBase.filter((item) => !("adminOnly" in item && item.adminOnly) || canSeeReportes);
+  const canAccessPagos = hasPermission(session ?? null, PERMISSION_VER_PAGOS) || hasPermission(session ?? null, PERMISSION_REGISTRAR_PAGOS);
+  const navItems = navItemsBase.filter((item) => {
+    if (item.adminOnly && !canSeeReportes) return false;
+    if (item.paymentOnly && !canAccessPagos) return false;
+    return true;
+  });
 
   const handleNavClick = () => {
     if (isMobile) onToggle();

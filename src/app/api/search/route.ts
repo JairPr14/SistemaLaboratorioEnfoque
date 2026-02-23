@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { getPaidTotalsByOrderIds } from "@/lib/payments";
 
 const MAX_QUERY_LENGTH = 100;
 const MIN_QUERY_LENGTH = 2;
@@ -17,6 +18,7 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const q = searchParams.get("q")?.trim();
+    const onlyPending = searchParams.get("onlyPending") === "1";
 
     // Validación de entrada
     if (!q) {
@@ -52,38 +54,91 @@ export async function GET(request: Request) {
       contains: sanitizedQuery,
       mode: "insensitive" as const,
     };
+    const exactMatch = {
+      equals: sanitizedQuery,
+      mode: "insensitive" as const,
+    };
+    const isNumeric = /^\d+$/.test(sanitizedQuery);
+    const patientWhere = {
+      deletedAt: null,
+      OR: [
+        { firstName: searchPattern },
+        { lastName: searchPattern },
+        { dni: searchPattern },
+        ...(isNumeric ? [{ dni: exactMatch }] : []),
+      ],
+    };
 
-    const [patients, orders] = await Promise.all([
+    const [patients, ordersByCode, ordersByPatient] = await Promise.all([
       prisma.patient.findMany({
-        where: {
-          deletedAt: null,
-          OR: [
-            { firstName: searchPattern },
-            { lastName: searchPattern },
-            { dni: searchPattern },
-          ],
-        },
+        where: patientWhere,
         select: {
           id: true,
           firstName: true,
           lastName: true,
           dni: true,
         },
-        take: Math.min(MAX_RESULTS, 50), // Límite de resultados
+        take: Math.min(MAX_RESULTS, 50),
         orderBy: { createdAt: "desc" },
       }),
       prisma.labOrder.findMany({
         where: {
           orderCode: searchPattern,
+          ...(onlyPending ? { status: { not: "ANULADO" } } : {}),
         },
         select: {
           id: true,
           orderCode: true,
+          totalPrice: true,
+          patientId: true,
+          patient: { select: { firstName: true, lastName: true, dni: true } },
         },
-        take: Math.min(MAX_RESULTS, 50), // Límite de resultados
+        take: Math.min(MAX_RESULTS, 50),
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.labOrder.findMany({
+        where: {
+          patient: patientWhere,
+          ...(onlyPending ? { status: { not: "ANULADO" } } : {}),
+        },
+        select: {
+          id: true,
+          orderCode: true,
+          totalPrice: true,
+          patientId: true,
+          patient: { select: { firstName: true, lastName: true, dni: true } },
+        },
+        take: Math.min(MAX_RESULTS, 50),
         orderBy: { createdAt: "desc" },
       }),
     ]);
+
+    const seenOrderIds = new Set<string>();
+    const orderTotals = new Map<string, number>();
+    let orders: Array<{ id: string; orderCode: string; patientLabel: string; patientDni: string }> = [];
+    for (const o of [...ordersByCode, ...ordersByPatient]) {
+      if (seenOrderIds.has(o.id)) continue;
+      seenOrderIds.add(o.id);
+      orderTotals.set(o.id, Number(o.totalPrice ?? 0));
+      const p = o.patient;
+      orders.push({
+        id: o.id,
+        orderCode: o.orderCode,
+        patientLabel: p ? `${p.lastName} ${p.firstName}`.trim() : "",
+        patientDni: p?.dni ?? "",
+      });
+    }
+
+    if (onlyPending && orders.length > 0) {
+      const orderIds = orders.map((o) => o.id);
+      const paidByOrder = await getPaidTotalsByOrderIds(prisma, orderIds);
+      orders = orders.filter((o) => {
+        const paid = paidByOrder.get(o.id) ?? 0;
+        const total = orderTotals.get(o.id) ?? 0;
+        if (total <= 0) return true;
+        return paid + 0.0001 < total;
+      });
+    }
 
     return NextResponse.json({
       patients: patients.map((p) => ({
@@ -97,7 +152,7 @@ export async function GET(request: Request) {
         id: o.id,
         type: "order",
         label: o.orderCode,
-        sublabel: "Orden",
+        sublabel: `${o.patientLabel}${o.patientDni ? ` — ${o.patientDni}` : ""}`,
         href: `/orders/${o.id}`,
       })),
     });

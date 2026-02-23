@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Pencil, Users, Shield, UserPlus, Trash2, Stamp, FlaskConical, Plus } from "lucide-react";
 import Link from "next/link";
-import { ALL_PERMISSIONS } from "@/lib/auth";
+import { ALL_PERMISSIONS, PERMISSION_GROUPS } from "@/lib/auth";
 
 type Role = {
   id: string;
@@ -329,6 +329,8 @@ export default function ConfiguracionPage() {
     }
   };
 
+  const rolePerms = roleEdit ? parseRolePermissions(roleEdit.permissions) : [];
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12 text-slate-500 dark:text-slate-400">
@@ -346,12 +348,19 @@ export default function ConfiguracionPage() {
             Roles, usuarios y gestión administrativa
           </p>
         </div>
-        <Link href="/configuracion/secciones">
-          <Button variant="outline" size="sm">
-            <FlaskConical className="h-4 w-4 mr-2" />
-            Gestión de Secciones
-          </Button>
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/configuracion/preanaliticos">
+            <Button variant="outline" size="sm">
+              Gestión de preanalíticos
+            </Button>
+          </Link>
+          <Link href="/configuracion/secciones">
+            <Button variant="outline" size="sm">
+              <FlaskConical className="h-4 w-4 mr-2" />
+              Gestión de Secciones
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <Card>
@@ -614,18 +623,27 @@ export default function ConfiguracionPage() {
             </div>
             <div className="space-y-2">
               <Label className="text-slate-700 dark:text-slate-300">Permisos</Label>
-              <div className="rounded-md border border-slate-200 bg-slate-50/50 p-3 space-y-2 dark:border-slate-600 dark:bg-slate-800/50">
-                {ALL_PERMISSIONS.map((p) => (
-                  <div key={p.code} className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id={`newRolePerm_${p.code}`}
-                      name={`newRolePerm_${p.code}`}
-                      className="h-4 w-4 rounded border-slate-300"
-                    />
-                    <Label htmlFor={`newRolePerm_${p.code}`} className="font-normal cursor-pointer">
-                      {p.label}
-                    </Label>
+              <div className="rounded-md border border-slate-200 bg-slate-50/50 p-3 space-y-4 max-h-64 overflow-y-auto dark:border-slate-600 dark:bg-slate-800/50">
+                {PERMISSION_GROUPS.map((group) => (
+                  <div key={group.label}>
+                    <p className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 mb-2">
+                      {group.label}
+                    </p>
+                    <div className="space-y-2 pl-1">
+                      {group.permissions.map((p) => (
+                        <div key={p.code} className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            id={`newRolePerm_${p.code}`}
+                            name={`newRolePerm_${p.code}`}
+                            className="h-4 w-4 rounded border-slate-300"
+                          />
+                          <Label htmlFor={`newRolePerm_${p.code}`} className="font-normal cursor-pointer text-sm">
+                            {p.label}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -680,24 +698,30 @@ export default function ConfiguracionPage() {
               </div>
               <div className="space-y-2">
                 <Label className="text-slate-700 dark:text-slate-300">Permisos</Label>
-                <div className="rounded-md border border-slate-200 bg-slate-50/50 p-3 space-y-2 dark:border-slate-600 dark:bg-slate-800/50">
-                  {ALL_PERMISSIONS.map((p) => {
-                    const rolePerms = parseRolePermissions(roleEdit.permissions);
-                    return (
-                      <div key={p.code} className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          id={`rolePerm_${p.code}`}
-                          name={`rolePerm_${p.code}`}
-                          defaultChecked={rolePerms.includes(p.code)}
-                          className="h-4 w-4 rounded border-slate-300"
-                        />
-                        <Label htmlFor={`rolePerm_${p.code}`} className="font-normal cursor-pointer">
-                          {p.label}
-                        </Label>
+                <div className="rounded-md border border-slate-200 bg-slate-50/50 p-3 space-y-4 max-h-64 overflow-y-auto dark:border-slate-600 dark:bg-slate-800/50">
+                  {PERMISSION_GROUPS.map((group) => (
+                    <div key={group.label}>
+                      <p className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 mb-2">
+                        {group.label}
+                      </p>
+                      <div className="space-y-2 pl-1">
+                        {group.permissions.map((p) => (
+                          <div key={p.code} className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              id={`rolePerm_${p.code}`}
+                              name={`rolePerm_${p.code}`}
+                              defaultChecked={rolePerms.includes(p.code)}
+                              className="h-4 w-4 rounded border-slate-300"
+                            />
+                            <Label htmlFor={`rolePerm_${p.code}`} className="font-normal cursor-pointer text-sm">
+                              {p.label}
+                            </Label>
+                          </div>
+                        ))}
                       </div>
-                    );
-                  })}
+                    </div>
+                  ))}
                 </div>
               </div>
               <div className="flex items-center gap-2">

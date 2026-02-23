@@ -33,6 +33,7 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   favoriteTests UserFavoriteTest[]
+  payments      Payment[]
 
   @@index([email])
   @@index([roleId])
@@ -114,6 +115,13 @@ enum OrderPatientType {
   CLINICA
   EXTERNO
   IZAGA
+}
+
+enum PaymentMethod {
+  EFECTIVO
+  TARJETA
+  TRANSFERENCIA
+  CREDITO
 }
 
 enum OrderItemStatus {
@@ -221,6 +229,7 @@ model LabOrder {
   patientId   String
   requestedBy String?
   notes       String?
+  preAnalyticNote String?
   patientType OrderPatientType?
   status      OrderStatus       @default(PENDIENTE)
   totalPrice  Float
@@ -230,10 +239,30 @@ model LabOrder {
 
   patient Patient        @relation(fields: [patientId], references: [id])
   items   LabOrderItem[]
+  payments Payment[]
 
   @@index([status])
   @@index([createdAt])
   @@index([patientType])
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  orderId      String
+  amount       Float
+  method       PaymentMethod
+  notes        String?
+  paidAt       DateTime      @default(now())
+  recordedById String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  order LabOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user  User?    @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([paidAt])
+  @@index([method])
 }
 
 model LabOrderItem {
@@ -271,6 +300,19 @@ model AppConfig {
   id    String   @id @default(cuid())
   key   String   @unique
   value String
+}
+
+model PreAnalyticNoteTemplate {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  title     String
+  text      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([code])
+  @@index([isActive])
 }
 
 model LabResultItem {

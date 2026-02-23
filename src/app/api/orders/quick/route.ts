@@ -132,6 +132,10 @@ export async function POST(request: Request) {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const prefix = orderCodePrefixForDate(todayStart);
+    const quickNotes =
+      parsed.priority === "URGENTE"
+        ? `[URGENTE] ${parsed.indication ?? ""}`.trim()
+        : parsed.indication ?? null;
 
     let order: Awaited<ReturnType<typeof prisma.labOrder.create>>;
     let orderCode: string;
@@ -151,7 +155,7 @@ export async function POST(request: Request) {
             orderCode,
             patientId,
             requestedBy: parsed.doctorName ?? null,
-            notes: parsed.indication ?? null,
+            notes: quickNotes,
             patientType: parsed.patientType ?? null,
             totalPrice,
             items: {

@@ -87,6 +87,15 @@ export function GlobalSearch() {
   }, [open, allResults, selectedIndex, router]);
 
   useEffect(() => {
+    const openFromShortcut = () => {
+      inputRef.current?.focus();
+      setOpen(true);
+    };
+    window.addEventListener("shortcuts:open-search", openFromShortcut);
+    return () => window.removeEventListener("shortcuts:open-search", openFromShortcut);
+  }, []);
+
+  useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false);

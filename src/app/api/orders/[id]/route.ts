@@ -58,6 +58,8 @@ export async function PUT(request: Request, { params }: Params) {
       data: {
         status: parsed.status,
         notes: parsed.notes !== undefined ? parsed.notes : undefined,
+        preAnalyticNote:
+          parsed.preAnalyticNote !== undefined ? parsed.preAnalyticNote : undefined,
         requestedBy: parsed.requestedBy !== undefined ? parsed.requestedBy : undefined,
         patientType: parsed.patientType !== undefined ? parsed.patientType : undefined,
         deliveredAt:
@@ -70,6 +72,19 @@ export async function PUT(request: Request, { params }: Params) {
               : undefined,
       },
     });
+
+    if (parsed.preAnalyticNote !== undefined) {
+      logger.info("Pre-analytic note updated", {
+        orderId: id,
+        byUserId: session.user.id,
+      });
+    }
+    if (parsed.status === "ENTREGADO") {
+      logger.info("Order marked as delivered", {
+        orderId: id,
+        byUserId: session.user.id,
+      });
+    }
 
     return NextResponse.json({ item });
   } catch (error) {

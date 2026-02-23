@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { labSectionSchema } from "@/features/lab/schemas";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 
 export async function GET() {
@@ -23,10 +22,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireAdmin();
+  if (auth.response) return auth.response;
 
   try {
     const payload = await request.json();

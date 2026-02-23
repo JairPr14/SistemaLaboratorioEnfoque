@@ -40,6 +40,11 @@ export async function POST(_request: Request, { params }: Params) {
       });
     });
 
+    logger.info("Order validated", {
+      orderId,
+      byUserId: session.user.id,
+    });
+
     return NextResponse.json({ ok: true });
   } catch (error) {
     logger.error("Error validating order:", error);

@@ -43,16 +43,6 @@ function validateImageContent(buffer: Buffer, expectedType: string): boolean {
   return false;
 }
 
-/**
- * Sanitiza el nombre de archivo para prevenir path traversal
- */
-function sanitizeFilename(filename: string): string {
-  return filename
-    .replace(/[^a-zA-Z0-9._-]/g, "_")
-    .replace(/\.\./g, "_")
-    .substring(0, 255);
-}
-
 export async function POST(request: Request) {
   const auth = await requireAdmin();
   if (auth.response) return auth.response;
