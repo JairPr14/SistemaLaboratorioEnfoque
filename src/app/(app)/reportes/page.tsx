@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { PageHeader, pageLayoutClasses } from "@/components/layout/PageHeader";
 import { ReportesFilterForm } from "./ReportesFilterForm";
-import { Building2, TrendingUp, FileText, DollarSign, CalendarDays, Activity, BarChart3, UserPlus } from "lucide-react";
+import { Building2, TrendingUp, FileText, DollarSign, CalendarDays, Activity, BarChart3, UserPlus, FlaskConical } from "lucide-react";
 
 type SearchParams = {
   dateFrom?: string;
@@ -129,10 +129,18 @@ export default async function ReportesPage({
     };
   }
 
-  const [orderItems, ordersSummary, revenueResult, byPatientType, byBranch, ordersList, branches, admissionSummary] = await Promise.all([
+  const [orderItems, ordersSummary, revenueResult, byPatientType, byBranch, ordersList, branches, admissionSummary, referredLabPayments, admissionPendingSettlement] = await Promise.all([
     prisma.labOrderItem.findMany({
       where: { order: orderWhereFinal },
-      include: { labTest: { include: { section: true } } },
+      include: {
+        labTest: {
+          include: {
+            section: true,
+            referredLab: { select: { id: true, name: true } },
+          },
+        },
+        order: { select: { id: true } },
+      },
     }),
     prisma.labOrder.groupBy({
       by: ["status"],
@@ -175,6 +183,22 @@ export default async function ReportesPage({
       _count: { id: true },
       _sum: { totalPrice: true },
     }),
+    prisma.referredLabPayment.findMany({
+      where: {
+        order: orderWhereFinal,
+      },
+      include: { referredLab: { select: { id: true, name: true } } },
+    }),
+    prisma.labOrder.aggregate({
+      where: {
+        admissionRequestId: { not: null },
+        admissionSettledAt: null,
+        status: { not: "ANULADO" },
+        createdAt: { gte: dateFrom, lte: dateTo },
+      },
+      _count: { id: true },
+      _sum: { totalPrice: true },
+    }),
   ]);
 
   // Mapa de branches para lookup rápido
@@ -183,7 +207,7 @@ export default async function ReportesPage({
   // Agrupar por análisis (labTest)
   const byTest = new Map<
     string,
-    { code: string; name: string; section: string; count: number }
+    { code: string; name: string; section: string; count: number; isReferred: boolean }
   >();
   for (const item of orderItems) {
     const test = item.labTest;
@@ -197,14 +221,50 @@ export default async function ReportesPage({
         name: test.name,
         section: test.section?.name ?? test.section?.code ?? "",
         count: 1,
+        isReferred: test.isReferred ?? false,
       });
     }
   }
+
+  // Datos de laboratorios referidos
+  const referredOrderIds = new Set(orderItems.filter((i) => i.labTest.isReferred && i.labTest.externalLabCost).map((i) => i.order.id));
+  let totalExternalLabCost = 0;
+  const costByReferredLab = new Map<string, { labId: string; labName: string; cost: number }>();
+  for (const item of orderItems) {
+    const lt = item.labTest;
+    if (!lt.isReferred || !lt.referredLabId || !lt.externalLabCost) continue;
+    const cost = Number(lt.externalLabCost);
+    totalExternalLabCost += cost;
+    const lab = lt.referredLab;
+    if (lab) {
+      const existing = costByReferredLab.get(lab.id);
+      if (existing) existing.cost += cost;
+      else costByReferredLab.set(lab.id, { labId: lab.id, labName: lab.name, cost });
+    }
+  }
+  const paidToLabsInPeriod = referredLabPayments
+    .filter((p) => referredOrderIds.has(p.orderId))
+    .reduce((acc, p) => acc + Number(p.amount), 0);
+  const paidByLab = new Map<string, number>();
+  for (const p of referredLabPayments) {
+    if (!referredOrderIds.has(p.orderId)) continue;
+    const cur = paidByLab.get(p.referredLabId) ?? 0;
+    paidByLab.set(p.referredLabId, cur + Number(p.amount));
+  }
+  const referredLabSummaries = [...costByReferredLab.entries()].map(([labId, { labName, cost }]) => ({
+    labId,
+    labName,
+    cost,
+    paid: paidByLab.get(labId) ?? 0,
+    balance: Math.max(0, cost - (paidByLab.get(labId) ?? 0)),
+  }));
+  const totalBalanceOwedToLabs = Math.max(0, totalExternalLabCost - paidToLabsInPeriod);
 
   const sortedAnalisis = [...byTest.values()].sort((a, b) => b.count - a.count);
   const totalSolicitudes = orderItems.length;
   const totalOrdenes = revenueResult._count.id ?? 0;
   const ingresos = Number(revenueResult._sum.totalPrice ?? 0);
+  const gananciaNetaReferidos = ingresos - totalExternalLabCost;
   const orderIds = ordersList.map((o) => o.id);
   const paidMap = await getPaidTotalsByOrderIds(prisma, orderIds);
   const cobrado = [...paidMap.values()].reduce((acc, v) => acc + v, 0);
@@ -262,7 +322,7 @@ export default async function ReportesPage({
       </Card>
 
       {/* Resumen del período */}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
         <Card className="overflow-hidden">
           <div className="h-1 bg-slate-400" />
           <CardContent className="p-6">
@@ -335,7 +395,55 @@ export default async function ReportesPage({
             </div>
           </CardContent>
         </Card>
+        {totalExternalLabCost > 0 && (
+          <Card className="overflow-hidden">
+            <div className="h-1 bg-amber-500" />
+            <CardContent className="p-6">
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30">
+                  <FlaskConical className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Lab. referidos</p>
+                  <p className="text-xl font-bold text-amber-600 dark:text-amber-400">{formatCurrency(totalExternalLabCost)}</p>
+                  <p className="text-xs text-slate-500">
+                    Pagado: {formatCurrency(paidToLabsInPeriod)} • Pendiente: {formatCurrency(totalBalanceOwedToLabs)}
+                  </p>
+                  <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                    Ganancia neta: {formatCurrency(gananciaNetaReferidos)}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
+
+      {/* Pendiente de cobro a admisión */}
+      {(admissionPendingSettlement._count.id ?? 0) > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <UserPlus className="h-4 w-4 text-slate-500" />
+                <CardTitle className="text-base">Pendiente de cobro a admisión</CardTitle>
+              </div>
+              <Link
+                href="/cobro-admision"
+                className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
+              >
+                Ver cobro admisión →
+              </Link>
+            </div>
+            <p className="text-sm text-slate-500 mt-1">
+              {admissionPendingSettlement._count.id} órdenes de admisión por saldar. Total:{" "}
+              <span className="font-semibold text-amber-600 dark:text-amber-400">
+                {formatCurrency(Number(admissionPendingSettlement._sum.totalPrice ?? 0))}
+              </span>
+            </p>
+          </CardHeader>
+        </Card>
+      )}
 
       {/* Pre-órdenes de Admisión */}
       <Card>
@@ -378,6 +486,54 @@ export default async function ReportesPage({
           )}
         </CardContent>
       </Card>
+
+      {/* Laboratorios referidos / Análisis terciarizados */}
+      {referredLabSummaries.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <FlaskConical className="h-4 w-4 text-slate-500" />
+              <CardTitle className="text-base">Laboratorios referidos (terciarizados)</CardTitle>
+            </div>
+            <p className="text-sm text-slate-500 mt-1">
+              Costo y pagos a laboratorios externos por análisis referidos en el período.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50 dark:bg-slate-800/50">
+                    <TableHead className="font-semibold">Laboratorio</TableHead>
+                    <TableHead className="text-right font-semibold">Costo externo</TableHead>
+                    <TableHead className="text-right font-semibold">Pagado</TableHead>
+                    <TableHead className="text-right font-semibold">Pendiente</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {referredLabSummaries.map((row) => (
+                    <TableRow key={row.labId} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <FlaskConical className="h-4 w-4 text-amber-500" />
+                          <span className="font-medium">{row.labName}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right font-semibold">{formatCurrency(row.cost)}</TableCell>
+                      <TableCell className="text-right text-emerald-600 dark:text-emerald-400">{formatCurrency(row.paid)}</TableCell>
+                      <TableCell className="text-right">
+                        <span className={row.balance > 0 ? "font-semibold text-amber-600 dark:text-amber-400" : "text-slate-500"}>
+                          {formatCurrency(row.balance)}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Órdenes por estado */}
       <Card>
@@ -670,9 +826,17 @@ export default async function ReportesPage({
                         </TableCell>
                         <TableCell className="font-medium">{row.name}</TableCell>
                         <TableCell>
-                          <span className="inline-flex rounded-md bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
-                            {row.section}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex rounded-md bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                              {row.section}
+                            </span>
+                            {row.isReferred && (
+                              <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                                <FlaskConical className="h-3 w-3" />
+                                Referido
+                              </span>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
                           <span className="font-bold text-slate-900 dark:text-slate-100">{row.count}</span>

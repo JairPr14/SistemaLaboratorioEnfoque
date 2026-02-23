@@ -97,7 +97,21 @@ export async function GET(request: Request) {
 
   const orders = await prisma.labOrder.findMany({
     where: orderWhereFinal,
-    include: { patient: true, branch: true },
+    include: {
+      patient: true,
+      branch: true,
+      items: {
+        include: {
+          labTest: {
+            select: {
+              isReferred: true,
+              externalLabCost: true,
+            },
+          },
+        },
+      },
+      referredLabPayments: { select: { amount: true } },
+    },
     orderBy: useDeliveredDate
       ? [{ deliveredAt: "desc" }, { updatedAt: "desc" }]
       : { createdAt: "desc" },
@@ -118,6 +132,10 @@ export async function GET(request: Request) {
       "TotalCobrado",
       "Saldo",
       "EstadoCobro",
+      "CostoLabReferido",
+      "PagadoALabReferido",
+      "PendienteLabReferido",
+      "GananciaNeta",
     ],
     ...orders.map((o) => {
       const paid = paidByOrder.get(o.id) ?? 0;
@@ -129,6 +147,12 @@ export async function GET(request: Request) {
         .toISOString()
         .slice(0, 10);
       const branchName = o.branch?.name ?? o.patientType ?? "";
+      const costoLabReferido = o.items
+        .filter((i) => i.labTest.isReferred && i.labTest.externalLabCost)
+        .reduce((s, i) => s + Number(i.labTest.externalLabCost!), 0);
+      const pagadoALabReferido = o.referredLabPayments.reduce((s, p) => s + Number(p.amount), 0);
+      const pendienteLabReferido = Math.max(0, costoLabReferido - pagadoALabReferido);
+      const gananciaNeta = total - costoLabReferido;
       return [
         o.orderCode,
         date,
@@ -139,6 +163,10 @@ export async function GET(request: Request) {
         paid.toFixed(2),
         balance.toFixed(2),
         paymentState,
+        costoLabReferido.toFixed(2),
+        pagadoALabReferido.toFixed(2),
+        pendienteLabReferido.toFixed(2),
+        gananciaNeta.toFixed(2),
       ];
     }),
   ];

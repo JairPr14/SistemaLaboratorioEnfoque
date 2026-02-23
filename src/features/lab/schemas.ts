@@ -257,6 +257,14 @@ export const orderUpdateSchema = z.object({
     (v) => (v === "" || v === undefined ? null : v),
     z.enum(orderPatientTypeValues).nullable()
   ).optional(),
+  branchId: z.preprocess(
+    (v) => (v === "" || v === undefined ? null : v),
+    z.string().nullable()
+  ).optional(),
+  admissionSettledAt: z.preprocess(
+    (v) => (v === "" || v === undefined ? null : v),
+    z.string().datetime().nullable()
+  ).optional(),
 });
 
 export const preAnalyticNoteTemplateSchema = z.object({
@@ -271,6 +279,13 @@ export const paymentMethodValues = ["EFECTIVO", "TARJETA", "TRANSFERENCIA", "CRE
 export const orderPaymentSchema = z.object({
   amount: z.coerce.number().positive("El monto debe ser mayor a 0"),
   method: z.enum(paymentMethodValues),
+  notes: z.string().max(300).optional().nullable(),
+  paidAt: z.string().optional(),
+});
+
+export const referredLabPaymentSchema = z.object({
+  referredLabId: z.string().min(1, "Selecciona un laboratorio"),
+  amount: z.coerce.number().positive("El monto debe ser mayor a 0"),
   notes: z.string().max(300).optional().nullable(),
   paidAt: z.string().optional(),
 });

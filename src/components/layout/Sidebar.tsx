@@ -7,6 +7,7 @@ import type { ComponentType } from "react";
 import {
   BarChart3,
   ClipboardList,
+  DollarSign,
   FileText,
   FlaskConical,
   Home,
@@ -97,6 +98,12 @@ const navItemsBase: {
     label: "Admisión",
     icon: UserPlus,
     requiredPermissions: [PERMISSION_VER_ADMISION, PERMISSION_GESTIONAR_ADMISION],
+  },
+  {
+    href: "/cobro-admision",
+    label: "Cobro admisión",
+    icon: DollarSign,
+    requiredPermissions: [PERMISSION_VER_ADMISION],
   },
   {
     href: "/pagos",

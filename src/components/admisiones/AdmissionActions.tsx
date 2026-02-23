@@ -4,23 +4,28 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
 type Props = {
   admissionId: string;
+  requestCode: string;
   status: "PENDIENTE" | "CONVERTIDA" | "CANCELADA";
   convertedOrderId: string | null;
   canConvert: boolean;
   canManage: boolean;
+  isAdmin: boolean;
 };
 
 export function AdmissionActions({
   admissionId,
+  requestCode,
   status,
   convertedOrderId,
   canConvert,
   canManage,
+  isAdmin,
 }: Props) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -67,6 +72,25 @@ export function AdmissionActions({
     }
   }
 
+  async function purgeAdmission() {
+    if (!confirm(`¿Eliminar permanentemente la pre-orden ${requestCode}? Esta acción no se puede deshacer.`)) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/admisiones/${admissionId}/purge`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.error ?? "No se pudo eliminar la pre-orden");
+        return;
+      }
+      toast.success("Pre-orden eliminada.");
+      router.refresh();
+    } catch {
+      toast.error("Error de conexión");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
       {convertedOrderId && (
@@ -98,6 +122,19 @@ export function AdmissionActions({
           className="h-8"
         >
           Cancelar
+        </Button>
+      )}
+      {isAdmin && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => void purgeAdmission()}
+          disabled={busy}
+          className="h-8 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/50"
+        >
+          <Trash2 className="h-3.5 w-3.5 mr-1" />
+          Eliminar
         </Button>
       )}
     </div>

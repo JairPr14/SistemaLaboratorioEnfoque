@@ -8,6 +8,7 @@ import { EditOrderDialog } from "./EditOrderDialog";
 type Props = {
   orderId: string;
   patientType: string | null;
+  branchId: string | null;
   requestedBy: string | null;
   notes: string | null;
   disabled?: boolean;
@@ -16,6 +17,7 @@ type Props = {
 export function EditOrderButton({
   orderId,
   patientType,
+  branchId,
   requestedBy,
   notes,
   disabled,
@@ -37,6 +39,7 @@ export function EditOrderButton({
       <EditOrderDialog
         orderId={orderId}
         defaultPatientType={patientType}
+        defaultBranchId={branchId}
         defaultRequestedBy={requestedBy}
         defaultNotes={notes}
         open={open}

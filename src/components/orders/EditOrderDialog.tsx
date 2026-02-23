@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { Building2 } from "lucide-react";
 
 const PATIENT_TYPE_OPTIONS = [
   { value: "", label: "Sin especificar" },
@@ -20,9 +21,12 @@ const PATIENT_TYPE_OPTIONS = [
   { value: "IZAGA", label: "Paciente Izaga" },
 ] as const;
 
+type Branch = { id: string; code: string; name: string };
+
 type Props = {
   orderId: string;
   defaultPatientType: string | null;
+  defaultBranchId: string | null;
   defaultRequestedBy: string | null;
   defaultNotes: string | null;
   open: boolean;
@@ -32,6 +36,7 @@ type Props = {
 export function EditOrderDialog({
   orderId,
   defaultPatientType,
+  defaultBranchId,
   defaultRequestedBy,
   defaultNotes,
   open,
@@ -39,17 +44,31 @@ export function EditOrderDialog({
 }: Props) {
   const router = useRouter();
   const [patientType, setPatientType] = useState(defaultPatientType ?? "");
+  const [branchId, setBranchId] = useState(defaultBranchId ?? "");
   const [requestedBy, setRequestedBy] = useState(defaultRequestedBy ?? "");
   const [notes, setNotes] = useState(defaultNotes ?? "");
   const [submitting, setSubmitting] = useState(false);
+  const [branches, setBranches] = useState<Branch[]>([]);
+
+  useEffect(() => {
+    if (open) {
+      fetch("/api/config/branches")
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) setBranches(data);
+        })
+        .catch(() => {});
+    }
+  }, [open]);
 
   useEffect(() => {
     if (open) {
       setPatientType(defaultPatientType ?? "");
+      setBranchId(defaultBranchId ?? "");
       setRequestedBy(defaultRequestedBy ?? "");
       setNotes(defaultNotes ?? "");
     }
-  }, [open, defaultPatientType, defaultRequestedBy, defaultNotes]);
+  }, [open, defaultPatientType, defaultBranchId, defaultRequestedBy, defaultNotes]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,6 +79,7 @@ export function EditOrderDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           patientType: patientType || null,
+          branchId: branchId || null,
           requestedBy: requestedBy.trim() || null,
           notes: notes.trim() || null,
         }),
@@ -86,16 +106,35 @@ export function EditOrderDialog({
           <DialogTitle>Editar orden</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-slate-500">
-          Modifica el tipo de paciente (sede), médico solicitante o notas.
+          Modifica la sede de atención, tipo de paciente, médico solicitante o notas.
         </p>
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
           <div className="space-y-2">
-            <Label htmlFor="edit-order-patientType">Tipo de paciente (sede)</Label>
+            <Label htmlFor="edit-order-branchId" className="flex items-center gap-1.5">
+              <Building2 className="h-3.5 w-3.5" />
+              Sede de atención
+            </Label>
+            <select
+              id="edit-order-branchId"
+              value={branchId}
+              onChange={(e) => setBranchId(e.target.value)}
+              className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            >
+              <option value="">Sin sede</option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-order-patientType">Tipo de paciente</Label>
             <select
               id="edit-order-patientType"
               value={patientType}
               onChange={(e) => setPatientType(e.target.value)}
-              className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"
+              className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             >
               {PATIENT_TYPE_OPTIONS.map((o) => (
                 <option key={o.value || "_empty"} value={o.value}>

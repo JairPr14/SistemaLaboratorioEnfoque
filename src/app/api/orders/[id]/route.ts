@@ -62,6 +62,11 @@ export async function PUT(request: Request, { params }: Params) {
           parsed.preAnalyticNote !== undefined ? parsed.preAnalyticNote : undefined,
         requestedBy: parsed.requestedBy !== undefined ? parsed.requestedBy : undefined,
         patientType: parsed.patientType !== undefined ? parsed.patientType : undefined,
+        branchId: parsed.branchId !== undefined ? parsed.branchId : undefined,
+        admissionSettledAt:
+          parsed.admissionSettledAt !== undefined
+            ? (parsed.admissionSettledAt ? new Date(parsed.admissionSettledAt) : null)
+            : undefined,
         deliveredAt:
           parsed.deliveredAt !== undefined
             ? parsed.deliveredAt

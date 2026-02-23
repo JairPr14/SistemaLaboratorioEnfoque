@@ -4,13 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Receipt } from "lucide-react";
+import { Receipt, Building2 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { PaymentDialog } from "@/components/orders/PaymentDialog";
+import { ReferredLabPaymentDialog } from "@/components/orders/ReferredLabPaymentDialog";
 
 type PaymentItem = {
   id: string;
@@ -46,6 +47,25 @@ export function OrderPaymentPanel({
 }: Props) {
   const router = useRouter();
   const [payments, setPayments] = useState<PaymentItem[]>([]);
+  const [referredLabSummary, setReferredLabSummary] = useState<{
+    totalExternalCost: number;
+    totalPaidToLabs: number;
+    totalBalanceOwed: number;
+  } | null>(null);
+
+  const reloadReferredLabSummary = async () => {
+    const res = await fetch(`/api/orders/${orderId}/referred-lab-payments`);
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.totalExternalCost != null) {
+      setReferredLabSummary({
+        totalExternalCost: data.totalExternalCost,
+        totalPaidToLabs: data.totalPaidToLabs ?? 0,
+        totalBalanceOwed: data.totalBalanceOwed ?? 0,
+      });
+    } else {
+      setReferredLabSummary(null);
+    }
+  };
 
   const reloadPayments = async () => {
     const res = await fetch(`/api/orders/${orderId}/payments`);
@@ -59,6 +79,10 @@ export function OrderPaymentPanel({
 
   useEffect(() => {
     void reloadPayments();
+  }, [orderId]);
+
+  useEffect(() => {
+    void reloadReferredLabSummary();
   }, [orderId]);
   const paidTotal = useMemo(
     () => payments.reduce((acc, p) => acc + Number(p.amount), 0),
@@ -84,22 +108,35 @@ export function OrderPaymentPanel({
             </Button>
           )}
           {canRegisterPayment && (
-          <PaymentDialog
-            orderId={orderId}
-            orderCode={orderCode}
-            orderTotal={orderTotal}
-            paidTotal={paidTotal}
-            disabled={balance <= 0}
-            onPaymentSaved={async () => {
-              await reloadPayments();
-              router.refresh();
-            }}
-          />
+            <>
+              <PaymentDialog
+                orderId={orderId}
+                orderCode={orderCode}
+                orderTotal={orderTotal}
+                paidTotal={paidTotal}
+                disabled={balance <= 0}
+                onPaymentSaved={async () => {
+                  await reloadPayments();
+                  router.refresh();
+                }}
+              />
+              {referredLabSummary && referredLabSummary.totalExternalCost > 0 && (
+                <ReferredLabPaymentDialog
+                  orderId={orderId}
+                  orderCode={orderCode}
+                  canRegisterPayment={canRegisterPayment}
+                  onPaymentSaved={() => {
+                    void reloadReferredLabSummary();
+                    router.refresh();
+                  }}
+                />
+              )}
+            </>
           )}
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
           <div>
             <p className="text-xs text-slate-500 dark:text-slate-400">Total orden</p>
             <p className="text-base font-semibold">{formatCurrency(orderTotal)}</p>
@@ -116,6 +153,23 @@ export function OrderPaymentPanel({
               {formatCurrency(balance)}
             </p>
           </div>
+          {referredLabSummary && referredLabSummary.totalExternalCost > 0 && (
+            <>
+              <div>
+                <p className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+                  <Building2 className="h-3.5 w-3.5" />
+                  Costo lab. referido
+                </p>
+                <p className="text-base font-semibold">{formatCurrency(referredLabSummary.totalExternalCost)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Pendiente por pagar al lab.</p>
+                <p className="text-base font-semibold text-amber-600 dark:text-amber-400">
+                  {formatCurrency(referredLabSummary.totalBalanceOwed)}
+                </p>
+              </div>
+            </>
+          )}
         </div>
 
         {payments.length === 0 ? (

@@ -42,6 +42,7 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
     where: { id },
     include: {
       patient: true,
+      branch: true,
       items: {
         include: {
           labTest: {
@@ -105,6 +106,7 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
             <EditOrderButton
               orderId={order.id}
               patientType={order.patientType}
+              branchId={order.branchId}
               requestedBy={order.requestedBy}
               notes={order.notes}
               disabled={order.status === "ANULADO"}
@@ -149,15 +151,17 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
               </p>
             </div>
             <div>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Tipo de paciente (sede)</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Sede de atención</p>
               <p className="text-base font-semibold text-slate-900 dark:text-slate-100">
-                {order.patientType === "CLINICA"
-                  ? "Paciente Clínica"
-                  : order.patientType === "EXTERNO"
-                    ? "Paciente Externo"
-                    : order.patientType === "IZAGA"
-                      ? "Paciente Izaga"
-                      : "—"}
+                {order.branch?.name ?? (
+                  order.patientType === "CLINICA"
+                    ? "Paciente Clínica"
+                    : order.patientType === "EXTERNO"
+                      ? "Paciente Externo"
+                      : order.patientType === "IZAGA"
+                        ? "Paciente Izaga"
+                        : "—"
+                )}
               </p>
             </div>
             <div>

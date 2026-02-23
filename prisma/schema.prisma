@@ -34,6 +34,7 @@ model User {
   updatedAt    DateTime @updatedAt
   favoriteTests UserFavoriteTest[]
   payments      Payment[]
+  referredLabPayments ReferredLabPayment[]
   admissionRequestsCreated AdmissionRequest[]
   notificationReads NotificationRead[]
 
@@ -171,7 +172,8 @@ model ReferredLab {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  labTests LabTest[]
+  labTests      LabTest[]
+  payments      ReferredLabPayment[]
 
   @@index([isActive])
 }
@@ -270,6 +272,8 @@ model LabOrder {
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
   deliveredAt DateTime?
+  /** Fecha en que admisión canceló/saldó esta orden (pagó al laboratorio) */
+  admissionSettledAt DateTime?
 
   patient Patient        @relation(fields: [patientId], references: [id])
   branch  Branch?        @relation(fields: [branchId], references: [id], onDelete: SetNull)
@@ -277,6 +281,7 @@ model LabOrder {
   convertedFromAdmissionRequest AdmissionRequest? @relation("AdmissionConvertedOrder")
   items   LabOrderItem[]
   payments Payment[]
+  referredLabPayments ReferredLabPayment[]
 
   @@index([status])
   @@index([createdAt])
@@ -302,6 +307,26 @@ model Payment {
   @@index([orderId])
   @@index([paidAt])
   @@index([method])
+}
+
+model ReferredLabPayment {
+  id            String      @id @default(cuid())
+  orderId       String
+  referredLabId String
+  amount        Float
+  paidAt        DateTime    @default(now())
+  notes         String?
+  recordedById  String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  order       LabOrder    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  referredLab ReferredLab @relation(fields: [referredLabId], references: [id], onDelete: Restrict)
+  user        User?       @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([referredLabId])
+  @@index([paidAt])
 }
 
 model LabOrderItem {

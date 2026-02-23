@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import {
   authOptions,
   hasPermission,
+  ADMIN_ROLE_CODE,
   PERMISSION_CONVERTIR_ADMISION_A_ORDEN,
   PERMISSION_GESTIONAR_ADMISION,
   PERMISSION_VER_ADMISION,
@@ -30,6 +31,7 @@ export default async function AdmisionesPage({ searchParams }: { searchParams: S
   const canView = hasPermission(session, PERMISSION_VER_ADMISION);
   const canManage = hasPermission(session, PERMISSION_GESTIONAR_ADMISION);
   const canConvert = hasPermission(session, PERMISSION_CONVERTIR_ADMISION_A_ORDEN);
+  const isAdmin = session?.user?.roleCode === ADMIN_ROLE_CODE;
 
   if (!canView && !canManage) {
     redirect("/dashboard");
@@ -308,10 +310,12 @@ export default async function AdmisionesPage({ searchParams }: { searchParams: S
                       <TableCell className="text-right">
                         <AdmissionActions
                           admissionId={item.id}
+                          requestCode={item.requestCode}
                           status={item.status}
                           convertedOrderId={item.convertedOrderId}
                           canConvert={canConvert}
                           canManage={canManage}
+                          isAdmin={isAdmin}
                         />
                       </TableCell>
                     </TableRow>
