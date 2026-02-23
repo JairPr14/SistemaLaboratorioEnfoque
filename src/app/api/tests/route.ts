@@ -26,7 +26,7 @@ export async function GET(request: Request) {
             }
           : {}),
       },
-      include: { section: true },
+      include: { section: true, referredLab: true },
       orderBy: [{ section: { order: "asc" } }, { name: "asc" }],
     });
 
@@ -61,8 +61,12 @@ export async function POST(request: Request) {
         price: parsed.price,
         estimatedTimeMinutes: parsed.estimatedTimeMinutes ?? null,
         isActive: parsed.isActive ?? true,
+        isReferred: parsed.isReferred ?? false,
+        referredLabId: parsed.referredLabId ?? null,
+        priceToAdmission: parsed.priceToAdmission ?? null,
+        externalLabCost: parsed.externalLabCost ?? null,
       },
-      include: { section: true },
+      include: { section: true, referredLab: true },
     });
 
     return NextResponse.json({ item });

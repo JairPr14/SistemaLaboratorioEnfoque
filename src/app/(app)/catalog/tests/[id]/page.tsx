@@ -9,14 +9,19 @@ type Props = { params: Promise<{ id: string }> };
 
 export default async function TestDetailPage({ params }: Props) {
   const { id } = await params;
-  const [test, sections] = await Promise.all([
+  const [test, sections, referredLabsRes] = await Promise.all([
     prisma.labTest.findFirst({
       where: { id, deletedAt: null },
-      include: { section: true },
+      include: { section: true, referredLab: true },
     }),
     prisma.labSection.findMany({
       where: { isActive: true },
       orderBy: { order: "asc" },
+    }),
+    prisma.referredLab.findMany({
+      where: { isActive: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
     }),
   ]);
 
@@ -46,6 +51,7 @@ export default async function TestDetailPage({ params }: Props) {
         <LabTestForm
           testId={test.id}
           sections={sections.map((s) => ({ id: s.id, code: s.code, name: s.name }))}
+          referredLabs={referredLabsRes.map((l) => ({ id: l.id, name: l.name }))}
           defaultValues={{
             code: test.code,
             name: test.name,
@@ -53,6 +59,10 @@ export default async function TestDetailPage({ params }: Props) {
             price: Number(test.price),
             estimatedTimeMinutes: test.estimatedTimeMinutes ?? undefined,
             isActive: test.isActive,
+            isReferred: test.isReferred,
+            referredLabId: test.referredLabId ?? null,
+            priceToAdmission: test.priceToAdmission != null ? Number(test.priceToAdmission) : null,
+            externalLabCost: test.externalLabCost != null ? Number(test.externalLabCost) : null,
           }}
         />
       </CardContent>

@@ -14,6 +14,30 @@ import {
 } from "@/lib/auth";
 import type { Session } from "next-auth";
 
+const POPUP_SHOWN_KEY = "notification-popup-shown-ids";
+
+function getPopupShownIds(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = sessionStorage.getItem(POPUP_SHOWN_KEY);
+    const arr = raw ? (JSON.parse(raw) as string[]) : [];
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function markPopupShown(id: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const ids = getPopupShownIds();
+    ids.add(id);
+    sessionStorage.setItem(POPUP_SHOWN_KEY, JSON.stringify([...ids]));
+  } catch {
+    // Ignorar
+  }
+}
+
 const LAB_PERMISSIONS = [
   PERMISSION_VER_ORDENES,
   PERMISSION_QUICK_ACTIONS_RECEPCION,
@@ -92,8 +116,11 @@ export function NotificationBell({ session }: { session: Session | null }) {
         lastIdsRef.current = newIds;
         setItems(newItems);
         const latest = newItems[0];
-        if (hasNew && latest) {
+        const popupShown = getPopupShownIds();
+        const shouldShowPopup = hasNew && latest && !popupShown.has(latest.id);
+        if (shouldShowPopup) {
           setComandaItem(latest);
+          markPopupShown(latest.id);
           if (!isFirstFetch.current) playNotificationSound();
         }
         isFirstFetch.current = false;
@@ -149,7 +176,20 @@ export function NotificationBell({ session }: { session: Session | null }) {
     if (n.linkTo) router.push(n.linkTo);
   };
 
-  const dismissComanda = () => setComandaItem(null);
+  const dismissComanda = () => {
+    if (comandaItem) markPopupShown(comandaItem.id);
+    setComandaItem(null);
+  };
+
+  useEffect(() => {
+    if (!comandaItem) return;
+    const id = comandaItem.id;
+    const timeout = setTimeout(() => {
+      markPopupShown(id);
+      setComandaItem(null);
+    }, 60_000);
+    return () => clearTimeout(timeout);
+  }, [comandaItem]);
 
   if (!canSeeLab) return null;
 

@@ -25,3 +25,12 @@ export function formatDateTime(date?: Date | string | null) {
     second: "2-digit",
   });
 }
+
+/** Formato para input datetime-local: YYYY-MM-DDTHH:mm */
+export function toDateTimeLocal(date?: Date | string | null): string {
+  if (!date) return "";
+  const d = typeof date === "string" ? new Date(date) : date;
+  if (isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}

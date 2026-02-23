@@ -58,18 +58,22 @@ export async function POST(request: Request) {
     const firstName = parsed.firstName.trim().toUpperCase();
     const lastName = parsed.lastName.trim().toUpperCase();
 
+    const createData: Parameters<typeof prisma.patient.create>[0]["data"] = {
+      code,
+      dni: parsed.dni.trim(),
+      firstName,
+      lastName,
+      birthDate: new Date(parsed.birthDate),
+      sex: parsed.sex,
+      phone: parsed.phone || null,
+      address: parsed.address || null,
+      email: parsed.email || null,
+    };
+    if (parsed.createdAt && parsed.createdAt.trim()) {
+      createData.createdAt = new Date(parsed.createdAt);
+    }
     const item = await prisma.patient.create({
-      data: {
-        code,
-        dni: parsed.dni.trim(),
-        firstName,
-        lastName,
-        birthDate: new Date(parsed.birthDate),
-        sex: parsed.sex,
-        phone: parsed.phone || null,
-        address: parsed.address || null,
-        email: parsed.email || null,
-      },
+      data: createData,
     });
 
     return NextResponse.json({ item });

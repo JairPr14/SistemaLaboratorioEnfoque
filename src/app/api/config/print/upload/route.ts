@@ -90,17 +90,19 @@ export async function POST(request: Request) {
       );
     }
 
+    const ext = file.type.includes("png") ? "png" : file.type.includes("webp") ? "webp" : "jpg";
+    const filename = `stamp.${ext}`;
     const publicDir = path.join(process.cwd(), "public");
-    const stampPath = path.join(publicDir, "stamp.png");
+    const stampPath = path.join(publicDir, filename);
 
     await writeFile(stampPath, buffer);
 
     await updatePrintConfig({
-      stampImageUrl: "/stamp.png",
+      stampImageUrl: `/${filename}`,
     });
 
     return NextResponse.json({
-      stampImageUrl: "/stamp.png",
+      stampImageUrl: `/${filename}`,
       message: "Sello subido correctamente",
     });
   } catch (error) {

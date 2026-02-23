@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { DeleteButton } from "@/components/common/DeleteButton";
 import { RegistrarpagoButton } from "@/components/pagos/RegistrarpagoButton";
-import { Search, CalendarDays, Filter, X, Plus, Printer, Activity, CreditCard, FileText } from "lucide-react";
+import { Search, CalendarDays, Filter, X, Plus, Printer, Activity, CreditCard, FileText, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 
 /** Parsea "YYYY-MM-DD" en hora local y devuelve inicio (00:00:00) o fin (23:59:59.999) del día */
 function parseLocalDate(dateStr: string, endOfDay: boolean): Date {
@@ -36,6 +36,8 @@ export default async function OrdersPage({
     paymentStatus?: string;
     from?: string;
     to?: string;
+    sortBy?: string;
+    sortDir?: string;
     focusSearch?: string;
   }>;
 }) {
@@ -45,6 +47,8 @@ export default async function OrdersPage({
   const paymentStatus = params.paymentStatus?.trim();
   const from = params.from?.trim();
   const to = params.to?.trim();
+  const sortBy = params.sortBy?.trim() || "createdAt";
+  const sortDir = params.sortDir === "asc" ? "asc" : "desc";
   const focusSearch = params.focusSearch === "1";
   const session = await getServerSession(authOptions);
   const canDeleteOrders = hasPermission(session, PERMISSION_ELIMINAR_REGISTROS);
@@ -52,6 +56,13 @@ export default async function OrdersPage({
 
   const dateFrom = from ? parseLocalDate(from, false) : null;
   const dateTo = to ? parseLocalDate(to, true) : null;
+
+  const orderByField =
+    sortBy === "orderCode"
+      ? { orderCode: sortDir }
+      : sortBy === "patient"
+        ? { patient: { lastName: sortDir } }
+        : { createdAt: sortDir };
 
   const orders = await prisma.labOrder.findMany({
     where: {
@@ -85,7 +96,7 @@ export default async function OrdersPage({
       patient: true,
       items: { include: { labTest: { select: { code: true, name: true } } } },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: orderByField,
   });
 
   const orderIds = orders.map((o) => o.id);
@@ -128,13 +139,13 @@ export default async function OrdersPage({
         </div>
       </div>
 
-      {/* Filtros mejorados */}
+      {/* Filtros (mismo estilo que Pagos) */}
       <Card className="border-slate-200 dark:border-slate-700">
         <CardContent className="pt-4">
           <form className="space-y-4" method="GET">
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {/* Búsqueda */}
-              <div className="space-y-1.5 lg:col-span-2">
+              <div className="space-y-1.5">
                 <label htmlFor="search-orders" className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">
                   <Search className="h-3.5 w-3.5" />
                   Buscar
@@ -147,46 +158,6 @@ export default async function OrdersPage({
                   placeholder="Paciente, DNI u orden..."
                   className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm transition-colors focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400 dark:focus:border-slate-500"
                 />
-              </div>
-
-              {/* Estado */}
-              <div className="space-y-1.5">
-                <label htmlFor="status-orders" className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">
-                  <Activity className="h-3.5 w-3.5" />
-                  Estado
-                </label>
-                <select
-                  id="status-orders"
-                  name="status"
-                  defaultValue={status || ""}
-                  className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm transition-colors focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-slate-500"
-                >
-                  <option value="">Todos los estados</option>
-                  <option value="PENDIENTE">Pendiente</option>
-                  <option value="EN_PROCESO">En proceso</option>
-                  <option value="COMPLETADO">Completado</option>
-                  <option value="ENTREGADO">Entregado</option>
-                  <option value="ANULADO">Anulado</option>
-                </select>
-              </div>
-
-              {/* Cobro */}
-              <div className="space-y-1.5">
-                <label htmlFor="payment-orders" className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">
-                  <CreditCard className="h-3.5 w-3.5" />
-                  Cobro
-                </label>
-                <select
-                  id="payment-orders"
-                  name="paymentStatus"
-                  defaultValue={paymentStatus || ""}
-                  className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm transition-colors focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-slate-500"
-                >
-                  <option value="">Todos</option>
-                  <option value="PENDIENTE">Por cobrar</option>
-                  <option value="PARCIAL">Parcial</option>
-                  <option value="PAGADO">Cobrado</option>
-                </select>
               </div>
 
               {/* Fecha desde */}
@@ -218,38 +189,109 @@ export default async function OrdersPage({
                   className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm transition-colors focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-slate-500"
                 />
               </div>
-            </div>
 
-            {/* Botones de filtro */}
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="submit"
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-slate-900 px-4 text-sm font-medium text-white transition-colors hover:bg-slate-800 dark:bg-teal-600 dark:hover:bg-teal-700"
-              >
-                <Filter className="h-4 w-4" />
-                Filtrar
-              </button>
-              {(search || status || paymentStatus || from || to) && (
-                <Link
-                  href="/orders"
-                  className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+              {/* Botones */}
+              <div className="flex items-end gap-2">
+                <button
+                  type="submit"
+                  className="flex h-9 items-center gap-1.5 rounded-lg bg-slate-900 px-4 text-sm font-medium text-white transition-colors hover:bg-slate-800 dark:bg-teal-600 dark:hover:bg-teal-700"
                 >
-                  <X className="h-4 w-4" />
-                  Limpiar
-                </Link>
-              )}
+                  <Filter className="h-4 w-4" />
+                  Filtrar
+                </button>
+                {(search || status || paymentStatus || from || to || sortBy !== "createdAt" || sortDir !== "desc") && (
+                  <Link
+                    href="/orders"
+                    className="flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+                  >
+                    <X className="h-4 w-4" />
+                    Limpiar
+                  </Link>
+                )}
+              </div>
+            </div>
+            {/* Fila extra: Estado, Cobro, Ordenar */}
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="space-y-1.5">
+                <label htmlFor="status-orders" className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">
+                  <Activity className="h-3.5 w-3.5" />
+                  Estado
+                </label>
+                <select
+                  id="status-orders"
+                  name="status"
+                  defaultValue={status || ""}
+                  className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm transition-colors focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-slate-500"
+                >
+                  <option value="">Todos los estados</option>
+                  <option value="PENDIENTE">Pendiente</option>
+                  <option value="EN_PROCESO">En proceso</option>
+                  <option value="COMPLETADO">Completado</option>
+                  <option value="ENTREGADO">Entregado</option>
+                  <option value="ANULADO">Anulado</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="payment-orders" className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">
+                  <CreditCard className="h-3.5 w-3.5" />
+                  Cobro
+                </label>
+                <select
+                  id="payment-orders"
+                  name="paymentStatus"
+                  defaultValue={paymentStatus || ""}
+                  className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm transition-colors focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-slate-500"
+                >
+                  <option value="">Todos</option>
+                  <option value="PENDIENTE">Por cobrar</option>
+                  <option value="PARCIAL">Parcial</option>
+                  <option value="PAGADO">Cobrado</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="sortBy-orders" className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">
+                  <ArrowUpDown className="h-3.5 w-3.5" />
+                  Ordenar por
+                </label>
+                <select
+                  id="sortBy-orders"
+                  name="sortBy"
+                  defaultValue={sortBy}
+                  className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm transition-colors focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-slate-500"
+                >
+                  <option value="createdAt">Fecha</option>
+                  <option value="orderCode">Código orden</option>
+                  <option value="patient">Paciente</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="sortDir-orders" className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">
+                  {sortDir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />}
+                  Orden
+                </label>
+                <select
+                  id="sortDir-orders"
+                  name="sortDir"
+                  defaultValue={sortDir}
+                  className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm transition-colors focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-slate-500"
+                >
+                  <option value="asc">Ascendente</option>
+                  <option value="desc">Descendente</option>
+                </select>
+              </div>
             </div>
           </form>
         </CardContent>
       </Card>
 
-      {/* Tabla de órdenes */}
+      {/* Tabla (mismo estilo que Pagos) */}
       <Card>
         <CardContent className="pt-4">
-          <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+          <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
             <Table>
               <TableHeader>
                 <TableRow className="bg-slate-50 dark:bg-slate-800/50">
+                  <TableHead className="w-12 font-semibold text-center">#</TableHead>
                   <TableHead className="font-semibold">Orden</TableHead>
                   <TableHead className="font-semibold">Paciente</TableHead>
                   <TableHead className="font-semibold">Fecha</TableHead>
@@ -257,19 +299,21 @@ export default async function OrdersPage({
                   <TableHead className="font-semibold">Cobro</TableHead>
                   <TableHead className="font-semibold">Análisis</TableHead>
                   <TableHead className="font-semibold text-right">Total</TableHead>
+                  <TableHead className="font-semibold text-right">Cobrado</TableHead>
+                  <TableHead className="font-semibold text-right">Saldo</TableHead>
                   <TableHead className="text-right font-semibold">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {visibleOrders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-12 text-center">
+                    <TableCell colSpan={11} className="py-12 text-center">
                       <FileText className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
                       <p className="text-slate-500 dark:text-slate-400">No se encontraron órdenes</p>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  visibleOrders.map((order) => {
+                  visibleOrders.map((order, idx) => {
                     const statusColors: Record<string, string> = {
                       PENDIENTE: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
                       EN_PROCESO: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
@@ -282,8 +326,16 @@ export default async function OrdersPage({
                       PARCIAL: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
                       PAGADO: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
                     };
+                    const paymentRowColors: Record<string, string> = {
+                      PENDIENTE: "hover:bg-amber-50/50 dark:hover:bg-amber-950/20",
+                      PARCIAL: "hover:bg-blue-50/50 dark:hover:bg-blue-950/20",
+                      PAGADO: "hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20",
+                    };
                     return (
-                      <TableRow key={order.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                      <TableRow key={order.id} className={`${paymentRowColors[order.paymentStatus]} transition-colors`}>
+                        <TableCell className="text-center text-slate-500 dark:text-slate-400 font-medium">
+                          {idx + 1}
+                        </TableCell>
                         <TableCell>
                           <Link
                             className="font-medium text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
@@ -308,20 +360,25 @@ export default async function OrdersPage({
                             {order.paymentStatus}
                           </span>
                         </TableCell>
-                        <TableCell className="max-w-[200px]">
-                          <span className="block truncate text-sm text-slate-600 dark:text-slate-400" title={order.items.map((i) => i.labTest?.name ?? i.labTest?.code ?? "-").join(", ")}>
+                        <TableCell>
+                          <span className="block truncate text-sm text-slate-600 dark:text-slate-400 max-w-[180px]" title={order.items.map((i) => i.labTest?.name ?? i.labTest?.code ?? "-").join(", ")}>
                             {order.items.length === 0
                               ? "—"
                               : order.items.map((i) => i.labTest?.name ?? i.labTest?.code ?? "-").join(", ")}
                           </span>
                         </TableCell>
-                        <TableCell className="text-right">
-                          <div className="leading-tight">
-                            <p className="font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(Number(order.totalPrice))}</p>
-                            <p className="text-xs text-emerald-600 dark:text-emerald-400">
-                              {formatCurrency(order.paidTotal)}
-                            </p>
-                          </div>
+                        <TableCell className="text-right font-semibold text-slate-900 dark:text-slate-200">
+                          {formatCurrency(Number(order.totalPrice))}
+                        </TableCell>
+                        <TableCell className="text-right text-emerald-600 dark:text-emerald-400">
+                          {formatCurrency(order.paidTotal)}
+                        </TableCell>
+                        <TableCell className="text-right font-bold text-slate-900 dark:text-slate-200">
+                          {order.balance > 0 ? (
+                            <span className="text-amber-600 dark:text-amber-400">{formatCurrency(order.balance)}</span>
+                          ) : (
+                            <span className="text-emerald-600 dark:text-emerald-400">{formatCurrency(0)}</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">

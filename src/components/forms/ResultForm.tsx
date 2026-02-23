@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useForm, useFieldArray, type Resolver } from "react-hook-form";
+import { useForm, useFieldArray, useWatch, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
@@ -143,6 +143,22 @@ export function ResultForm({
       setViewMode("table");
     }
   }, [templateItems.length, fields.length]);
+
+  // Sincronizar isOutOfRange en el formulario cuando cambian valor o rangos (usa refRanges vía templateItem.refMin/refMax)
+  const watchedItems = useWatch({ control: form.control, name: "items", defaultValue: [] });
+  useEffect(() => {
+    const items = Array.isArray(watchedItems) ? watchedItems : [];
+    items.forEach((item: Record<string, unknown>, idx: number) => {
+      const templateItem = templateItems[idx];
+      const refMin = (item.refMinSnapshot as number | null | undefined) ?? templateItem?.refMin ?? null;
+      const refMax = (item.refMaxSnapshot as number | null | undefined) ?? templateItem?.refMax ?? null;
+      const computed = checkOutOfRange(String(item.value ?? ""), refMin, refMax);
+      const stored = Boolean(item.isOutOfRange ?? false);
+      if (computed !== stored) {
+        form.setValue(`items.${idx}.isOutOfRange`, computed);
+      }
+    });
+  }, [watchedItems, templateItems, form]);
 
   const addNewParameter = () => {
     append({
@@ -961,9 +977,11 @@ export function ResultForm({
                             </TableCell>
                             <TableCell className="align-top text-xs text-slate-700 dark:text-slate-300">
                               <div className="space-y-1">
-                                <div className="font-medium">
-                                  {currentRefText || item.refRangeText || "-"}
-                                </div>
+                                {(currentRefText || item.refRangeText) && (
+                                  <div className="font-medium">
+                                    {currentRefText || item.refRangeText}
+                                  </div>
+                                )}
                                 {item.refRanges && item.refRanges.length > 0 && (
                                   <div className="space-y-0.5 text-[10px]">
                                     {item.refRanges.map((range, rangeIdx) => {
@@ -1010,6 +1028,9 @@ export function ResultForm({
                                       );
                                     })}
                                   </div>
+                                )}
+                                {!currentRefText && !item.refRangeText && (!item.refRanges || item.refRanges.length === 0) && (
+                                  <span className="text-slate-400">-</span>
                                 )}
                               </div>
                             </TableCell>

@@ -51,6 +51,20 @@ export const patientSchema = z.object({
   phone: z.string().optional().nullable(),
   address: z.string().optional().nullable(),
   email: z.string().email().optional().nullable(),
+  createdAt: z.string().optional(),
+});
+
+export const referredLabSchema = z.object({
+  name: z.string().min(2),
+  logoUrl: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? null : String(v)),
+    z.string().optional().nullable()
+  ),
+  stampImageUrl: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? null : String(v)),
+    z.string().optional().nullable()
+  ),
+  isActive: z.coerce.boolean().default(true),
 });
 
 export const labTestSchema = z.object({
@@ -60,6 +74,19 @@ export const labTestSchema = z.object({
   price: z.coerce.number().min(0),
   estimatedTimeMinutes: z.coerce.number().int().min(0).optional().nullable(),
   isActive: z.coerce.boolean().default(true),
+  isReferred: z.coerce.boolean().default(false),
+  referredLabId: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? null : v),
+    z.string().min(1).optional().nullable()
+  ),
+  priceToAdmission: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? null : Number(v)),
+    z.coerce.number().min(0).optional().nullable()
+  ),
+  externalLabCost: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? null : Number(v)),
+    z.coerce.number().min(0).optional().nullable()
+  ),
 });
 
 export const templateItemRefRangeSchema = z.object({
@@ -107,7 +134,10 @@ export const templateItemSchema = z.object({
     z.number().optional().nullable()
   ), // Mantener para compatibilidad
   valueType: z.enum(valueTypeValues),
-  selectOptions: z.array(z.string()).default([]),
+  selectOptions: z.preprocess(
+    (val) => (Array.isArray(val) ? val.filter((s): s is string => typeof s === "string" && s.trim() !== "") : val),
+    z.array(z.string()).default([])
+  ),
   order: z.coerce.number().int().min(0),
   refRanges: z.array(templateItemRefRangeSchema).optional().default([]),
 });

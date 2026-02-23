@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { User, Hash, Mail, Phone, MapPin } from "lucide-react";
 
 import { patientSchema } from "@/features/lab/schemas";
+import { calculateAge } from "@/lib/template-helpers";
+import { toDateTimeLocal } from "@/lib/format";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,9 +24,11 @@ type Props = {
   defaultValues?: Partial<PatientFormValues>;
   /** Si false, el formulario es solo lectura (solo administradores pueden editar). */
   canEdit?: boolean;
+  /** Fecha y hora de creación del registro (solo para pacientes existentes). */
+  createdAt?: Date | string;
 };
 
-export function PatientForm({ patientId, defaultValues, canEdit = true }: Props) {
+export function PatientForm({ patientId, defaultValues, canEdit = true, createdAt }: Props) {
   const router = useRouter();
   const [nextCode, setNextCode] = useState<string | null>(null);
   const [loadingCode, setLoadingCode] = useState(false);
@@ -40,9 +44,21 @@ export function PatientForm({ patientId, defaultValues, canEdit = true }: Props)
       phone: "",
       address: "",
       email: "",
+      createdAt: patientId && createdAt ? toDateTimeLocal(createdAt) : toDateTimeLocal(new Date()),
       ...defaultValues,
+      ...(createdAt && { createdAt: toDateTimeLocal(createdAt) }),
     },
   });
+
+  // Nuevo paciente: actualizar createdAt cada segundo para mostrar el momento actual
+  useEffect(() => {
+    if (!patientId) {
+      const tick = () => form.setValue("createdAt", toDateTimeLocal(new Date()));
+      tick();
+      const id = setInterval(tick, 1000);
+      return () => clearInterval(id);
+    }
+  }, [patientId, form]);
 
   // Cargar el próximo código disponible cuando es un nuevo paciente
   useEffect(() => {
@@ -64,15 +80,30 @@ export function PatientForm({ patientId, defaultValues, canEdit = true }: Props)
     }
   }, [patientId]);
 
+  const birthDate = form.watch("birthDate");
+  const displayedAge = useMemo(() => {
+    if (!birthDate || typeof birthDate !== "string") return null;
+    try {
+      const date = new Date(birthDate);
+      if (isNaN(date.getTime())) return null;
+      return calculateAge(date);
+    } catch {
+      return null;
+    }
+  }, [birthDate]);
+
   const onSubmit = async (values: PatientFormValues) => {
     try {
       const method = patientId ? "PUT" : "POST";
       const url = patientId ? `/api/patients/${patientId}` : "/api/patients";
 
+      // Nuevo paciente: usar el momento exacto en que se hace clic en Guardar
+      const payload = patientId ? values : { ...values, createdAt: toDateTimeLocal(new Date()) };
+
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -126,6 +157,24 @@ export function PatientForm({ patientId, defaultValues, canEdit = true }: Props)
           <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">DNI</Label>
           <Input className="mt-1 rounded-xl" {...form.register("dni")} disabled={!canEdit} readOnly={!canEdit} />
         </div>
+        <div>
+          <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">Fecha de creación</Label>
+          {patientId ? (
+            <Input
+              type="datetime-local"
+              className="mt-1 rounded-xl"
+              {...form.register("createdAt")}
+              disabled={!canEdit}
+            />
+          ) : (
+            <Input
+              type="datetime-local"
+              className="mt-1 rounded-xl read-only:cursor-default"
+              {...form.register("createdAt")}
+              readOnly
+            />
+          )}
+        </div>
       </div>
       <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div>
@@ -139,6 +188,15 @@ export function PatientForm({ patientId, defaultValues, canEdit = true }: Props)
         <div>
           <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">Fecha de nacimiento</Label>
           <Input type="date" className="mt-1 rounded-xl" {...form.register("birthDate")} disabled={!canEdit} readOnly={!canEdit} />
+        </div>
+        <div>
+          <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">Edad</Label>
+          <Input
+            className="mt-1 rounded-xl read-only:cursor-default read-only:opacity-100"
+            value={displayedAge !== null ? `${displayedAge} años` : ""}
+            placeholder="Se calcula automáticamente"
+            readOnly
+          />
         </div>
         <div>
           <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">Sexo</Label>

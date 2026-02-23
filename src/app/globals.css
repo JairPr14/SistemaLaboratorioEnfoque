@@ -111,6 +111,7 @@ body {
   aside,
   header,
   nav,
+  footer,
   button:not(.print-keep) {
     display: none !important;
   }
@@ -124,6 +125,11 @@ body {
     padding: 0 !important;
     margin: 0 !important;
     overflow: visible !important;
+  }
+
+  /* Evitar hoja en blanco: contenedor principal sin min-height que fuerce página extra */
+  body > div {
+    min-height: 0 !important;
   }
 
   body {

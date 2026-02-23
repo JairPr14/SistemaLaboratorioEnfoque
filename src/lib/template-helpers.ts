@@ -112,37 +112,63 @@ export function getTemplateItemsForPatient(
   // Si hay templateSnapshot guardado, usarlo (copia de la plantilla para este paciente)
   if (templateSnapshot && typeof templateSnapshot === "object" && "items" in templateSnapshot) {
     const snapshot = templateSnapshot as { items: TemplateSnapshotItem[] };
-    return snapshot.items.map((item) => ({
-      id: item.id,
-      groupName: item.groupName,
-      paramName: item.paramName,
-      unit: item.unit,
-      refRangeText: item.refRangeText,
-      refMin: item.refMin,
-      refMax: item.refMax,
-      valueType: (item.valueType || "NUMBER") as TemplateItem["valueType"],
-      selectOptions: Array.isArray(item.selectOptions)
-        ? item.selectOptions
-        : typeof item.selectOptions === "string"
-          ? parseSelectOptions(item.selectOptions)
-          : [],
-      order: item.order,
-      refRanges: item.refRanges ?? [],
-    }));
+    // Edad: siempre calcular desde fecha de nacimiento; si falta, asumir adulto (18) para rangos por sexo
+    const age = patientBirthDate ? calculateAge(patientBirthDate) : 18;
+    const sex = patientSex ?? null;
+
+    return snapshot.items.map((item) => {
+      // Usar refRanges del snapshot; si está vacío, tomar del template original (fallback para datos antiguos)
+      const snapshotRefRanges = item.refRanges ?? [];
+      const originalItem = originalTemplate?.items.find((t) => t.id === item.id);
+      const refRanges =
+        snapshotRefRanges.length > 0 ? snapshotRefRanges : (originalItem?.refRanges ?? []);
+
+      // Aplicar selectRefRange: sexo del paciente (Hombres/Mujeres) y edad (niños → NIÑOS) para validar OK/Fuera
+      let refRangeText = item.refRangeText;
+      let refMin = item.refMin;
+      let refMax = item.refMax;
+      if (refRanges.length > 0 && sex) {
+        const selected = selectRefRange(refRanges, age, sex);
+        if (selected.refRangeText || selected.refMin !== null || selected.refMax !== null) {
+          refRangeText = selected.refRangeText ?? refRangeText;
+          refMin = selected.refMin ?? refMin;
+          refMax = selected.refMax ?? refMax;
+        }
+      }
+
+      return {
+        id: item.id,
+        groupName: item.groupName,
+        paramName: item.paramName,
+        unit: item.unit,
+        refRangeText,
+        refMin,
+        refMax,
+        valueType: (item.valueType || "NUMBER") as TemplateItem["valueType"],
+        selectOptions: Array.isArray(item.selectOptions)
+          ? item.selectOptions
+          : typeof item.selectOptions === "string"
+            ? parseSelectOptions(item.selectOptions)
+            : [],
+        order: item.order,
+        refRanges,
+      };
+    });
   }
 
   // Si no hay snapshot, usar la plantilla original como base
   if (originalTemplate) {
-    const age = patientBirthDate ? calculateAge(patientBirthDate) : null;
+    // Edad: desde fecha de nacimiento; si falta, asumir adulto para rangos por sexo
+    const age = patientBirthDate ? calculateAge(patientBirthDate) : 18;
     const sex = patientSex || null;
 
     return originalTemplate.items.map((item) => {
-      // Si hay rangos de referencia y datos del paciente, seleccionar el rango correcto
+      // Seleccionar rango por sexo (Hombres/Mujeres) y edad (niños → NIÑOS)
       let refRangeText = item.refRangeText;
       let refMin = item.refMin ? Number(item.refMin) : null;
       let refMax = item.refMax ? Number(item.refMax) : null;
 
-      if (item.refRanges && item.refRanges.length > 0 && age !== null && sex) {
+      if (item.refRanges && item.refRanges.length > 0 && sex) {
         const selectedRange = selectRefRange(item.refRanges, age, sex);
         if (selectedRange.refRangeText || selectedRange.refMin !== null || selectedRange.refMax !== null) {
           refRangeText = selectedRange.refRangeText;

@@ -819,7 +819,7 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
                         onChange={(e) =>
                           form.setValue(
                             `items.${index}.selectOptions`,
-                            e.target.value.split(",").map((o) => o.trim()).filter(Boolean),
+                            e.target.value.split(",").map((o) => o.trim()),
                           )
                         }
                       />

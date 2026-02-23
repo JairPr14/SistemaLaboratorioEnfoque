@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/format";
 import { formatWithThousands } from "@/lib/formatNumber";
 import { getPrintConfig } from "@/lib/print-config";
-import { getPaidTotalByOrderId } from "@/lib/payments";
 import { PrintActions } from "@/components/orders/PrintActions";
 import { PrintFitToPage } from "@/components/orders/PrintFitToPage";
 
@@ -23,7 +22,7 @@ function calculateAge(birthDate: Date): number {
   return age;
 }
 
-// Forma mínima del order que usan PatientDataBlock y FooterBlock
+// Forma mínima del order que usan PatientDataBlock y FooterBlock (sin datos de cobro)
 type OrderForPrint = {
   patient: { lastName: string; firstName: string; dni: string; birthDate: Date; sex: string | null };
   requestedBy: string | null;
@@ -31,7 +30,6 @@ type OrderForPrint = {
   createdAt: Date;
   orderCode: string;
   deliveredAt: Date | null;
-  totalPrice: number;
   items: Array<{
     id: string;
     result: { reportedBy?: string | null } | null;
@@ -44,12 +42,10 @@ function PatientDataBlock({
   order,
   age,
   sexLabel,
-  payment,
 }: {
   order: OrderForPrint;
   age: number;
   sexLabel: string;
-  payment: { paidTotal: number; balance: number; paymentStatus: "PENDIENTE" | "PARCIAL" | "PAGADO" };
 }) {
   return (
     <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm mb-6">
@@ -83,20 +79,24 @@ function PatientDataBlock({
         <span className="text-slate-500 font-medium shrink-0">N° REGISTRO:</span>
         <span className="font-mono">{order.orderCode}</span>
       </div>
-      <div className="flex gap-2">
-        <span className="text-slate-500 font-medium shrink-0">ESTADO COBRO:</span>
-        <span>{payment.paymentStatus}</span>
-      </div>
-      <div className="flex gap-2">
-        <span className="text-slate-500 font-medium shrink-0">TOTAL / COBRADO:</span>
-        <span>
-          S/ {order.totalPrice.toFixed(2)} / S/ {payment.paidTotal.toFixed(2)}
-        </span>
-      </div>
-      <div className="flex gap-2">
-        <span className="text-slate-500 font-medium shrink-0">SALDO:</span>
-        <span>S/ {payment.balance.toFixed(2)}</span>
-      </div>
+    </div>
+  );
+}
+
+function ReferredHeaderBlock({ referredLab }: { referredLab: { name: string; logoUrl: string | null } }) {
+  return (
+    <div className="flex items-center justify-center gap-2 flex-1">
+      <span className="text-xs font-medium text-slate-600">Con el respaldo de</span>
+      {referredLab.logoUrl ? (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={referredLab.logoUrl}
+          alt={referredLab.name}
+          className="h-10 w-auto object-contain max-w-[100px]"
+        />
+      ) : (
+        <span className="text-sm font-semibold text-slate-700">{referredLab.name}</span>
+      )}
     </div>
   );
 }
@@ -106,11 +106,13 @@ function FooterBlock({
   order,
   showStamp,
   stampImageUrl,
+  referredLabStampUrl,
 }: {
   items: OrderForPrint["items"];
   order: OrderForPrint;
   showStamp: boolean;
   stampImageUrl: string | null;
+  referredLabStampUrl?: string | null;
 }) {
   return (
     <div className="mt-10 pt-6 border-t-2 border-slate-300 flex flex-wrap items-end justify-between gap-6">
@@ -122,21 +124,39 @@ function FooterBlock({
           <p className="mt-1">Fecha de entrega: {formatDate(order.deliveredAt)}</p>
         )}
       </div>
-      <div className="text-center flex flex-col items-center gap-2">
-        {showStamp && stampImageUrl && (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img
-            src={stampImageUrl}
-            alt=""
-            className="print-stamp h-20 w-auto object-contain opacity-90"
-            style={{ maxWidth: "140px" }}
-          />
+      <div className="flex flex-row items-end justify-end gap-8">
+        {referredLabStampUrl && (
+          <div className="text-center flex flex-col items-center gap-2">
+            <div className="w-40 h-14 flex items-center justify-center shrink-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={referredLabStampUrl}
+                alt="Sello laboratorio referido"
+                className="max-h-full max-w-full w-auto h-auto object-contain opacity-90"
+              />
+            </div>
+            <div className="w-40 h-14 border-b-2 border-slate-400 mb-1" />
+            <p className="text-xs font-semibold text-slate-700">Firma</p>
+            <p className="text-xs text-slate-500">Responsable laboratorio referido</p>
+          </div>
         )}
-        <div className="w-56 h-16 border-b-2 border-slate-400 mb-1" />
-        <p className="text-xs font-semibold text-slate-700">
-          T.M / Responsable técnico
-        </p>
-        <p className="text-xs text-slate-500">CTMP</p>
+        <div className="text-center flex flex-col items-center gap-2">
+          <div className="w-56 h-16 flex items-center justify-center shrink-0">
+            {showStamp && stampImageUrl && (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={stampImageUrl}
+                alt=""
+                className="print-stamp max-h-full max-w-full w-auto h-auto object-contain opacity-90"
+              />
+            )}
+          </div>
+          <div className="w-56 h-16 border-b-2 border-slate-400 mb-1" />
+          <p className="text-xs font-semibold text-slate-700">
+            T.M / Responsable técnico
+          </p>
+          <p className="text-xs text-slate-500">CTMP</p>
+        </div>
       </div>
     </div>
   );
@@ -158,6 +178,7 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
           labTest: {
             include: {
               section: true,
+              referredLab: true,
               template: { 
                 include: { 
                   items: {
@@ -203,11 +224,6 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
 
   const age = calculateAge(order.patient.birthDate);
   const sexLabel = order.patient.sex === "M" ? "Masculino" : order.patient.sex === "F" ? "Femenino" : "Otro";
-  const paidTotal = await getPaidTotalByOrderId(prisma, order.id);
-  const totalPrice = Number(order.totalPrice);
-  const balance = Math.max(0, totalPrice - paidTotal);
-  const paymentStatus =
-    paidTotal <= 0 ? "PENDIENTE" : paidTotal + 0.0001 < totalPrice ? "PARCIAL" : "PAGADO";
   const sectionsEntries = Object.entries(itemsBySection);
   const printConfig = await getPrintConfig();
   const showStamp = printConfig.stampEnabled && printConfig.stampImageUrl;
@@ -250,20 +266,30 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
           {/* Wrapper escalable: permite reducir el contenido para que quepa en una hoja */}
           <div className="print-a4-scaler absolute top-0 left-0 w-full z-10" style={{ width: "210mm" }}>
             <div
-              className="print-a4-content relative px-6 print:px-4"
+              className="print-a4-content relative px-12"
               style={{ paddingTop: "29.7mm", paddingBottom: "29.7mm" }}
             >
-              {/* Espacio de encabezado */}
-              <header className="flex items-start justify-between gap-4 mb-6 pb-4 border-b border-slate-300 min-h-[3.5rem]">
-                <div className="min-w-0 flex-1" aria-hidden />
-                <div className="min-w-0 flex-1" aria-hidden />
-              </header>
+              {/* Encabezado: logos a los lados, "Con el respaldo de" en el centro cuando hay análisis referidos */}
+              {(() => {
+                const firstReferred = items.find((i) => i.labTest.isReferred && i.labTest.referredLab);
+                const referredLab = firstReferred?.labTest.referredLab;
+                return (
+                  <header className="flex items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-300 min-h-[3.5rem]">
+                    <div className="min-w-0 flex-1" aria-hidden />
+                    {referredLab ? (
+                      <ReferredHeaderBlock referredLab={referredLab} />
+                    ) : (
+                      <div className="min-w-0 flex-1" aria-hidden />
+                    )}
+                    <div className="min-w-0 flex-1" aria-hidden />
+                  </header>
+                );
+              })()}
 
               <PatientDataBlock
-                order={{ ...order, totalPrice }}
+                order={order}
                 age={age}
                 sexLabel={sexLabel}
-                payment={{ paidTotal, balance, paymentStatus }}
               />
 
               {/* Barra de sección: fondo semi-transparente, texto en negrita más grande */}
@@ -311,7 +337,13 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                               const templateItem = res.templateItemId 
                                 ? item.labTest.template?.items.find((t) => t.id === res.templateItemId)
                                 : null;
-                              const refRanges: RefRangeItem[] = (templateItem && "refRanges" in templateItem ? (templateItem.refRanges as RefRangeItem[]) : []) ?? [];
+                              let refRanges: RefRangeItem[] = (templateItem && "refRanges" in templateItem ? (templateItem.refRanges as RefRangeItem[]) : []) ?? [];
+                              // Fallback: si no hay refRanges en la plantilla actual, usar templateSnapshot (p. ej. órdenes antiguas o plantilla modificada)
+                              if (refRanges.length === 0 && item.templateSnapshot && typeof item.templateSnapshot === "object" && "items" in item.templateSnapshot) {
+                                const snapshot = item.templateSnapshot as { items: Array<{ id: string; refRanges?: RefRangeItem[] }> };
+                                const snapshotItem = snapshot.items.find((t) => t.id === res.templateItemId);
+                                refRanges = (snapshotItem?.refRanges ?? []) as RefRangeItem[];
+                              }
                               const valueType = (templateItem as { valueType?: string } | null)?.valueType;
                               const isNumeric = ["NUMBER", "DECIMAL", "PERCENTAGE"].includes(valueType ?? "");
                               const displayValue = isNumeric && res.value
@@ -414,7 +446,16 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                 </div>
               )}
 
-              <FooterBlock items={items} order={order} showStamp={!!(showStamp && printConfig.stampImageUrl)} stampImageUrl={printConfig.stampImageUrl} />
+              <FooterBlock
+                items={items}
+                order={order}
+                showStamp={!!(showStamp && printConfig.stampImageUrl)}
+                stampImageUrl={printConfig.stampImageUrl}
+                referredLabStampUrl={(() => {
+                  const firstReferred = items.find((i) => i.labTest.isReferred && i.labTest.referredLab);
+                  return firstReferred?.labTest.referredLab?.stampImageUrl ?? null;
+                })()}
+              />
 
               <div className="mt-6 pt-3 text-center text-xs min-h-[1.5rem]" aria-hidden />
             </div>
@@ -437,15 +478,14 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
           />
           <div className="print-a4-scaler absolute top-0 left-0 w-full z-10" style={{ width: "210mm" }}>
             <div
-              className="print-a4-content relative px-6 print:px-4"
+              className="print-a4-content relative px-12"
               style={{ paddingTop: "29.7mm", paddingBottom: "29.7mm" }}
             >
               <header className="flex items-start justify-between gap-4 mb-6 pb-4 border-b border-slate-300 min-h-[3.5rem]" />
               <PatientDataBlock
-                order={{ ...order, totalPrice }}
+                order={order}
                 age={age}
                 sexLabel={sexLabel}
-                payment={{ paidTotal, balance, paymentStatus }}
               />
               <p className="text-center text-slate-500 py-12">No hay análisis seleccionados para imprimir.</p>
               <FooterBlock items={[]} order={order} showStamp={!!(showStamp && printConfig.stampImageUrl)} stampImageUrl={printConfig.stampImageUrl} />

@@ -162,17 +162,36 @@ model Patient {
   @@index([code])
 }
 
+model ReferredLab {
+  id            String   @id @default(cuid())
+  name          String
+  logoUrl       String?
+  stampImageUrl String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  labTests LabTest[]
+
+  @@index([isActive])
+}
+
 model LabTest {
-  id                    String      @id @default(cuid())
-  code                  String      @unique
+  id                    String       @id @default(cuid())
+  code                  String       @unique
   name                  String
   sectionId             String
-  section               LabSection @relation(fields: [sectionId], references: [id], onDelete: Restrict)
+  section               LabSection   @relation(fields: [sectionId], references: [id], onDelete: Restrict)
   price                 Float
   estimatedTimeMinutes  Int?
-  isActive              Boolean    @default(true)
-  createdAt             DateTime   @default(now())
-  updatedAt             DateTime   @updatedAt
+  isActive              Boolean      @default(true)
+  isReferred            Boolean      @default(false)
+  referredLabId         String?
+  referredLab           ReferredLab? @relation(fields: [referredLabId], references: [id], onDelete: SetNull)
+  priceToAdmission      Float?       // Lo que cobramos a admisión
+  externalLabCost       Float?       // Lo que pagamos al laboratorio referido
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
   deletedAt             DateTime?
 
   template       LabTemplate?
@@ -183,6 +202,7 @@ model LabTest {
 
   @@index([sectionId])
   @@index([isActive])
+  @@index([referredLabId])
 }
 
 model LabTemplate {

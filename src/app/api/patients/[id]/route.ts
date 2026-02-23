@@ -49,17 +49,22 @@ export async function PUT(request: Request, { params }: Params) {
     const firstName = rest.firstName.trim().toUpperCase();
     const lastName = rest.lastName.trim().toUpperCase();
 
+    const { createdAt: createdAtStr, ...restWithoutCreatedAt } = rest;
+    const updateData: Record<string, unknown> = {
+      ...restWithoutCreatedAt,
+      firstName,
+      lastName,
+      birthDate: new Date(rest.birthDate),
+      phone: rest.phone || null,
+      address: rest.address || null,
+      email: rest.email || null,
+    };
+    if (createdAtStr && createdAtStr.trim()) {
+      updateData.createdAt = new Date(createdAtStr);
+    }
     const item = await prisma.patient.update({
       where: { id },
-      data: {
-        ...rest,
-        firstName,
-        lastName,
-        birthDate: new Date(rest.birthDate),
-        phone: rest.phone || null,
-        address: rest.address || null,
-        email: rest.email || null,
-      },
+      data: updateData as Parameters<typeof prisma.patient.update>[0]["data"],
     });
 
     return NextResponse.json({ item });

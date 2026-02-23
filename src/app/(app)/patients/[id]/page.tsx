@@ -50,6 +50,7 @@ export default async function PatientDetailPage({ params }: Props) {
         <PatientForm
             patientId={patient.id}
             canEdit={canEditPatient}
+            createdAt={patient.createdAt}
             defaultValues={{
               code: patient.code,
               dni: patient.dni,

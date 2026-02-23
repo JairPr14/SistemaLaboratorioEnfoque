@@ -14,14 +14,16 @@ import { Label } from "@/components/ui/label";
 type LabTestFormValues = z.infer<typeof labTestSchema>;
 
 type SectionOption = { id: string; code: string; name: string };
+type ReferredLabOption = { id: string; name: string };
 
 type Props = {
   testId?: string;
   defaultValues?: Partial<LabTestFormValues>;
   sections: SectionOption[];
+  referredLabs: ReferredLabOption[];
 };
 
-export function LabTestForm({ testId, defaultValues, sections }: Props) {
+export function LabTestForm({ testId, defaultValues, sections, referredLabs }: Props) {
   const router = useRouter();
   const form = useForm<LabTestFormValues>({
     resolver: zodResolver(labTestSchema) as Resolver<LabTestFormValues>,
@@ -32,9 +34,14 @@ export function LabTestForm({ testId, defaultValues, sections }: Props) {
       price: 0,
       estimatedTimeMinutes: undefined,
       isActive: true,
+      isReferred: false,
+      referredLabId: null,
+      priceToAdmission: null,
+      externalLabCost: null,
       ...defaultValues,
     },
   });
+  const isReferredValue = form.watch("isReferred");
 
   const onSubmit = async (values: LabTestFormValues) => {
     try {
@@ -100,6 +107,50 @@ export function LabTestForm({ testId, defaultValues, sections }: Props) {
           <Label>Activo</Label>
         </div>
       </div>
+      <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-600 dark:bg-slate-800/50">
+        <input type="checkbox" id="isReferred" {...form.register("isReferred")} />
+        <Label htmlFor="isReferred" className="cursor-pointer font-medium">
+          Análisis referido (derivado a otro laboratorio)
+        </Label>
+      </div>
+      {isReferredValue && (
+        <div className="grid gap-4 rounded-md border border-slate-200 bg-slate-50 p-4 dark:border-slate-600 dark:bg-slate-800/30 md:grid-cols-3">
+          <div className="space-y-2">
+            <Label>Laboratorio referido</Label>
+            <select
+              className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              {...form.register("referredLabId")}
+            >
+              <option value="">Seleccionar…</option>
+              {referredLabs.map((lab) => (
+                <option key={lab.id} value={lab.id}>
+                  {lab.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label>Precio a admisión (S/)</Label>
+            <Input
+              type="number"
+              step="0.01"
+              placeholder="Ej: 30"
+              {...form.register("priceToAdmission")}
+            />
+            <p className="text-xs text-slate-500">Lo que cobramos a admisión</p>
+          </div>
+          <div className="space-y-2">
+            <Label>Costo lab. externo (S/)</Label>
+            <Input
+              type="number"
+              step="0.01"
+              placeholder="Ej: 19"
+              {...form.register("externalLabCost")}
+            />
+            <p className="text-xs text-slate-500">Lo que pagamos al laboratorio referido</p>
+          </div>
+        </div>
+      )}
       <div className="flex justify-end">
         <Button type="submit">Guardar</Button>
       </div>

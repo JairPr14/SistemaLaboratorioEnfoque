@@ -19,7 +19,7 @@ export async function GET(_request: Request, { params }: Params) {
     const { id } = await params;
     const item = await prisma.labTest.findFirst({
       where: { id, deletedAt: null },
-      include: { section: true },
+      include: { section: true, referredLab: true },
     });
 
     if (!item) {
@@ -75,8 +75,12 @@ export async function PUT(request: Request, { params }: Params) {
         price: parsed.price,
         estimatedTimeMinutes: parsed.estimatedTimeMinutes ?? null,
         isActive: parsed.isActive ?? true,
+        isReferred: parsed.isReferred ?? false,
+        referredLabId: parsed.referredLabId ?? null,
+        priceToAdmission: parsed.priceToAdmission ?? null,
+        externalLabCost: parsed.externalLabCost ?? null,
       },
-      include: { section: true },
+      include: { section: true, referredLab: true },
     });
 
     return NextResponse.json({ item });

@@ -21,10 +21,17 @@ export default async function TestsPage() {
     price: Number(t.price),
   }));
 
-  const sections = await prisma.labSection.findMany({
-    where: { isActive: true },
-    orderBy: { order: "asc" },
-  });
+  const [sections, referredLabsRes] = await Promise.all([
+    prisma.labSection.findMany({
+      where: { isActive: true },
+      orderBy: { order: "asc" },
+    }),
+    prisma.referredLab.findMany({
+      where: { isActive: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+  ]);
 
   return (
     <div className={pageLayoutClasses.wrapper}>
@@ -42,7 +49,10 @@ export default async function TestsPage() {
             </p>
           </CardHeader>
           <CardContent>
-            <LabTestForm sections={sections.map((s) => ({ id: s.id, code: s.code, name: s.name }))} />
+            <LabTestForm
+              sections={sections.map((s) => ({ id: s.id, code: s.code, name: s.name }))}
+              referredLabs={referredLabsRes.map((l) => ({ id: l.id, name: l.name }))}
+            />
           </CardContent>
         </Card>
       </section>

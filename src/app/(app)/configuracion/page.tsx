@@ -15,7 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Pencil, Users, Shield, UserPlus, Trash2, Stamp, FlaskConical, Plus, Building2, GripVertical } from "lucide-react";
+import { Pencil, Users, Shield, UserPlus, Trash2, Stamp, FlaskConical, Plus, Building2, GripVertical, TestTube2 } from "lucide-react";
 import Link from "next/link";
 import {
   ALL_PERMISSIONS,
@@ -27,6 +27,7 @@ import {
   PERMISSION_GESTIONAR_SECCIONES,
   PERMISSION_GESTIONAR_PREANALITICOS,
   PERMISSION_GESTIONAR_SELLO,
+  PERMISSION_GESTIONAR_CATALOGO,
 } from "@/lib/auth";
 
 function hasPermissionClient(
@@ -102,6 +103,7 @@ export default function ConfiguracionPage() {
   const canManageSections = hasPermissionClient(session, PERMISSION_GESTIONAR_SECCIONES);
   const canManagePreanalytics = hasPermissionClient(session, PERMISSION_GESTIONAR_PREANALITICOS);
   const canManageStamp = hasPermissionClient(session, PERMISSION_GESTIONAR_SELLO);
+  const canManageCatalog = hasPermissionClient(session, PERMISSION_GESTIONAR_CATALOGO);
 
   const loadRoles = async () => {
     const res = await fetch("/api/roles");
@@ -495,6 +497,14 @@ export default function ConfiguracionPage() {
               <Button variant="outline" size="sm">
                 <FlaskConical className="h-4 w-4 mr-2" />
                 Gestión de Secciones
+              </Button>
+            </Link>
+          )}
+          {canManageCatalog && (
+            <Link href="/configuracion/referred-labs">
+              <Button variant="outline" size="sm">
+                <TestTube2 className="h-4 w-4 mr-2" />
+                Laboratorios referidos
               </Button>
             </Link>
           )}
