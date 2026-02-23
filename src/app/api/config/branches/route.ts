@@ -18,7 +18,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
-    const canManage = hasPermission(session, PERMISSION_GESTIONAR_SEDES) || session?.user?.role?.code === ADMIN_ROLE_CODE;
+    const canManage = hasPermission(session, PERMISSION_GESTIONAR_SEDES) || session?.user?.roleCode === ADMIN_ROLE_CODE;
     if (!session?.user || !canManage) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
