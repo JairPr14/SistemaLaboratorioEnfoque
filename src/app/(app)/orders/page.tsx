@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getServerSession } from "next-auth";
+import type { Prisma } from "@prisma/client";
 
 import { redirect } from "next/navigation";
 import { authOptions, hasPermission, PERMISSION_ELIMINAR_REGISTROS, PERMISSION_REGISTRAR_PAGOS, PERMISSION_VER_ORDENES } from "@/lib/auth";
@@ -49,7 +50,7 @@ export default async function OrdersPage({
   const from = params.from?.trim();
   const to = params.to?.trim();
   const sortBy = params.sortBy?.trim() || "createdAt";
-  const sortDir = params.sortDir === "asc" ? "asc" : "desc";
+  const sortDir: Prisma.SortOrder = params.sortDir === "asc" ? "asc" : "desc";
   const focusSearch = params.focusSearch === "1";
   const session = await getServerSession(authOptions);
   if (!session?.user || !hasPermission(session, PERMISSION_VER_ORDENES)) {
@@ -61,7 +62,7 @@ export default async function OrdersPage({
   const dateFrom = from ? parseLocalDate(from, false) : null;
   const dateTo = to ? parseLocalDate(to, true) : null;
 
-  const orderByField =
+  const orderByField: Prisma.LabOrderOrderByWithRelationInput =
     sortBy === "orderCode"
       ? { orderCode: sortDir }
       : sortBy === "patient"

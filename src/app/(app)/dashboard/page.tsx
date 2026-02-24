@@ -57,6 +57,23 @@ function toYYYYMMDD(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+type DashboardOrderStatus =
+  | "PENDIENTE"
+  | "EN_PROCESO"
+  | "COMPLETADO"
+  | "ENTREGADO"
+  | "ANULADO";
+
+function toDashboardOrderStatus(status: string): DashboardOrderStatus {
+  return status === "PENDIENTE" ||
+    status === "EN_PROCESO" ||
+    status === "COMPLETADO" ||
+    status === "ENTREGADO" ||
+    status === "ANULADO"
+    ? status
+    : "PENDIENTE";
+}
+
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -285,7 +302,7 @@ export default async function DashboardPage({
           orderCode: o.orderCode,
           createdAt: o.createdAt,
           deliveredAt: o.deliveredAt ?? undefined,
-          status: o.status,
+          status: toDashboardOrderStatus(o.status),
           patient: o.patient,
           items: o.items,
           requestedBy: o.requestedBy,
