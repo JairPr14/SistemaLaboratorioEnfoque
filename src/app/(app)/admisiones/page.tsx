@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
-import { Search, Filter, RotateCcw, Clock, CheckCircle, XCircle, FileText } from "lucide-react";
+import { Search, Filter, RotateCcw, Clock, CheckCircle, XCircle, FileText, CalendarDays, User } from "lucide-react";
 
 import { prisma } from "@/lib/prisma";
 import {
@@ -10,6 +10,7 @@ import {
   ADMIN_ROLE_CODE,
   PERMISSION_CONVERTIR_ADMISION_A_ORDEN,
   PERMISSION_GESTIONAR_ADMISION,
+  PERMISSION_PURGE_ADMISION,
   PERMISSION_VER_ADMISION,
 } from "@/lib/auth";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -19,9 +20,64 @@ import { Badge } from "@/components/ui/badge";
 import { pageLayoutClasses, PageHeader } from "@/components/layout/PageHeader";
 import { AdmissionActions } from "@/components/admisiones/AdmissionActions";
 
+/** Parsea "YYYY-MM-DD" en hora local: inicio (00:00:00) o fin (23:59:59.999) del día */
+function parseLocalDate(dateStr: string, endOfDay: boolean): Date {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  if (y == null || m == null || d == null || Number.isNaN(y) || Number.isNaN(m) || Number.isNaN(d)) {
+    return new Date(dateStr);
+  }
+  const date = new Date(y, m - 1, d);
+  if (endOfDay) {
+    date.setHours(23, 59, 59, 999);
+  } else {
+    date.setHours(0, 0, 0, 0);
+  }
+  return date;
+}
+
+/** Devuelve límites de birthDate para un rango de edad (edad del paciente al día de hoy) */
+function getBirthDateRangeForAge(
+  ageRange: string,
+): { birthDateFrom: Date | null; birthDateTo: Date | null } {
+  const today = new Date();
+  const y = today.getFullYear();
+  const m = today.getMonth();
+  const d = today.getDate();
+  if (ageRange === "0-17") {
+    const from = new Date(y - 18, m, d + 1);
+    from.setHours(0, 0, 0, 0);
+    return { birthDateFrom: from, birthDateTo: null };
+  }
+  if (ageRange === "18-64") {
+    const to = new Date(y - 18, m, d);
+    to.setHours(23, 59, 59, 999);
+    const from = new Date(y - 65, m, d);
+    from.setHours(0, 0, 0, 0);
+    return { birthDateFrom: from, birthDateTo: to };
+  }
+  if (ageRange === "65+") {
+    const to = new Date(y - 65, m, d);
+    to.setHours(23, 59, 59, 999);
+    return { birthDateFrom: null, birthDateTo: to };
+  }
+  return { birthDateFrom: null, birthDateTo: null };
+}
+
+function ageFromBirthDate(birthDate: Date): number {
+  const today = new Date();
+  const b = new Date(birthDate);
+  let age = today.getFullYear() - b.getFullYear();
+  const m = today.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < b.getDate())) age--;
+  return age;
+}
+
 type SearchParams = Promise<{
   status?: string;
   search?: string;
+  from?: string;
+  to?: string;
+  ageRange?: string;
 }>;
 
 export const dynamic = "force-dynamic";
@@ -31,42 +87,80 @@ export default async function AdmisionesPage({ searchParams }: { searchParams: S
   const canView = hasPermission(session, PERMISSION_VER_ADMISION);
   const canManage = hasPermission(session, PERMISSION_GESTIONAR_ADMISION);
   const canConvert = hasPermission(session, PERMISSION_CONVERTIR_ADMISION_A_ORDEN);
-  const isAdmin = session?.user?.roleCode === ADMIN_ROLE_CODE;
+  const canPurgeAdmission =
+    session?.user?.roleCode === ADMIN_ROLE_CODE || hasPermission(session, PERMISSION_PURGE_ADMISION);
 
   if (!canView && !canManage) {
     redirect("/dashboard");
   }
 
   const params = await searchParams;
-  const status = params.status?.trim() ?? "PENDIENTE";
+  const statusParam = params.status?.trim();
+  const status = statusParam === "PENDIENTE" || statusParam === "CONVERTIDA" || statusParam === "CANCELADA" ? statusParam : "";
   const search = params.search?.trim() || "";
+  const fromParam = params.from?.trim();
+  const toParam = params.to?.trim();
+  const ageRange = params.ageRange?.trim() || "";
+
+  const dateFrom = fromParam ? parseLocalDate(fromParam, false) : null;
+  const dateTo = toParam ? parseLocalDate(toParam, true) : null;
+  const { birthDateFrom, birthDateTo } = getBirthDateRangeForAge(ageRange);
+
+  const baseWhere = {
+    ...(status ? { status: status as "PENDIENTE" | "CONVERTIDA" | "CANCELADA" } : {}),
+    ...(search
+      ? {
+          OR: [
+            { requestCode: { contains: search, mode: "insensitive" as const } },
+            { patient: { dni: { contains: search, mode: "insensitive" as const } } },
+            { patient: { firstName: { contains: search, mode: "insensitive" as const } } },
+            { patient: { lastName: { contains: search, mode: "insensitive" as const } } },
+          ],
+        }
+      : {}),
+    ...(dateFrom && dateTo
+      ? { createdAt: { gte: dateFrom, lte: dateTo } }
+      : dateFrom
+        ? { createdAt: { gte: dateFrom } }
+        : dateTo
+          ? { createdAt: { lte: dateTo } }
+          : {}),
+    ...(birthDateFrom ?? birthDateTo
+      ? {
+          patient: {
+            birthDate: {
+              ...(birthDateFrom ? { gte: birthDateFrom } : {}),
+              ...(birthDateTo ? { lte: birthDateTo } : {}),
+            },
+          },
+        }
+      : {}),
+  };
 
   const statusOrder = { PENDIENTE: 0, CONVERTIDA: 1, CANCELADA: 2 };
   const [itemsRaw, summary] = await Promise.all([
     prisma.admissionRequest.findMany({
-      where: {
-        ...(status ? { status: status as any } : {}),
-        ...(search
-          ? {
-              OR: [
-                { requestCode: { contains: search, mode: "insensitive" } },
-                { patient: { dni: { contains: search, mode: "insensitive" } } },
-                { patient: { firstName: { contains: search, mode: "insensitive" } } },
-                { patient: { lastName: { contains: search, mode: "insensitive" } } },
-              ],
-            }
-          : {}),
-      },
+      where: baseWhere,
       include: {
         patient: true,
         branch: true,
         items: { include: { labTest: true }, orderBy: { order: "asc" } },
+        convertedOrder: {
+          include: {
+            items: {
+              include: {
+                result: { select: { isDraft: true } },
+              },
+            },
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
       take: 500,
     }),
     prisma.admissionRequest.groupBy({
       by: ["status"],
+      where: baseWhere,
       _count: { id: true },
     }),
   ]);
@@ -88,14 +182,14 @@ export default async function AdmisionesPage({ searchParams }: { searchParams: S
     <div className={pageLayoutClasses.wrapper}>
       <PageHeader
         title="Admisión"
-        description="Pre-órdenes del área admisionista para envío a laboratorio"
+        description="Órdenes del área admisionista para envío a laboratorio"
         actions={
           canManage ? (
             <Link
               href="/admisiones/nueva"
               className="inline-flex h-9 items-center rounded-md bg-slate-900 px-3 text-sm font-medium text-white hover:bg-slate-800 dark:bg-teal-600 dark:hover:bg-teal-700"
             >
-              Nueva pre-orden
+              Nueva orden
             </Link>
           ) : null
         }
@@ -135,10 +229,53 @@ export default async function AdmisionesPage({ searchParams }: { searchParams: S
                 defaultValue={status}
                 className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm transition-colors focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
               >
+                <option value="">Todos</option>
                 <option value="PENDIENTE">Pendiente</option>
                 <option value="CONVERTIDA">Convertida</option>
                 <option value="CANCELADA">Cancelada</option>
-                <option value="">Todos</option>
+              </select>
+            </div>
+            <div className="min-w-[140px]">
+              <label htmlFor="adm-from" className="mb-1.5 flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+                <CalendarDays className="h-3.5 w-3.5" />
+                Fecha desde
+              </label>
+              <input
+                id="adm-from"
+                name="from"
+                type="date"
+                defaultValue={fromParam ?? ""}
+                className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm transition-colors focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              />
+            </div>
+            <div className="min-w-[140px]">
+              <label htmlFor="adm-to" className="mb-1.5 flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+                <CalendarDays className="h-3.5 w-3.5" />
+                Fecha hasta
+              </label>
+              <input
+                id="adm-to"
+                name="to"
+                type="date"
+                defaultValue={toParam ?? ""}
+                className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm transition-colors focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              />
+            </div>
+            <div className="min-w-[140px]">
+              <label htmlFor="adm-age" className="mb-1.5 flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+                <User className="h-3.5 w-3.5" />
+                Edad (paciente)
+              </label>
+              <select
+                id="adm-age"
+                name="ageRange"
+                defaultValue={ageRange}
+                className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm transition-colors focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              >
+                <option value="">Todas las edades</option>
+                <option value="0-17">0 - 17 años (niños/jóvenes)</option>
+                <option value="18-64">18 - 64 años (adultos)</option>
+                <option value="65+">65 años o más</option>
               </select>
             </div>
             <div className="flex gap-2">
@@ -149,7 +286,7 @@ export default async function AdmisionesPage({ searchParams }: { searchParams: S
                 <Filter className="h-4 w-4" />
                 Filtrar
               </button>
-              {(search || status !== "PENDIENTE") && (
+              {(search || status || fromParam || toParam || ageRange) && (
                 <Link
                   href="/admisiones"
                   className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 px-4 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
@@ -230,11 +367,11 @@ export default async function AdmisionesPage({ searchParams }: { searchParams: S
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <FileText className="h-4 w-4 text-slate-500" />
-            <CardTitle className="text-base">Bandeja de pre-órdenes</CardTitle>
+            <CardTitle className="text-base">Bandeja de órdenes de admisión</CardTitle>
           </div>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             {items.length > 0
-              ? `Mostrando ${items.length} pre-orden${items.length === 1 ? "" : "es"}`
+              ? `Mostrando ${items.length} orden${items.length === 1 ? "" : "es"}`
               : "Ajusta los filtros para ver resultados"}
           </p>
         </CardHeader>
@@ -246,8 +383,9 @@ export default async function AdmisionesPage({ searchParams }: { searchParams: S
                   <TableHead className="w-12 text-center font-semibold">#</TableHead>
                   <TableHead className="font-semibold">Código</TableHead>
                   <TableHead className="font-semibold">Paciente</TableHead>
+                  <TableHead className="font-semibold">Edad</TableHead>
                   <TableHead className="font-semibold">Sede</TableHead>
-                  <TableHead className="font-semibold">Fecha</TableHead>
+                  <TableHead className="font-semibold">Fecha creación</TableHead>
                   <TableHead className="font-semibold">Estado</TableHead>
                   <TableHead className="text-right font-semibold">Total</TableHead>
                   <TableHead className="text-right font-semibold">Acciones</TableHead>
@@ -256,23 +394,25 @@ export default async function AdmisionesPage({ searchParams }: { searchParams: S
               <TableBody>
                 {items.length === 0 ? (
                   <TableRow className="hover:bg-transparent">
-                    <TableCell colSpan={8} className="py-16">
+                    <TableCell colSpan={9} className="py-16">
                       <div className="flex flex-col items-center justify-center text-center">
                         <FileText className="mb-3 h-12 w-12 text-slate-300 dark:text-slate-600" />
                         <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                          No hay pre-órdenes con esos filtros
+                          No hay órdenes de admisión con esos filtros
                         </p>
                         <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                          {status === "PENDIENTE"
-                            ? "Las pre-órdenes pendientes aparecerán aquí. Prueba con otro estado o crea una nueva."
-                            : "Cambia el estado del filtro o la búsqueda para ver más resultados."}
+                          {!status
+                            ? "No hay órdenes de admisión. Crea una nueva desde el botón de arriba."
+                            : status === "PENDIENTE"
+                              ? "Las órdenes pendientes aparecerán aquí. Prueba con otro estado o crea una nueva."
+                              : "Cambia el estado del filtro o la búsqueda para ver más resultados."}
                         </p>
                         {canManage && (
                           <Link
                             href="/admisiones/nueva"
                             className="mt-4 inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-teal-700"
                           >
-                            Nueva pre-orden
+                            Nueva orden
                           </Link>
                         )}
                       </div>
@@ -290,6 +430,9 @@ export default async function AdmisionesPage({ searchParams }: { searchParams: S
                       <TableCell>
                         <p className="font-medium">{item.patient.lastName} {item.patient.firstName}</p>
                         <p className="text-xs text-slate-500 dark:text-slate-400">DNI {item.patient.dni}</p>
+                      </TableCell>
+                      <TableCell className="text-slate-600 dark:text-slate-400">
+                        {ageFromBirthDate(item.patient.birthDate)} años
                       </TableCell>
                       <TableCell className="text-slate-600 dark:text-slate-400">{item.branch?.name ?? "—"}</TableCell>
                       <TableCell>{formatDate(item.createdAt)}</TableCell>
@@ -313,9 +456,15 @@ export default async function AdmisionesPage({ searchParams }: { searchParams: S
                           requestCode={item.requestCode}
                           status={item.status}
                           convertedOrderId={item.convertedOrderId}
+                          orderPrintReady={
+                            !!item.convertedOrder?.items?.length &&
+                            item.convertedOrder.items.every(
+                              (i) => i.result != null && !i.result.isDraft,
+                            )
+                          }
                           canConvert={canConvert}
                           canManage={canManage}
-                          isAdmin={isAdmin}
+                          canPurgeAdmission={canPurgeAdmission}
                         />
                       </TableCell>
                     </TableRow>

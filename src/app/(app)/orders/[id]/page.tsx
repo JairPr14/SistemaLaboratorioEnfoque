@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 
 import {
@@ -9,6 +9,7 @@ import {
   PERMISSION_IMPRIMIR_TICKET_PAGO,
   PERMISSION_REGISTRAR_PAGOS,
   PERMISSION_VER_PAGOS,
+  PERMISSION_VER_ORDENES,
 } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -31,6 +32,9 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
   const { captureItem } = await searchParams;
   const session = await getServerSession(authOptions);
+  if (!session?.user || !hasPermission(session, PERMISSION_VER_ORDENES)) {
+    redirect("/dashboard");
+  }
   const canDeleteOrderItems = hasPermission(session, PERMISSION_ELIMINAR_REGISTROS);
   const canEditPreAnalytic = hasPermission(session, PERMISSION_CAPTURAR_RESULTADOS);
   const canRegisterPayment = hasPermission(session, PERMISSION_REGISTRAR_PAGOS);
@@ -48,6 +52,11 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
           labTest: {
             include: {
               section: true,
+              referredLabOptions: {
+                include: {
+                  referredLab: true,
+                },
+              },
               template: { 
                 include: { 
                   items: {
@@ -73,6 +82,20 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
   const balance = Math.max(0, Number(order.totalPrice) - paidTotal);
   const paymentStatus =
     paidTotal <= 0 ? "PENDIENTE" : paidTotal + 0.0001 < Number(order.totalPrice) ? "PARCIAL" : "PAGADO";
+
+  const isFromAdmission = !!order.admissionRequestId;
+  const conventionTotal = isFromAdmission
+    ? order.items.reduce(
+        (sum, i) =>
+          sum +
+          Number(
+            "priceConventionSnapshot" in i && i.priceConventionSnapshot != null
+              ? i.priceConventionSnapshot
+              : i.priceSnapshot,
+          ),
+        0,
+      )
+    : null;
 
   return (
     <div className="space-y-6">
@@ -145,11 +168,29 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
               </p>
             </div>
             <div>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Total</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                {isFromAdmission ? "Total orden (público)" : "Total"}
+              </p>
               <p className="text-base font-semibold text-slate-900 dark:text-slate-100">
                 {formatCurrency(Number(order.totalPrice))}
               </p>
+              {isFromAdmission && (
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                  Lo que cobró admisión al paciente
+                </p>
+              )}
             </div>
+            {isFromAdmission && conventionTotal != null && (
+              <div>
+                <p className="text-sm text-slate-500 dark:text-slate-400">A cobrar a admisión (convenio)</p>
+                <p className="text-base font-semibold text-emerald-600 dark:text-emerald-400">
+                  {formatCurrency(conventionTotal)}
+                </p>
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                  Lo que el laboratorio cobra a admisión
+                </p>
+              </div>
+            )}
             <div>
               <p className="text-sm text-slate-500 dark:text-slate-400">Sede de atención</p>
               <p className="text-base font-semibold text-slate-900 dark:text-slate-100">
@@ -189,6 +230,7 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
         orderId={order.id}
         orderCode={order.orderCode}
         orderTotal={Number(order.totalPrice)}
+        conventionTotal={conventionTotal}
         canRegisterPayment={canRegisterPayment}
         canPrintTicket={canPrintTicket}
       />

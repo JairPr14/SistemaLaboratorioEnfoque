@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useMemo, useEffect, Fragment } from "react";
+import { useState, useMemo, Fragment } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency } from "@/lib/format";
 import { parseSelectOptions } from "@/lib/json-helpers";
 import { getTemplateItemsForPatient } from "@/lib/template-helpers";
 import { Badge } from "@/components/ui/badge";
@@ -21,11 +22,13 @@ import { OrderItemResultDialog } from "@/components/orders/OrderItemResultDialog
 import { AddAnalysisToOrderDialog } from "@/components/orders/AddAnalysisToOrderDialog";
 import { DeleteButton } from "@/components/common/DeleteButton";
 import { Plus } from "lucide-react";
+import { toast } from "sonner";
 
 type OrderItem = {
   id: string;
   status: string;
   priceSnapshot: number | { toString(): string };
+  referredLabId?: string | null;
   templateSnapshot: unknown;
   promotionId?: string | null;
   promotionName?: string | null;
@@ -34,6 +37,13 @@ type OrderItem = {
     code: string;
     name: string;
     section: string | { code: string; name?: string } | null;
+    referredLabOptions?: Array<{
+      referredLabId: string;
+      isDefault: boolean;
+      referredLab: { id: string; name: string };
+      priceToAdmission: number | null;
+      externalLabCost: number | null;
+    }>;
     template: {
       items: Array<{
         id: string;
@@ -86,8 +96,10 @@ type Props = {
 };
 
 export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteItems = true }: Props) {
-  const [openItemId, setOpenItemId] = useState<string | null>(null);
+  const router = useRouter();
+  const [openItemId, setOpenItemId] = useState<string | null>(defaultOpenItemId ?? null);
   const [addAnalysisOpen, setAddAnalysisOpen] = useState(false);
+  const [selectedReferredByItemId, setSelectedReferredByItemId] = useState<Record<string, string>>({});
 
   const existingLabTestIds = useMemo(
     () => order.items.map((i) => i.labTest.id),
@@ -109,11 +121,6 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteIt
     });
     return groups;
   }, [order.items]);
-
-  useEffect(() => {
-    if (defaultOpenItemId) setOpenItemId(defaultOpenItemId);
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- intencional: sincronizar con prop al montar/cambiar
-  }, [defaultOpenItemId]);
 
   const printableItemIds = useMemo(
     () =>
@@ -268,6 +275,7 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteIt
               )}
               <TableHead>Análisis</TableHead>
               <TableHead>Sección</TableHead>
+              <TableHead>Lab. referido</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead>Resultados</TableHead>
               <TableHead>Precio</TableHead>
@@ -442,6 +450,45 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteIt
               const finalTemplateItems =
                 templateItems.length > 0 ? templateItems : originalTemplateItems;
 
+              const referredOptions = item.labTest.referredLabOptions ?? [];
+
+              const handleReferredLabChange = async (newLabId: string) => {
+                setSelectedReferredByItemId((prev) => ({ ...prev, [item.id]: newLabId }));
+                try {
+                  const res = await fetch(
+                    `/api/orders/${order.id}/items/${item.id}/referred-lab`,
+                    {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ referredLabId: newLabId || null }),
+                    },
+                  );
+                  const data = await res.json().catch(() => ({}));
+                  if (!res.ok) {
+                    toast.error(
+                      data.error || "No se pudo actualizar el laboratorio referido.",
+                    );
+                    // restaurar valor previo al fallar
+                    const prevFallback =
+                      item.referredLabId ??
+                      referredOptions.find((o) => o.isDefault)?.referredLabId ??
+                      referredOptions[0]?.referredLabId ??
+                      "";
+                    setSelectedReferredByItemId((prev) => ({ ...prev, [item.id]: prevFallback }));
+                    return;
+                  }
+                  router.refresh();
+                } catch {
+                  toast.error("Error de conexión al actualizar el laboratorio referido.");
+                  const prevFallback =
+                    item.referredLabId ??
+                    referredOptions.find((o) => o.isDefault)?.referredLabId ??
+                    referredOptions[0]?.referredLabId ??
+                    "";
+                  setSelectedReferredByItemId((prev) => ({ ...prev, [item.id]: prevFallback }));
+                }
+              };
+
               return (
                 <TableRow key={item.id} className={group.promotionKey != null ? "bg-amber-50/30" : undefined}>
                   {printableItemIds.length > 0 && (
@@ -467,6 +514,32 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteIt
                         ? (item.labTest.section.name ?? item.labTest.section.code)
                         : (item.labTest.section ?? "")}
                     </span>
+                  </TableCell>
+                  <TableCell>
+                    {referredOptions.length === 0 ? (
+                      <span className="text-xs text-slate-400">—</span>
+                    ) : referredOptions.length === 1 ? (
+                      <span className="text-xs text-slate-600">
+                        {referredOptions[0].referredLab.name}
+                      </span>
+                    ) : (
+                      <select
+                        className="h-8 w-full rounded-md border border-slate-200 bg-white px-2 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                        value={
+                          selectedReferredByItemId[item.id] ??
+                          item.referredLabId ??
+                          referredOptions.find((o) => o.isDefault)?.referredLabId ??
+                          referredOptions[0].referredLabId
+                        }
+                        onChange={(e) => void handleReferredLabChange(e.target.value)}
+                      >
+                        {referredOptions.map((opt) => (
+                          <option key={opt.referredLabId} value={opt.referredLabId}>
+                            {opt.referredLab.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Badge variant="secondary">{item.status}</Badge>

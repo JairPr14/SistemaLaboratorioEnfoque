@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useForm, useFieldArray, useWatch, type Resolver } from "react-hook-form";
@@ -125,6 +125,14 @@ export function ResultForm({
     debounceMs: 1000,
     enabled: fields.length > 0,
   });
+
+  const prevAutosaveStatus = useRef<string>(status);
+  useEffect(() => {
+    if (prevAutosaveStatus.current !== "saved" && status === "saved") {
+      router.refresh();
+    }
+    prevAutosaveStatus.current = status;
+  }, [status, router]);
 
   // Rellenar "Reportado por" con el usuario en sesión cuando no hay valor previo
   useEffect(() => {

@@ -6,6 +6,8 @@ import { getServerSession } from "next-auth";
 import { authOptions, hasPermission, PERMISSION_GESTIONAR_CATALOGO } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 
+type PrismaErrorWithCode = { code?: string };
+
 export async function GET(request: Request) {
   // GET puede ser público para ver catálogo de análisis
   try {
@@ -53,20 +55,64 @@ export async function POST(request: Request) {
     const payload = await request.json();
     const parsed = labTestSchema.parse(payload);
 
-    const item = await prisma.labTest.create({
-      data: {
-        code: parsed.code,
-        name: parsed.name,
-        sectionId: parsed.sectionId,
-        price: parsed.price,
-        estimatedTimeMinutes: parsed.estimatedTimeMinutes ?? null,
-        isActive: parsed.isActive ?? true,
-        isReferred: parsed.isReferred ?? false,
-        referredLabId: parsed.referredLabId ?? null,
-        priceToAdmission: parsed.priceToAdmission ?? null,
-        externalLabCost: parsed.externalLabCost ?? null,
-      },
-      include: { section: true, referredLab: true },
+    const item = await prisma.$transaction(async (tx) => {
+      const test = await tx.labTest.create({
+        data: {
+          code: parsed.code,
+          name: parsed.name,
+          sectionId: parsed.sectionId,
+          price: parsed.price,
+          estimatedTimeMinutes: parsed.estimatedTimeMinutes ?? null,
+          isActive: parsed.isActive ?? true,
+          isReferred: parsed.isReferred ?? false,
+          // Legacy: mantener un solo lab por test si se envía
+          referredLabId: parsed.referredLabId ?? null,
+          priceToAdmission: parsed.priceToAdmission ?? null,
+          externalLabCost: parsed.externalLabCost ?? null,
+        },
+      });
+
+      // Crear opciones de labs referidos si se enviaron
+      const options = (parsed.referredLabOptions ?? []).filter(
+        (opt) => opt.referredLabId,
+      );
+      if (options.length > 0) {
+        const anyDefault = options.some((o) => o.isDefault);
+        await tx.labTestReferredLab.createMany({
+          data: options.map((opt, idx) => ({
+            labTestId: test.id,
+            referredLabId: opt.referredLabId!,
+            priceToAdmission:
+              opt.priceToAdmission ??
+              parsed.priceToAdmission ??
+              parsed.price ??
+              0,
+            externalLabCost: opt.externalLabCost ?? null,
+            isDefault: anyDefault ? !!opt.isDefault : idx === 0,
+          })),
+        });
+        // Alinear el campo legacy con la opción por defecto
+        const defaultOpt =
+          options.find((o) => o.isDefault) ?? options[0];
+        await tx.labTest.update({
+          where: { id: test.id },
+          data: {
+            referredLabId: defaultOpt.referredLabId!,
+            priceToAdmission:
+              defaultOpt.priceToAdmission ??
+              parsed.priceToAdmission ??
+              parsed.price ??
+              0,
+            externalLabCost: defaultOpt.externalLabCost ?? null,
+            isReferred: true,
+          },
+        });
+      }
+
+      return tx.labTest.findUniqueOrThrow({
+        where: { id: test.id },
+        include: { section: true, referredLab: true },
+      });
     });
 
     return NextResponse.json({ item });
@@ -79,12 +125,8 @@ export async function POST(request: Request) {
       );
     }
     // Prisma: clave única (por ejemplo, código de análisis duplicado)
-    if (
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      (error as any).code === "P2002"
-    ) {
+    const prismaErr = error as PrismaErrorWithCode | null;
+    if (prismaErr?.code === "P2002") {
       return NextResponse.json(
         { error: "Ya existe un análisis con ese código." },
         { status: 409 },

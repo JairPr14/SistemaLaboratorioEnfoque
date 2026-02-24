@@ -7,6 +7,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 
+type PrismaErrorWithCode = { code?: string };
+
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
@@ -86,12 +88,8 @@ export async function POST(request: Request) {
       );
     }
     // Prisma: clave única (por ejemplo, DNI duplicado)
-    if (
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      (error as any).code === "P2002"
-    ) {
+    const prismaErr = error as PrismaErrorWithCode | null;
+    if (prismaErr?.code === "P2002") {
       return NextResponse.json(
         { error: "Ya existe un paciente registrado con ese DNI." },
         { status: 409 },

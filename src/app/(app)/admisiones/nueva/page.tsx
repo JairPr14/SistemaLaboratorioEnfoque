@@ -50,8 +50,8 @@ export default async function NuevaAdmisionPage() {
   return (
     <div className={pageLayoutClasses.wrapper}>
       <PageHeader
-        title="Nueva pre-orden de admisión"
-        description="Registra datos del paciente y análisis solicitados para enviar a laboratorio"
+        title="Nueva orden de admisión"
+        description="Registra datos del paciente (existente o nuevo) y análisis solicitados. Se crea la orden en laboratorio automáticamente."
       />
       <div className="rounded-2xl border border-slate-200/80 bg-white/80 shadow-sm backdrop-blur-sm dark:border-slate-700/80 dark:bg-slate-900/60">
         <AdmissionForm

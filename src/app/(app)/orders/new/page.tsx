@@ -1,3 +1,6 @@
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { authOptions, hasPermission, PERMISSION_VER_ORDENES, PERMISSION_GESTIONAR_ADMISION } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { OrderForm } from "@/components/forms/OrderForm";
 import { PageHeader, pageLayoutClasses } from "@/components/layout/PageHeader";
@@ -5,6 +8,13 @@ import { PageHeader, pageLayoutClasses } from "@/components/layout/PageHeader";
 type Props = { searchParams: Promise<{ patientId?: string }> };
 
 export default async function NewOrderPage({ searchParams }: Props) {
+  const session = await getServerSession(authOptions);
+  const canCreate =
+    session?.user &&
+    (hasPermission(session, PERMISSION_VER_ORDENES) || hasPermission(session, PERMISSION_GESTIONAR_ADMISION));
+  if (!canCreate) {
+    redirect("/dashboard");
+  }
   const { patientId: defaultPatientId } = await searchParams;
   const [patients, recentPatients, tests, profilesData] = await Promise.all([
     prisma.patient.findMany({

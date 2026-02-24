@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { getOrderAlerts, type OrderAlert, type OrderForAlerts } from "@/features/lab/order-alerts";
 
@@ -33,8 +33,7 @@ function AlertBadge({ alert }: { alert: OrderAlert }) {
 type Props = { order: OrderForAlerts };
 
 export function OrderAlertsCell({ order }: Props) {
-  const [clientNow, setClientNow] = useState<Date | null>(null);
-  useEffect(() => setClientNow(new Date()), []);
+  const [clientNow] = useState<Date>(() => new Date());
 
   const alerts = getOrderAlerts(order, clientNow);
   const maxVisible = 3;

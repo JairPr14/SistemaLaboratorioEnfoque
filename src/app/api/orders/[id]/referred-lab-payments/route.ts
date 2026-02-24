@@ -21,6 +21,9 @@ export async function GET(_request: Request, { params }: Params) {
     include: {
       items: {
         include: {
+          referredLab: {
+            select: { id: true, name: true },
+          },
           labTest: {
             select: {
               id: true,
@@ -52,17 +55,22 @@ export async function GET(_request: Request, { params }: Params) {
   const costByLab = new Map<string, { labId: string; labName: string; cost: number }>();
   for (const item of order.items) {
     const lt = item.labTest;
-    if (!lt.isReferred || !lt.referredLabId || !lt.externalLabCost) continue;
-    const lab = lt.referredLab;
+    if (!lt.isReferred) continue;
+    const labId = item.referredLabId ?? lt.referredLabId;
+    const lab =
+      item.referredLab ??
+      lt.referredLab;
+    const externalCost = item.externalLabCostSnapshot ?? lt.externalLabCost;
+    if (!labId || !lab || !externalCost) continue;
     if (!lab) continue;
-    const existing = costByLab.get(lab.id);
+    const existing = costByLab.get(labId);
     if (existing) {
-      existing.cost += Number(lt.externalLabCost);
+      existing.cost += Number(externalCost);
     } else {
-      costByLab.set(lab.id, {
-        labId: lab.id,
+      costByLab.set(labId, {
+        labId,
         labName: lab.name,
-        cost: Number(lt.externalLabCost),
+        cost: Number(externalCost),
       });
     }
   }
@@ -125,6 +133,9 @@ export async function POST(request: Request, { params }: Params) {
       include: {
         items: {
           include: {
+            referredLab: {
+              select: { id: true, name: true },
+            },
             labTest: {
               select: {
                 isReferred: true,
@@ -142,13 +153,18 @@ export async function POST(request: Request, { params }: Params) {
     }
 
     const costForLab = order.items
-      .filter(
-        (i) =>
-          i.labTest.isReferred &&
-          i.labTest.referredLabId === parsed.referredLabId &&
-          i.labTest.externalLabCost,
-      )
-      .reduce((s, i) => s + Number(i.labTest.externalLabCost!), 0);
+      .filter((i) => {
+        if (!i.labTest.isReferred) return false;
+        const effectiveLabId = i.referredLabId ?? i.labTest.referredLabId;
+        const effectiveCost = i.externalLabCostSnapshot ?? i.labTest.externalLabCost;
+        return effectiveLabId === parsed.referredLabId && !!effectiveCost;
+      })
+      .reduce(
+        (s, i) =>
+          s +
+          Number(i.externalLabCostSnapshot ?? i.labTest.externalLabCost ?? 0),
+        0,
+      );
 
     if (costForLab <= 0) {
       return NextResponse.json(

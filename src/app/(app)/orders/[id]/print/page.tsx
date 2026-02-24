@@ -9,7 +9,7 @@ import { PrintFitToPage } from "@/components/orders/PrintFitToPage";
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ items?: string }>;
+  searchParams: Promise<{ items?: string; referredLabId?: string }>;
 };
 
 function calculateAge(birthDate: Date): number {
@@ -85,14 +85,13 @@ function PatientDataBlock({
 
 function ReferredHeaderBlock({ referredLab }: { referredLab: { name: string; logoUrl: string | null } }) {
   return (
-    <div className="flex items-center justify-center gap-2 flex-1">
-      <span className="text-xs font-medium text-slate-600">Con el respaldo de</span>
+    <div className="flex items-center justify-center gap-2 flex-1 -mt-[50px]	 ml-[65px]">
       {referredLab.logoUrl ? (
         /* eslint-disable-next-line @next/next/no-img-element */
         <img
           src={referredLab.logoUrl}
           alt={referredLab.name}
-          className="h-10 w-auto object-contain max-w-[100px]"
+          className="h-16 w-auto object-contain max-w-[220px]"
         />
       ) : (
         <span className="text-sm font-semibold text-slate-700">{referredLab.name}</span>
@@ -117,41 +116,34 @@ function FooterBlock({
   return (
     <div className="mt-10 pt-6 border-t-2 border-slate-300 flex flex-wrap items-end justify-between gap-6">
       <div className="text-xs text-slate-500">
-        {items[0]?.result?.reportedBy && (
-          <p>Reportado por: {items[0].result.reportedBy}</p>
-        )}
-        {order.deliveredAt && (
-          <p className="mt-1">Fecha de entrega: {formatDate(order.deliveredAt)}</p>
-        )}
+        
       </div>
       <div className="flex flex-row items-end justify-end gap-8">
         {referredLabStampUrl && (
           <div className="text-center flex flex-col items-center gap-2">
-            <div className="w-40 h-14 flex items-center justify-center shrink-0">
+            <div className="w-40 min-h-[3rem] flex flex-col items-center justify-end border-b-2 border-slate-400 pb-0.5">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={referredLabStampUrl}
                 alt="Sello laboratorio referido"
-                className="max-h-full max-w-full w-auto h-auto object-contain opacity-90"
+                className="max-h-14 max-w-full w-auto object-contain opacity-90"
               />
             </div>
-            <div className="w-40 h-14 border-b-2 border-slate-400 mb-1" />
             <p className="text-xs font-semibold text-slate-700">Firma</p>
             <p className="text-xs text-slate-500">Responsable laboratorio referido</p>
           </div>
         )}
         <div className="text-center flex flex-col items-center gap-2">
-          <div className="w-56 h-16 flex items-center justify-center shrink-0">
+          <div className="w-56 min-h-[3rem] flex flex-col items-center justify-end border-b-2 border-slate-400 pb-0.5">
             {showStamp && stampImageUrl && (
               /* eslint-disable-next-line @next/next/no-img-element */
               <img
                 src={stampImageUrl}
                 alt=""
-                className="print-stamp max-h-full max-w-full w-auto h-auto object-contain opacity-90"
+                className="print-stamp max-h-14 max-w-full w-auto object-contain opacity-90"
               />
             )}
           </div>
-          <div className="w-56 h-16 border-b-2 border-slate-400 mb-1" />
           <p className="text-xs font-semibold text-slate-700">
             T.M / Responsable técnico
           </p>
@@ -164,7 +156,7 @@ function FooterBlock({
 
 export default async function OrderPrintPage({ params, searchParams }: Props) {
   const { id } = await params;
-  const { items: itemsParam } = await searchParams;
+  const { items: itemsParam, referredLabId } = await searchParams;
   const selectedItemIds = itemsParam
     ? new Set(itemsParam.split(",").map((s) => s.trim()).filter(Boolean))
     : null;
@@ -209,6 +201,29 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
       ? order.items.filter((item) => selectedItemIds.has(item.id))
       : order.items;
 
+  // Laboratorios referidos presentes en los análisis seleccionados
+  const referredLabsMap = new Map<
+    string,
+    { id: string; name: string; logoUrl: string | null; stampImageUrl: string | null }
+  >();
+  for (const item of itemsToPrint) {
+    if (item.labTest.isReferred && item.labTest.referredLab) {
+      const lab = item.labTest.referredLab;
+      referredLabsMap.set(lab.id, {
+        id: lab.id,
+        name: lab.name,
+        logoUrl: lab.logoUrl ?? null,
+        stampImageUrl: lab.stampImageUrl ?? null,
+      });
+    }
+  }
+  const referredLabs = Array.from(referredLabsMap.values());
+  const requestedReferredLabId = referredLabId?.trim() || "";
+  const selectedReferredLab =
+    (requestedReferredLabId
+      ? referredLabs.find((lab) => lab.id === requestedReferredLabId)
+      : referredLabs[0]) ?? null;
+
   // Agrupar items por sección
   const itemsBySection = itemsToPrint.reduce(
     (acc, item) => {
@@ -245,6 +260,34 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
         analysisCodes={analysisCodes || order.orderCode}
         date={dateStr}
       />
+      {referredLabs.length > 1 && (
+        <div className="mx-auto mb-3 flex w-[210mm] justify-end px-4 text-xs text-slate-600 print:hidden">
+          <form method="GET" className="flex items-center gap-2">
+            {itemsParam && <input type="hidden" name="items" value={itemsParam} />}
+            <label htmlFor="referredLabId" className="text-xs">
+              Lab. referido:
+            </label>
+            <select
+              id="referredLabId"
+              name="referredLabId"
+              defaultValue={selectedReferredLab?.id ?? ""}
+              className="h-7 rounded-md border border-slate-300 bg-white px-2 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            >
+              {referredLabs.map((lab) => (
+                <option key={lab.id} value={lab.id}>
+                  {lab.name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              className="inline-flex h-7 items-center rounded-md bg-slate-900 px-2 text-[11px] font-medium text-white hover:bg-slate-800 dark:bg-teal-600 dark:hover:bg-teal-700"
+            >
+              Aplicar
+            </button>
+          </form>
+        </div>
+      )}
       <PrintFitToPage />
       {hasSections ? sectionsEntries.map(([section, items], index) => (
         <div
@@ -269,22 +312,16 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
               className="print-a4-content relative px-12"
               style={{ paddingTop: "29.7mm", paddingBottom: "29.7mm" }}
             >
-              {/* Encabezado: logos a los lados, "Con el respaldo de" en el centro cuando hay análisis referidos */}
-              {(() => {
-                const firstReferred = items.find((i) => i.labTest.isReferred && i.labTest.referredLab);
-                const referredLab = firstReferred?.labTest.referredLab;
-                return (
-                  <header className="flex items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-300 min-h-[3.5rem]">
-                    <div className="min-w-0 flex-1" aria-hidden />
-                    {referredLab ? (
-                      <ReferredHeaderBlock referredLab={referredLab} />
-                    ) : (
-                      <div className="min-w-0 flex-1" aria-hidden />
-                    )}
-                    <div className="min-w-0 flex-1" aria-hidden />
-                  </header>
-                );
-              })()}
+              {/* Encabezado: logo del laboratorio referido (si aplica) centrado */}
+              <header className="flex items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-300 min-h-[3.5rem]">
+                <div className="min-w-0 flex-1" aria-hidden />
+                {selectedReferredLab ? (
+                  <ReferredHeaderBlock referredLab={selectedReferredLab} />
+                ) : (
+                  <div className="min-w-0 flex-1" aria-hidden />
+                )}
+                <div className="min-w-0 flex-1" aria-hidden />
+              </header>
 
               <PatientDataBlock
                 order={order}
@@ -451,10 +488,7 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                 order={order}
                 showStamp={!!(showStamp && printConfig.stampImageUrl)}
                 stampImageUrl={printConfig.stampImageUrl}
-                referredLabStampUrl={(() => {
-                  const firstReferred = items.find((i) => i.labTest.isReferred && i.labTest.referredLab);
-                  return firstReferred?.labTest.referredLab?.stampImageUrl ?? null;
-                })()}
+                referredLabStampUrl={selectedReferredLab?.stampImageUrl ?? null}
               />
 
               <div className="mt-6 pt-3 text-center text-xs min-h-[1.5rem]" aria-hidden />

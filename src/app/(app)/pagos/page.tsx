@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { getServerSession } from "next-auth";
 
 import { redirect } from "next/navigation";
-import { authOptions, hasPermission, PERMISSION_IMPRIMIR_TICKET_PAGO, PERMISSION_REGISTRAR_PAGOS, PERMISSION_VER_PAGOS } from "@/lib/auth";
+import { authOptions, hasPermission, PERMISSION_IMPRIMIR_TICKET_PAGO, PERMISSION_REGISTRAR_PAGOS, PERMISSION_VER_PAGOS, PERMISSION_VER_ADMISION } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getPaidTotalsByOrderIds } from "@/lib/payments";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { RegistrarpagoButton } from "@/components/pagos/RegistrarpagoButton";
 import { PagosTabs } from "@/components/pagos/PagosTabs";
-import { Search, CalendarDays, Filter, X, Eye, Printer, Receipt, Building2, DollarSign, FileText, CreditCard } from "lucide-react";
+import { Search, CalendarDays, Filter, X, Eye, Printer, Receipt, Building2, DollarSign, FileText, CreditCard, UserPlus, FlaskConical, Wallet } from "lucide-react";
 
 /** Parsea "YYYY-MM-DD" en hora local y devuelve inicio (00:00:00) o fin (23:59:59.999) del día */
 function parseLocalDate(dateStr: string, endOfDay: boolean): Date {
@@ -39,6 +39,7 @@ export default async function PagosPage({
     search?: string;
     from?: string;
     to?: string;
+    cajaDate?: string;
   }>;
 }) {
   const params = await searchParams;
@@ -48,14 +49,57 @@ export default async function PagosPage({
   const search = params.search?.trim();
   const from = params.from?.trim();
   const to = params.to?.trim();
+   const cajaDateParam = params.cajaDate?.trim();
   const session = await getServerSession(authOptions);
   const canAccessPagos = hasPermission(session, PERMISSION_VER_PAGOS) || hasPermission(session, PERMISSION_REGISTRAR_PAGOS);
   if (!canAccessPagos) redirect("/dashboard");
   const canRegisterPayment = hasPermission(session, PERMISSION_REGISTRAR_PAGOS);
   const canPrintTicket = hasPermission(session, PERMISSION_IMPRIMIR_TICKET_PAGO) || canAccessPagos;
+  const canViewAdmision = hasPermission(session, PERMISSION_VER_ADMISION);
 
   const dateFrom = from ? parseLocalDate(from, false) : null;
   const dateTo = to ? parseLocalDate(to, true) : null;
+
+  // Rango para caja (por día). Si no se selecciona fecha, usa hoy.
+  let cajaStart: Date;
+  let cajaEnd: Date;
+  if (cajaDateParam) {
+    cajaStart = parseLocalDate(cajaDateParam, false);
+    cajaEnd = parseLocalDate(cajaDateParam, true);
+  } else {
+    cajaStart = new Date();
+    cajaStart.setHours(0, 0, 0, 0);
+    cajaEnd = new Date();
+    cajaEnd.setHours(23, 59, 59, 999);
+  }
+
+  const [cajaIngresos, cajaEgresos, cajaIngresosByMethod] = await Promise.all([
+    prisma.payment.aggregate({
+      where: { paidAt: { gte: cajaStart, lte: cajaEnd } },
+      _sum: { amount: true },
+      _count: { id: true },
+    }),
+    prisma.referredLabPayment.aggregate({
+      where: { paidAt: { gte: cajaStart, lte: cajaEnd } },
+      _sum: { amount: true },
+      _count: { id: true },
+    }),
+    prisma.payment.groupBy({
+      by: ["method"],
+      where: { paidAt: { gte: cajaStart, lte: cajaEnd } },
+      _sum: { amount: true },
+    }),
+  ]);
+
+  const cajaIngresosHoy = Number(cajaIngresos._sum.amount ?? 0);
+  const cajaEgresosHoy = Number(cajaEgresos._sum.amount ?? 0);
+  const cajaTotalHoy = cajaIngresosHoy - cajaEgresosHoy;
+  const methodLabels: Record<string, string> = {
+    EFECTIVO: "Efectivo",
+    TARJETA: "Tarjeta",
+    TRANSFERENCIA: "Transferencia",
+    CREDITO: "Crédito",
+  };
 
   const orders = await prisma.labOrder.findMany({
     where: {
@@ -88,17 +132,93 @@ export default async function PagosPage({
     include: {
       patient: true,
       branch: true,
-      items: { include: { labTest: { select: { code: true, name: true } } } },
+      items: {
+        include: {
+          labTest: {
+            select: {
+              code: true,
+              name: true,
+              isReferred: true,
+              externalLabCost: true,
+            },
+          },
+        },
+      },
     },
     orderBy: { createdAt: "desc" },
   });
 
   const orderIds = orders.map((o) => o.id);
-  const paidByOrder = await getPaidTotalsByOrderIds(prisma, orderIds);
+  const [paidByOrder, admissionPendingOrders, referredLabPayments] = await Promise.all([
+    getPaidTotalsByOrderIds(prisma, orderIds),
+    canViewAdmision
+      ? prisma.labOrder.findMany({
+          where: {
+            admissionRequestId: { not: null },
+            admissionSettledAt: null,
+            status: { not: "ANULADO" },
+            ...(dateFrom ?? dateTo
+              ? {
+                  createdAt: {
+                    ...(dateFrom ? { gte: dateFrom } : {}),
+                    ...(dateTo ? { lte: dateTo } : {}),
+                  },
+                }
+              : {}),
+          },
+          select: {
+            id: true,
+            items: {
+              select: {
+                priceConventionSnapshot: true,
+                priceSnapshot: true,
+              },
+            },
+          },
+        })
+      : [],
+    prisma.referredLabPayment.findMany({
+      where: { orderId: { in: orderIds } },
+      select: { orderId: true, amount: true },
+    }),
+  ]);
+
+  const admissionPendingTotal = admissionPendingOrders.reduce((s, order) => {
+    const orderTotal = order.items.reduce(
+      (sum, i) => sum + Number("priceConventionSnapshot" in i && i.priceConventionSnapshot != null ? i.priceConventionSnapshot : i.priceSnapshot),
+      0,
+    );
+    return s + orderTotal;
+  }, 0);
+  const admissionPendingCount = admissionPendingOrders.length;
+
+  let totalExternalCost = 0;
+  const paidToLabs = referredLabPayments.reduce((s, p) => s + Number(p.amount), 0);
+  orders.forEach((o) => {
+    o.items.forEach((i) => {
+      if (i.labTest.isReferred && i.labTest.externalLabCost) totalExternalCost += Number(i.labTest.externalLabCost);
+    });
+  });
+  const referredBalance = Math.max(0, totalExternalCost - paidToLabs);
+
+  const conventionTotalForOrder = (order: (typeof orders)[0]) => {
+    if (!order.admissionRequestId) return null;
+    return order.items.reduce(
+      (sum, i) =>
+        sum +
+        Number(
+          "priceConventionSnapshot" in i && i.priceConventionSnapshot != null
+            ? i.priceConventionSnapshot
+            : i.priceSnapshot,
+        ),
+      0,
+    );
+  };
 
   const ordersWithPayment = orders.map((order) => {
     const paid = paidByOrder.get(order.id) ?? 0;
-    const total = Number(order.totalPrice);
+    const conventionTotal = conventionTotalForOrder(order);
+    const total = conventionTotal != null ? conventionTotal : Number(order.totalPrice);
     const paymentStatus =
       paid <= 0 ? "PENDIENTE" : paid + 0.0001 < total ? "PARCIAL" : "PAGADO";
     return {
@@ -145,8 +265,79 @@ export default async function PagosPage({
         {canRegisterPayment && <RegistrarpagoButton />}
       </div>
 
+      {/* Caja del día */}
+      <Card className="border-2 border-slate-300 dark:border-slate-600 bg-gradient-to-br from-slate-50 to-white dark:from-slate-900/50 dark:to-slate-800/50">
+        <CardHeader className="pb-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-200 dark:bg-slate-700">
+              <Wallet className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">Caja del día</CardTitle>
+              <p className="text-sm font-normal text-slate-500 dark:text-slate-400">
+                {formatDate(cajaStart)} — Ingresos y egresos del día seleccionado
+              </p>
+            </div>
+            </div>
+            <form method="GET" className="flex items-center gap-2 text-xs">
+              <label htmlFor="cajaDate" className="text-slate-600 dark:text-slate-300">
+                Día de caja:
+              </label>
+              <input
+                id="cajaDate"
+                type="date"
+                name="cajaDate"
+                defaultValue={cajaStart.toISOString().slice(0, 10)}
+                className="h-8 rounded-md border border-slate-300 bg-white px-2 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              />
+              <button
+                type="submit"
+                className="inline-flex h-8 items-center rounded-md bg-slate-900 px-2 text-[11px] font-medium text-white hover:bg-slate-800 dark:bg-teal-600 dark:hover:bg-teal-700"
+              >
+                Ver
+              </button>
+            </form>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50/80 p-4 dark:border-emerald-800 dark:bg-emerald-900/20">
+              <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Ingresos (cobros a pacientes)</p>
+              <p className="mt-1 text-2xl font-bold text-emerald-700 dark:text-emerald-300">{formatCurrency(cajaIngresosHoy)}</p>
+              <p className="mt-0.5 text-xs text-slate-500">{cajaIngresos._count.id} movimiento(s)</p>
+            </div>
+            <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-800 dark:bg-amber-900/20">
+              <p className="text-xs font-medium text-amber-700 dark:text-amber-400">Egresos (pagos a lab. referidos)</p>
+              <p className="mt-1 text-2xl font-bold text-amber-700 dark:text-amber-300">{formatCurrency(cajaEgresosHoy)}</p>
+              <p className="mt-0.5 text-xs text-slate-500">{cajaEgresos._count.id} pago(s)</p>
+            </div>
+            <div className="rounded-lg border-2 border-slate-400 bg-slate-100 p-4 dark:border-slate-500 dark:bg-slate-800/50">
+              <p className="text-xs font-medium text-slate-700 dark:text-slate-300">Total caja hoy</p>
+              <p className={`mt-1 text-2xl font-bold ${cajaTotalHoy >= 0 ? "text-slate-900 dark:text-slate-100" : "text-red-600 dark:text-red-400"}`}>
+                {formatCurrency(cajaTotalHoy)}
+              </p>
+              <p className="mt-0.5 text-xs text-slate-500">Ingresos − Egresos</p>
+            </div>
+          </div>
+          {cajaIngresosByMethod.length > 0 && (
+            <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-3 dark:border-slate-700 dark:bg-slate-800/30">
+              <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">Ingresos por método de pago</p>
+              <div className="flex flex-wrap gap-3">
+                {cajaIngresosByMethod.map((row) => (
+                  <span key={row.method} className="inline-flex items-center gap-1.5 rounded-md bg-white px-2.5 py-1.5 text-sm font-medium shadow-sm dark:bg-slate-700">
+                    <CreditCard className="h-3.5 w-3.5 text-slate-500" />
+                    {methodLabels[row.method] ?? row.method}: {formatCurrency(Number(row._sum.amount ?? 0))}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Cards de resumen */}
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <div className="rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-amber-100/50 p-4 dark:border-amber-800/50 dark:from-amber-900/20 dark:to-amber-800/10">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/50">
@@ -180,6 +371,39 @@ export default async function PagosPage({
             </div>
           </div>
         </div>
+        {canViewAdmision && admissionPendingCount > 0 && (
+          <Link
+            href="/cobro-admision"
+            className="rounded-xl border border-violet-200 bg-gradient-to-br from-violet-50 to-violet-100/50 p-4 transition-colors hover:shadow-md dark:border-violet-800/50 dark:from-violet-900/20 dark:to-violet-800/10"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-900/50">
+                <UserPlus className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-violet-600/70 dark:text-violet-400/70">Cobro admisión ({admissionPendingCount})</p>
+                <p className="text-lg font-bold text-violet-700 dark:text-violet-300">{formatCurrency(admissionPendingTotal)}</p>
+                <p className="text-[10px] text-violet-600/80 dark:text-violet-400/80">Ver pendientes →</p>
+              </div>
+            </div>
+          </Link>
+        )}
+        {totalExternalCost > 0 && (
+          <div className="rounded-xl border border-amber-200/80 bg-gradient-to-br from-amber-50/80 to-amber-100/30 p-4 dark:border-amber-800/50 dark:from-amber-900/10 dark:to-amber-800/5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/50">
+                <FlaskConical className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-amber-600/70 dark:text-amber-400/70">Lab. referidos</p>
+                <p className="text-sm font-bold text-amber-700 dark:text-amber-300">{formatCurrency(totalExternalCost)}</p>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                  Pagado: {formatCurrency(paidToLabs)} • Pend.: {formatCurrency(referredBalance)}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Filtros mejorados */}
@@ -275,13 +499,14 @@ export default async function PagosPage({
                   <TableHead className="font-semibold text-right">Total</TableHead>
                   <TableHead className="font-semibold text-right">Cobrado</TableHead>
                   <TableHead className="font-semibold text-right">Saldo</TableHead>
+                  <TableHead className="text-center font-semibold w-20">Origen</TableHead>
                   <TableHead className="text-right font-semibold">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {visibleOrders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="py-12 text-center">
+                    <TableCell colSpan={10} className="py-12 text-center">
                       <CreditCard className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
                       <p className="text-slate-500 dark:text-slate-400">No hay órdenes en esta categoría</p>
                     </TableCell>
@@ -300,9 +525,16 @@ export default async function PagosPage({
                       PARCIAL: "hover:bg-blue-50/50 dark:hover:bg-blue-950/20",
                       PAGADO: "hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20",
                     };
+                    const sinDatosCapturados = order.status === "PENDIENTE" || order.status === "EN_PROCESO";
                     const branchName = order.branch?.name ?? order.patientType ?? "Sin sede";
+                    const fromAdmission = !!order.admissionRequestId;
+                    const hasReferred = order.items.some((i) => i.labTest.isReferred && i.labTest.externalLabCost);
                     return (
-                      <TableRow key={order.id} className={`${paymentRowColors[order.paymentStatus]} transition-colors`}>
+                      <TableRow
+                        key={order.id}
+                        className={`${paymentRowColors[order.paymentStatus]} transition-colors ${sinDatosCapturados ? "bg-amber-50/80 dark:bg-amber-950/40 border-l-4 border-l-amber-400 dark:border-l-amber-500" : ""}`}
+                        title={sinDatosCapturados ? "Orden sin datos capturados aún" : undefined}
+                      >
                         <TableCell>
                           <Link
                             className="font-medium text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
@@ -340,6 +572,21 @@ export default async function PagosPage({
                           ) : (
                             <span className="text-emerald-600 dark:text-emerald-400">{formatCurrency(0)}</span>
                           )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            {fromAdmission && (
+                              <span className="inline-flex items-center rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-medium text-violet-700 dark:bg-violet-900/40 dark:text-violet-300" title="Orden de admisión">
+                                <UserPlus className="h-3 w-3" />
+                              </span>
+                            )}
+                            {hasReferred && (
+                              <span className="inline-flex items-center rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" title="Incluye análisis referido">
+                                <FlaskConical className="h-3 w-3" />
+                              </span>
+                            )}
+                            {!fromAdmission && !hasReferred && <span className="text-slate-400">—</span>}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">

@@ -28,6 +28,7 @@ import {
   PERMISSION_GESTIONAR_PREANALITICOS,
   PERMISSION_GESTIONAR_SELLO,
   PERMISSION_GESTIONAR_CATALOGO,
+  PERMISSION_GESTIONAR_LAB_REFERIDOS,
 } from "@/lib/auth";
 
 function hasPermissionClient(
@@ -104,6 +105,9 @@ export default function ConfiguracionPage() {
   const canManagePreanalytics = hasPermissionClient(session, PERMISSION_GESTIONAR_PREANALITICOS);
   const canManageStamp = hasPermissionClient(session, PERMISSION_GESTIONAR_SELLO);
   const canManageCatalog = hasPermissionClient(session, PERMISSION_GESTIONAR_CATALOGO);
+  const canManageReferredLabs =
+    hasPermissionClient(session, PERMISSION_GESTIONAR_CATALOGO) ||
+    hasPermissionClient(session, PERMISSION_GESTIONAR_LAB_REFERIDOS);
 
   const loadRoles = async () => {
     const res = await fetch("/api/roles");
@@ -500,7 +504,7 @@ export default function ConfiguracionPage() {
               </Button>
             </Link>
           )}
-          {canManageCatalog && (
+          {canManageReferredLabs && (
             <Link href="/configuracion/referred-labs">
               <Button variant="outline" size="sm">
                 <TestTube2 className="h-4 w-4 mr-2" />

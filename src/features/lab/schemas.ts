@@ -67,14 +67,8 @@ export const referredLabSchema = z.object({
   isActive: z.coerce.boolean().default(true),
 });
 
-export const labTestSchema = z.object({
-  code: z.string().min(2),
-  name: z.string().min(2),
-  sectionId: z.string().min(1),
-  price: z.coerce.number().min(0),
-  estimatedTimeMinutes: z.coerce.number().int().min(0).optional().nullable(),
-  isActive: z.coerce.boolean().default(true),
-  isReferred: z.coerce.boolean().default(false),
+const labTestReferredOptionSchema = z.object({
+  id: z.string().optional(),
   referredLabId: z.preprocess(
     (v) => (v === "" || v === null || v === undefined ? null : v),
     z.string().min(1).optional().nullable()
@@ -87,6 +81,35 @@ export const labTestSchema = z.object({
     (v) => (v === "" || v === null || v === undefined ? null : Number(v)),
     z.coerce.number().min(0).optional().nullable()
   ),
+  isDefault: z.coerce.boolean().optional().default(false),
+});
+
+export const labTestSchema = z.object({
+  code: z.string().min(2),
+  name: z.string().min(2),
+  sectionId: z.string().min(1),
+  price: z.coerce.number().min(0),
+  estimatedTimeMinutes: z.coerce.number().int().min(0).optional().nullable(),
+  isActive: z.coerce.boolean().default(true),
+  isReferred: z.coerce.boolean().default(false),
+  // Campos legacy (un solo lab referido por test). Se siguen aceptando para compatibilidad.
+  referredLabId: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? null : v),
+    z.string().min(1).optional().nullable()
+  ),
+  priceToAdmission: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? null : Number(v)),
+    z.coerce.number().min(0).optional().nullable()
+  ),
+  externalLabCost: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? null : Number(v)),
+    z.coerce.number().min(0).optional().nullable()
+  ),
+  // Nuevas opciones: múltiples labs referidos por análisis
+  referredLabOptions: z
+    .array(labTestReferredOptionSchema)
+    .optional()
+    .default([]),
 });
 
 export const templateItemRefRangeSchema = z.object({

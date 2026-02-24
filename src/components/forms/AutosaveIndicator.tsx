@@ -19,27 +19,25 @@ function formatTimeAgo(date: Date): string {
 }
 
 export function AutosaveIndicator({ status, savedAt, onRetry }: Props) {
-  const [label, setLabel] = useState("");
-
-  useEffect(() => {
-    if (status === "saving") {
-      setLabel("Guardando…");
-    } else if (status === "saved" && savedAt) {
-      setLabel(`Guardado ${formatTimeAgo(savedAt)}`);
-    } else if (status === "error") {
-      setLabel("Error");
-    } else {
-      setLabel("");
-    }
-  }, [status, savedAt]);
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     if (status !== "saved" || !savedAt) return;
     const t = setInterval(() => {
-      setLabel(`Guardado ${formatTimeAgo(savedAt)}`);
+      setTick((v) => v + 1);
     }, 2000);
     return () => clearInterval(t);
   }, [status, savedAt]);
+
+  void tick;
+  const label =
+    status === "saving"
+      ? "Guardando…"
+      : status === "saved" && savedAt
+        ? `Guardado ${formatTimeAgo(savedAt)}`
+        : status === "error"
+          ? "Error"
+          : "";
 
   if (!label) return null;
 

@@ -12,8 +12,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => {
-    if (isMobile) setSidebarOpen(false);
-    else setSidebarOpen(true);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sincroniza apertura del sidebar al cambiar breakpoint
+    setSidebarOpen(!isMobile);
   }, [isMobile]);
 
   return (

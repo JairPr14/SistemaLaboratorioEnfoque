@@ -248,7 +248,7 @@ export function QuickActions({ sectionOptions }: Props) {
             <Label htmlFor="orderCodeDelivered">Código de orden</Label>
             <Input
               id="orderCodeDelivered"
-              placeholder="Ej: ORD-2026-000123"
+              placeholder="Ej: ENF-2026-000123"
               value={orderCode}
               onChange={(e) => setOrderCode(e.target.value)}
             />

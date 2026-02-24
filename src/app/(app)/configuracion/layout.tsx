@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getServerSession, ADMIN_ROLE_CODE } from "@/lib/auth";
+import { getServerSession, hasPermission, PERMISSION_VER_CONFIGURACION, ADMIN_ROLE_CODE } from "@/lib/auth";
 
 export default async function ConfiguracionLayout({
   children,
@@ -7,7 +7,10 @@ export default async function ConfiguracionLayout({
   children: React.ReactNode;
 }) {
   const session = await getServerSession();
-  if (!session?.user || session.user.roleCode !== ADMIN_ROLE_CODE) {
+  const canAccess =
+    session?.user &&
+    (session.user.roleCode === ADMIN_ROLE_CODE || hasPermission(session, PERMISSION_VER_CONFIGURACION));
+  if (!canAccess) {
     redirect("/dashboard");
   }
   return <>{children}</>;

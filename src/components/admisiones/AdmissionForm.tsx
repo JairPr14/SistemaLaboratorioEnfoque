@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { calculateAge } from "@/lib/template-helpers";
+import { toDateTimeLocal } from "@/lib/format";
 import {
   Search,
   UserPlus,
@@ -62,6 +64,8 @@ type DraftPatient = {
   sex: "M" | "F" | "O";
 };
 
+type AdmissionPatientType = "" | "CLINICA" | "EXTERNO" | "IZAGA";
+
 export function AdmissionForm({
   patients,
   tests,
@@ -83,9 +87,29 @@ export function AdmissionForm({
     sex: "M",
   });
 
+  const [createdAt, setCreatedAt] = useState(() => toDateTimeLocal(new Date()));
+
+  useEffect(() => {
+    const tick = () => setCreatedAt(toDateTimeLocal(new Date()));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const displayedAge = useMemo(() => {
+    if (!draftPatient.birthDate || typeof draftPatient.birthDate !== "string") return null;
+    try {
+      const date = new Date(draftPatient.birthDate);
+      if (isNaN(date.getTime())) return null;
+      return calculateAge(date);
+    } catch {
+      return null;
+    }
+  }, [draftPatient.birthDate]);
+
   const [requestedBy, setRequestedBy] = useState("");
   const [notes, setNotes] = useState("");
-  const [patientType, setPatientType] = useState<"" | "CLINICA" | "EXTERNO" | "IZAGA">("");
+  const [patientType, setPatientType] = useState<AdmissionPatientType>("");
   const [branchId, setBranchId] = useState("");
   const [testSearch, setTestSearch] = useState("");
 
@@ -255,12 +279,18 @@ export function AdmissionForm({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        toast.error(data.error ?? "No se pudo crear la pre-orden.");
+        toast.error(data.error ?? "No se pudo crear la orden.");
         return;
       }
 
-      toast.success("Pre-orden de admisión creada correctamente.");
-      router.push("/admisiones");
+      const convertedOrder = data.convertedOrder as { orderId: string; orderCode: string } | undefined;
+      if (convertedOrder?.orderId) {
+        toast.success(`Orden creada: ${convertedOrder.orderCode}.`);
+        router.push(`/orders/${convertedOrder.orderId}`);
+      } else {
+        toast.success("Orden de admisión creada correctamente.");
+        router.push("/admisiones");
+      }
       router.refresh();
     } catch {
       toast.error("Error de conexión.");
@@ -381,12 +411,30 @@ export function AdmissionForm({
                 />
               </div>
               <div>
+                <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">Fecha de creación</Label>
+                <Input
+                  type="datetime-local"
+                  className="mt-1 read-only:cursor-default"
+                  value={createdAt}
+                  readOnly
+                />
+              </div>
+              <div>
                 <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">Fecha de nacimiento</Label>
                 <Input
                   type="date"
                   className="mt-1"
                   value={draftPatient.birthDate}
                   onChange={(e) => setDraftPatient((prev) => ({ ...prev, birthDate: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">Edad</Label>
+                <Input
+                  className="mt-1 read-only:cursor-default read-only:opacity-100"
+                  value={displayedAge !== null ? `${displayedAge} años` : ""}
+                  placeholder="Se calcula automáticamente"
+                  readOnly
                 />
               </div>
               <div>
@@ -421,7 +469,7 @@ export function AdmissionForm({
               <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">Tipo de paciente</Label>
               <select
                 value={patientType}
-                onChange={(e) => setPatientType(e.target.value as any)}
+                onChange={(e) => setPatientType(e.target.value as AdmissionPatientType)}
                 className="mt-1 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
               >
                 <option value="">Sin especificar</option>
@@ -664,7 +712,7 @@ export function AdmissionForm({
             disabled={saving || selectedItemsForPricing.length === 0}
             className="min-w-[140px] bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-500 hover:to-cyan-500"
           >
-            {saving ? "Guardando..." : "Guardar pre-orden"}
+            {saving ? "Guardando..." : "Guardar orden"}
           </Button>
         </div>
       </div>

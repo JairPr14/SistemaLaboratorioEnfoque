@@ -114,8 +114,15 @@ export default async function CobroAdmisionPage({
     take: 100,
   });
 
+  const orderConventionTotal = (order: {
+    items: Array<{ priceSnapshot: number; priceConventionSnapshot?: number | null }>;
+  }) =>
+    order.items.reduce(
+      (sum, i) => sum + Number("priceConventionSnapshot" in i && i.priceConventionSnapshot != null ? i.priceConventionSnapshot : i.priceSnapshot),
+      0,
+    );
   const totalPendiente = pendingOrders.reduce(
-    (s, o) => s + Number(o.totalPrice),
+    (s, o) => s + orderConventionTotal(o),
     0,
   );
   const totalReferidoPendiente = pendingOrders.reduce((s, o) => {
@@ -239,7 +246,8 @@ export default async function CobroAdmisionPage({
                     <TableHead className="font-semibold">Fecha</TableHead>
                     <TableHead className="font-semibold">Paciente</TableHead>
                     <TableHead className="font-semibold">Sede</TableHead>
-                    <TableHead className="text-right font-semibold">Total</TableHead>
+                    <TableHead className="text-right font-semibold">Total orden (público)</TableHead>
+                    <TableHead className="text-right font-semibold">A cobrar (convenio)</TableHead>
                     <TableHead className="text-right font-semibold">Terciarización</TableHead>
                     <TableHead className="w-32 text-right font-semibold">Acción</TableHead>
                   </TableRow>
@@ -249,6 +257,7 @@ export default async function CobroAdmisionPage({
                     const refCost = order.items
                       .filter((i) => i.labTest.isReferred && i.labTest.externalLabCost)
                       .reduce((s, i) => s + Number(i.labTest.externalLabCost!), 0);
+                    const conventionTotal = orderConventionTotal(order);
                     const branchName = order.branch?.name ?? order.patientType ?? "—";
                     return (
                       <TableRow key={order.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
@@ -272,8 +281,11 @@ export default async function CobroAdmisionPage({
                             {branchName}
                           </span>
                         </TableCell>
-                        <TableCell className="text-right font-semibold">
+                        <TableCell className="text-right text-slate-600 dark:text-slate-400">
                           {formatCurrency(Number(order.totalPrice))}
+                        </TableCell>
+                        <TableCell className="text-right font-semibold text-emerald-600 dark:text-emerald-400">
+                          {formatCurrency(conventionTotal)}
                         </TableCell>
                         <TableCell className="text-right">
                           {refCost > 0 ? (
@@ -317,33 +329,40 @@ export default async function CobroAdmisionPage({
                     <TableHead className="font-semibold">Orden</TableHead>
                     <TableHead className="font-semibold">Fecha saldo</TableHead>
                     <TableHead className="font-semibold">Paciente</TableHead>
-                    <TableHead className="text-right font-semibold">Total</TableHead>
+                    <TableHead className="text-right font-semibold">Total orden (público)</TableHead>
+                    <TableHead className="text-right font-semibold">Cobrado (convenio)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {settledOrders.map((order) => (
-                    <TableRow key={order.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                      <TableCell>
-                        <Link
-                          href={`/orders/${order.id}`}
-                          className="font-medium text-blue-600 hover:underline dark:text-blue-400"
-                        >
-                          {order.orderCode}
-                        </Link>
-                      </TableCell>
-                      <TableCell className="text-slate-600 dark:text-slate-400">
-                        {order.admissionSettledAt
-                          ? formatDate(order.admissionSettledAt)
-                          : "—"}
-                      </TableCell>
-                      <TableCell>
-                        {order.patient.lastName} {order.patient.firstName}
-                      </TableCell>
-                      <TableCell className="text-right font-semibold">
-                        {formatCurrency(Number(order.totalPrice))}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {settledOrders.map((order) => {
+                    const conventionTotal = orderConventionTotal(order);
+                    return (
+                      <TableRow key={order.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                        <TableCell>
+                          <Link
+                            href={`/orders/${order.id}`}
+                            className="font-medium text-blue-600 hover:underline dark:text-blue-400"
+                          >
+                            {order.orderCode}
+                          </Link>
+                        </TableCell>
+                        <TableCell className="text-slate-600 dark:text-slate-400">
+                          {order.admissionSettledAt
+                            ? formatDate(order.admissionSettledAt)
+                            : "—"}
+                        </TableCell>
+                        <TableCell>
+                          {order.patient.lastName} {order.patient.firstName}
+                        </TableCell>
+                        <TableCell className="text-right text-slate-600 dark:text-slate-400">
+                          {formatCurrency(Number(order.totalPrice))}
+                        </TableCell>
+                        <TableCell className="text-right font-semibold">
+                          {formatCurrency(conventionTotal)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

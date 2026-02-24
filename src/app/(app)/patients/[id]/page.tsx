@@ -2,9 +2,9 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { getServerSession } from "next-auth";
 
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
-import { authOptions, hasPermission, PERMISSION_EDITAR_PACIENTES } from "@/lib/auth";
+import { authOptions, hasPermission, PERMISSION_EDITAR_PACIENTES, PERMISSION_VER_PACIENTES } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/format";
 import { PatientForm } from "@/components/forms/PatientForm";
@@ -19,6 +19,9 @@ type Props = { params: Promise<{ id: string }> };
 export default async function PatientDetailPage({ params }: Props) {
   const { id } = await params;
   const session = await getServerSession(authOptions);
+  if (!session?.user || !hasPermission(session, PERMISSION_VER_PACIENTES)) {
+    redirect("/dashboard");
+  }
   const canEditPatient = hasPermission(session, PERMISSION_EDITAR_PACIENTES);
   const [patient, orders] = await Promise.all([
     prisma.patient.findFirst({

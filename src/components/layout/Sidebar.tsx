@@ -42,6 +42,7 @@ import {
   PERMISSION_VALIDAR_RESULTADOS,
   PERMISSION_VER_ADMISION,
   PERMISSION_VER_CATALOGO,
+  PERMISSION_VER_CONFIGURACION,
   PERMISSION_VER_ORDENES,
   PERMISSION_VER_PACIENTES,
   PERMISSION_VER_PAGOS,
@@ -215,7 +216,7 @@ export function Sidebar({
           );
         })}
       </nav>
-      {session?.user?.roleCode === ADMIN_ROLE_CODE && (
+      {(session?.user?.roleCode === ADMIN_ROLE_CODE || hasPermission(session ?? null, PERMISSION_VER_CONFIGURACION)) && (
         <div className="border-t border-slate-200/80 px-2.5 py-3 dark:border-slate-700/80">
           <Link
             href="/configuracion"

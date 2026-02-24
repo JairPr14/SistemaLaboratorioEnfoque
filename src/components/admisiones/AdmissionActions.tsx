@@ -13,9 +13,11 @@ type Props = {
   requestCode: string;
   status: "PENDIENTE" | "CONVERTIDA" | "CANCELADA";
   convertedOrderId: string | null;
+  /** Si la orden tiene todos los resultados listos (no borrador), se puede ver impresión */
+  orderPrintReady?: boolean;
   canConvert: boolean;
   canManage: boolean;
-  isAdmin: boolean;
+  canPurgeAdmission: boolean;
 };
 
 export function AdmissionActions({
@@ -23,9 +25,10 @@ export function AdmissionActions({
   requestCode,
   status,
   convertedOrderId,
+  orderPrintReady = false,
   canConvert,
   canManage,
-  isAdmin,
+  canPurgeAdmission,
 }: Props) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -94,12 +97,21 @@ export function AdmissionActions({
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
       {convertedOrderId && (
-        <Link
-          href={`/orders/${convertedOrderId}`}
-          className="inline-flex items-center rounded-md border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-teal-600 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-teal-400"
-        >
-          Ver orden
-        </Link>
+        orderPrintReady ? (
+          <Link
+            href={`/orders/${convertedOrderId}/print`}
+            className="inline-flex items-center rounded-md border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-teal-600 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-teal-400"
+          >
+            Ver orden
+          </Link>
+        ) : (
+          <span
+            className="inline-flex items-center rounded-md border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-400 dark:border-slate-600 dark:text-slate-500"
+            title="Resultados aún no listos"
+          >
+            Resultados pendientes
+          </span>
+        )
       )}
       {status === "PENDIENTE" && canConvert && (
         <Button
@@ -124,7 +136,7 @@ export function AdmissionActions({
           Cancelar
         </Button>
       )}
-      {isAdmin && (
+      {canPurgeAdmission && (
         <Button
           type="button"
           variant="outline"

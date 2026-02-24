@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -27,6 +27,8 @@ type Props = {
   orderId: string;
   orderCode: string;
   orderTotal: number;
+  /** Si la orden es de admisión, total a cobrar (precio convenio). Se usa para pre-rellenar el monto al registrar pago. */
+  conventionTotal?: number | null;
   canRegisterPayment: boolean;
   canPrintTicket?: boolean;
 };
@@ -42,6 +44,7 @@ export function OrderPaymentPanel({
   orderId,
   orderCode,
   orderTotal,
+  conventionTotal,
   canRegisterPayment,
   canPrintTicket = true,
 }: Props) {
@@ -77,18 +80,19 @@ export function OrderPaymentPanel({
     toast.error(data.error ?? "No se pudo cargar los pagos");
   };
 
-  useEffect(() => {
+  const [didInitLoad, setDidInitLoad] = useState(false);
+  if (!didInitLoad) {
+    setDidInitLoad(true);
     void reloadPayments();
-  }, [orderId]);
-
-  useEffect(() => {
     void reloadReferredLabSummary();
-  }, [orderId]);
+  }
   const paidTotal = useMemo(
     () => payments.reduce((acc, p) => acc + Number(p.amount), 0),
     [payments],
   );
-  const balance = Math.max(0, orderTotal - paidTotal);
+  const isFromAdmission = conventionTotal != null;
+  const effectiveTotal = isFromAdmission ? conventionTotal : orderTotal;
+  const balance = Math.max(0, effectiveTotal - paidTotal);
 
   return (
     <Card>
@@ -114,6 +118,7 @@ export function OrderPaymentPanel({
                 orderCode={orderCode}
                 orderTotal={orderTotal}
                 paidTotal={paidTotal}
+                defaultAmount={conventionTotal}
                 disabled={balance <= 0}
                 onPaymentSaved={async () => {
                   await reloadPayments();
@@ -137,18 +142,30 @@ export function OrderPaymentPanel({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          {isFromAdmission ? (
+            <div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">A cobrar a admisión (convenio)</p>
+              <p className="text-base font-semibold">{formatCurrency(conventionTotal!)}</p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500">Lo que cobra el lab a admisión</p>
+            </div>
+          ) : (
+            <div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Total orden</p>
+              <p className="text-base font-semibold">{formatCurrency(orderTotal)}</p>
+            </div>
+          )}
           <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Total orden</p>
-            <p className="text-base font-semibold">{formatCurrency(orderTotal)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Total cobrado</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {isFromAdmission ? "Cobrado (de admisión)" : "Total cobrado"}
+            </p>
             <p className="text-base font-semibold text-emerald-600 dark:text-emerald-400">
               {formatCurrency(paidTotal)}
             </p>
           </div>
           <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Saldo pendiente</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {isFromAdmission ? "Saldo pendiente (a cobrar a admisión)" : "Saldo pendiente"}
+            </p>
             <p className="text-base font-semibold text-amber-600 dark:text-amber-400">
               {formatCurrency(balance)}
             </p>

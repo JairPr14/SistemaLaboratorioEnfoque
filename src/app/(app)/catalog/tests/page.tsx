@@ -1,3 +1,6 @@
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { authOptions, hasPermission, PERMISSION_VER_CATALOGO, PERMISSION_GESTIONAR_CATALOGO, PERMISSION_EDITAR_PRECIO_CATALOGO } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { LabTestForm } from "@/components/forms/LabTestForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,6 +8,15 @@ import { pageLayoutClasses } from "@/components/layout/PageHeader";
 import { CatalogTestsList } from "@/components/catalog/CatalogTestsList";
 
 export default async function TestsPage() {
+  const session = await getServerSession(authOptions);
+  const canView =
+    session?.user &&
+    (hasPermission(session, PERMISSION_VER_CATALOGO) ||
+      hasPermission(session, PERMISSION_GESTIONAR_CATALOGO) ||
+      hasPermission(session, PERMISSION_EDITAR_PRECIO_CATALOGO));
+  if (!canView) {
+    redirect("/dashboard");
+  }
   const tests = await prisma.labTest.findMany({
     where: { deletedAt: null },
     include: { section: true },

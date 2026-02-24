@@ -1,7 +1,8 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 
-import { authOptions, hasPermission, PERMISSION_ELIMINAR_REGISTROS } from "@/lib/auth";
+import { authOptions, hasPermission, PERMISSION_ELIMINAR_REGISTROS, PERMISSION_VER_PACIENTES } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PatientForm } from "@/components/forms/PatientForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +18,9 @@ export default async function PatientsPage({ searchParams }: Props) {
   const params = await searchParams;
   const search = params.search?.trim();
   const session = await getServerSession(authOptions);
+  if (!session?.user || !hasPermission(session, PERMISSION_VER_PACIENTES)) {
+    redirect("/dashboard");
+  }
   const canDeletePatients = hasPermission(session, PERMISSION_ELIMINAR_REGISTROS);
 
   const patients = await prisma.patient.findMany({

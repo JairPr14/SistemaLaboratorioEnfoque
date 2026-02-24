@@ -16,8 +16,7 @@ import { formatDate } from "@/lib/format";
 import { statusBadgeVariant } from "@/lib/order-utils";
 import { OrdersFilters, type OrdersFilterState } from "./OrdersFilters";
 import { OrderAlertsCell } from "@/components/orders/OrderAlertsCell";
-import { getOrderAlerts } from "@/features/lab/order-alerts";
-import { Eye } from "lucide-react";
+import { Eye, ArrowDown, ArrowUp } from "lucide-react";
 
 type OrderRow = {
   id: string;
@@ -83,32 +82,13 @@ function filterOrders(
   return result;
 }
 
-function sortByRiskAndAge(orders: OrderRow[]): OrderRow[] {
-  const severityScore = (o: OrderRow) => {
-    const alerts = getOrderAlerts({
-      status: o.status,
-      createdAt: o.createdAt,
-      deliveredAt: o.deliveredAt,
-      totalTests: o.totalTests,
-      completedTests: o.completedTests,
-      needsValidation: o.needsValidation,
-      missingCount: o.missingCount,
-    });
-    const max =
-      alerts.length > 0
-        ? Math.min(
-            ...alerts.map((a) =>
-              a.severity === "red" ? 0 : a.severity === "yellow" ? 1 : 2
-            )
-          )
-        : 2;
-    return max;
-  };
+type SortOrder = "desc" | "asc";
+
+function sortOrdersByDate(orders: OrderRow[], sortOrder: SortOrder): OrderRow[] {
   return [...orders].sort((a, b) => {
-    const sa = severityScore(a);
-    const sb = severityScore(b);
-    if (sa !== sb) return sa - sb;
-    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    const ta = new Date(a.createdAt).getTime();
+    const tb = new Date(b.createdAt).getTime();
+    return sortOrder === "desc" ? tb - ta : ta - tb;
   });
 }
 
@@ -117,20 +97,43 @@ export function DashboardPendingTable({ orders, defaultFilters, sectionOptions }
     ...initialFilters,
     ...defaultFilters,
   });
+  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
 
-  const filtered = sortByRiskAndAge(filterOrders(orders, filters));
+  const filtered = sortOrdersByDate(filterOrders(orders, filters), sortOrder);
   const hasActiveFilters =
     !!filters.status || !!filters.dateRange || !!filters.doctor || !!filters.section;
 
   return (
     <div className="space-y-4">
-      <OrdersFilters
-        filters={filters}
-        onChange={setFilters}
-        onClear={() => setFilters(initialFilters)}
-        hasActiveFilters={hasActiveFilters}
-        sectionOptions={sectionOptions}
-      />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <OrdersFilters
+          filters={filters}
+          onChange={setFilters}
+          onClear={() => setFilters(initialFilters)}
+          hasActiveFilters={hasActiveFilters}
+          sectionOptions={sectionOptions}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"))}
+          className="gap-1.5 shrink-0 rounded-xl border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+          title={sortOrder === "desc" ? "Más reciente primero (clic para más antiguo primero)" : "Más antiguo primero (clic para más reciente primero)"}
+        >
+          {sortOrder === "desc" ? (
+            <>
+              <ArrowDown className="h-4 w-4" />
+              Más reciente primero
+            </>
+          ) : (
+            <>
+              <ArrowUp className="h-4 w-4" />
+              Más antiguo primero
+            </>
+          )}
+        </Button>
+      </div>
       <div className="-mx-1 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
         <Table className="min-w-[640px]">
           <TableHeader>

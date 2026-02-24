@@ -1,5 +1,7 @@
 import Link from "next/link";
-
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { authOptions, hasAnyPermission, PERMISSION_VER_ORDENES, PERMISSION_QUICK_ACTIONS_ENTREGA } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +15,13 @@ function getOrderDateKey(order: { deliveredAt: Date | null; createdAt: Date }) {
 }
 
 export default async function DeliveredPage() {
+  const session = await getServerSession(authOptions);
+  const canView =
+    session?.user &&
+    hasAnyPermission(session, [PERMISSION_VER_ORDENES, PERMISSION_QUICK_ACTIONS_ENTREGA]);
+  if (!canView) {
+    redirect("/dashboard");
+  }
   const orders = await prisma.labOrder.findMany({
     where: { status: "ENTREGADO" },
     include: {

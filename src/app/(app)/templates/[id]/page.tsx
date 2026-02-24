@@ -1,7 +1,7 @@
 import Link from "next/link";
-
-import { notFound } from "next/navigation";
-
+import { notFound, redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { authOptions, hasPermission, PERMISSION_GESTIONAR_PLANTILLAS, PERMISSION_CAPTURAR_RESULTADOS } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { TemplateForm } from "@/components/forms/TemplateForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,13 @@ import { parseSelectOptions } from "@/lib/json-helpers";
 type Props = { params: Promise<{ id: string }> };
 
 export default async function TemplateDetailPage({ params }: Props) {
+  const session = await getServerSession(authOptions);
+  const canView =
+    session?.user &&
+    (hasPermission(session, PERMISSION_GESTIONAR_PLANTILLAS) || hasPermission(session, PERMISSION_CAPTURAR_RESULTADOS));
+  if (!canView) {
+    redirect("/dashboard");
+  }
   const { id } = await params;
   const [template, tests] = await Promise.all([
     prisma.labTemplate.findFirst({

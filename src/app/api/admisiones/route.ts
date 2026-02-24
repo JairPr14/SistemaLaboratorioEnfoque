@@ -12,6 +12,9 @@ import {
   buildAdmissionCode,
   parseOrderCodeSequence,
 } from "@/features/lab/order-utils";
+import { convertAdmissionToOrder } from "@/features/lab/convert-admission-to-order";
+
+type PrismaErrorWithCode = { code?: string };
 
 function canViewOrManageAdmission(session: Awaited<ReturnType<typeof getServerSession>>) {
   return hasPermission(session ?? null, PERMISSION_VER_ADMISION) || hasPermission(session ?? null, PERMISSION_GESTIONAR_ADMISION);
@@ -32,9 +35,13 @@ export async function GET(request: Request) {
     const search = searchParams.get("search")?.trim() || "";
     const patientId = searchParams.get("patientId")?.trim() || "";
 
+    const normalizedStatus =
+      status === "PENDIENTE" || status === "CONVERTIDA" || status === "CANCELADA"
+        ? status
+        : "";
     const items = await prisma.admissionRequest.findMany({
       where: {
-        ...(status ? { status: status as any } : {}),
+        ...(normalizedStatus ? { status: normalizedStatus } : {}),
         ...(patientId ? { patientId } : {}),
         ...(search
           ? {
@@ -217,7 +224,23 @@ export async function POST(request: Request) {
             items: { include: { labTest: true }, orderBy: { order: "asc" } },
           },
         });
-        return NextResponse.json({ item: admission }, { status: 201 });
+
+        // Conversión automática: crear orden de laboratorio y marcar pre-orden como convertida
+        let convertedOrder: { orderId: string; orderCode: string } | null = null;
+        try {
+          convertedOrder = await convertAdmissionToOrder(admission.id);
+        } catch (convertErr) {
+          logger.error("Error en conversión automática de pre-orden a orden:", convertErr);
+          // La pre-orden ya quedó creada; el usuario puede convertirla manualmente desde la bandeja
+        }
+
+        return NextResponse.json(
+          {
+            item: admission,
+            convertedOrder: convertedOrder ?? undefined,
+          },
+          { status: 201 },
+        );
       } catch (err) {
         const isUnique =
           err && typeof err === "object" && "code" in err && (err as { code: string }).code === "P2002";
@@ -238,7 +261,8 @@ export async function POST(request: Request) {
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json({ error: "Datos inválidos", details: error }, { status: 400 });
     }
-    if (typeof error === "object" && error !== null && "code" in error && (error as any).code === "P2002") {
+    const prismaErr = error as PrismaErrorWithCode | null;
+    if (prismaErr?.code === "P2002") {
       return NextResponse.json({ error: "Ya existe un paciente con ese DNI." }, { status: 409 });
     }
     return NextResponse.json({ error: "Error al crear la pre-orden de admisión" }, { status: 500 });

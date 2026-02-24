@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { getServerSession } from "next-auth";
-import { authOptions, hasPermission, PERMISSION_GESTIONAR_CATALOGO } from "@/lib/auth";
+import { authOptions, hasPermission, PERMISSION_GESTIONAR_CATALOGO, PERMISSION_GESTIONAR_LAB_REFERIDOS } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 
@@ -38,7 +38,9 @@ export async function POST(request: Request, { params }: Params) {
   if (!session?.user) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
-  if (!hasPermission(session, PERMISSION_GESTIONAR_CATALOGO)) {
+  const canManage =
+    hasPermission(session, PERMISSION_GESTIONAR_CATALOGO) || hasPermission(session, PERMISSION_GESTIONAR_LAB_REFERIDOS);
+  if (!canManage) {
     return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
   }
 

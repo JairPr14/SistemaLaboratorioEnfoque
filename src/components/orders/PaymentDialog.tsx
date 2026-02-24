@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { CreditCard } from "lucide-react";
 
@@ -29,6 +29,8 @@ type Props = {
   orderCode: string;
   orderTotal: number;
   paidTotal: number;
+  /** Si la orden es de admisión, monto a cobrar (precio convenio). Se usa para pre-rellenar el campo Monto. */
+  defaultAmount?: number | null;
   disabled?: boolean;
   onPaymentSaved?: (summary: { total: number; paid: number; balance: number }) => void;
 };
@@ -38,6 +40,7 @@ export function PaymentDialog({
   orderCode,
   orderTotal,
   paidTotal,
+  defaultAmount,
   disabled = false,
   onPaymentSaved,
 }: Props) {
@@ -48,6 +51,12 @@ export function PaymentDialog({
   const [notes, setNotes] = useState("");
 
   const balance = useMemo(() => Math.max(0, orderTotal - paidTotal), [orderTotal, paidTotal]);
+
+  useEffect(() => {
+    if (open) {
+      setAmount(defaultAmount != null && defaultAmount > 0 ? String(defaultAmount) : "");
+    }
+  }, [open, defaultAmount]);
 
   const submit = async () => {
     const parsedAmount = Number(amount);
@@ -105,6 +114,11 @@ export function PaymentDialog({
           <DialogTitle>Registrar pago</DialogTitle>
           <DialogDescription>
             Orden {orderCode} - Total {formatCurrency(orderTotal)} - Saldo pendiente {formatCurrency(balance)}
+            {defaultAmount != null && defaultAmount > 0 && (
+              <span className="mt-1 block text-emerald-600 dark:text-emerald-400">
+                Orden de admisión: cobrar precio convenio {formatCurrency(defaultAmount)}.
+              </span>
+            )}
           </DialogDescription>
         </DialogHeader>
 

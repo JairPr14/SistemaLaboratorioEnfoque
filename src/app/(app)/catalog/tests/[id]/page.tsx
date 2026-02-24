@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
-
+import { notFound, redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { authOptions, hasPermission, PERMISSION_VER_CATALOGO, PERMISSION_GESTIONAR_CATALOGO, PERMISSION_EDITAR_PRECIO_CATALOGO } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { LabTestForm } from "@/components/forms/LabTestForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,11 +9,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 type Props = { params: Promise<{ id: string }> };
 
 export default async function TestDetailPage({ params }: Props) {
+  const session = await getServerSession(authOptions);
+  const canView =
+    session?.user &&
+    (hasPermission(session, PERMISSION_VER_CATALOGO) ||
+      hasPermission(session, PERMISSION_GESTIONAR_CATALOGO) ||
+      hasPermission(session, PERMISSION_EDITAR_PRECIO_CATALOGO));
+  if (!canView) {
+    redirect("/dashboard");
+  }
   const { id } = await params;
   const [test, sections, referredLabsRes] = await Promise.all([
     prisma.labTest.findFirst({
       where: { id, deletedAt: null },
-      include: { section: true, referredLab: true },
+      include: {
+        section: true,
+        referredLab: true,
+        referredLabOptions: true,
+      },
     }),
     prisma.labSection.findMany({
       where: { isActive: true },
@@ -63,6 +77,13 @@ export default async function TestDetailPage({ params }: Props) {
             referredLabId: test.referredLabId ?? null,
             priceToAdmission: test.priceToAdmission != null ? Number(test.priceToAdmission) : null,
             externalLabCost: test.externalLabCost != null ? Number(test.externalLabCost) : null,
+            referredLabOptions: (test.referredLabOptions ?? []).map((opt) => ({
+              id: opt.id,
+              referredLabId: opt.referredLabId,
+              priceToAdmission: opt.priceToAdmission != null ? Number(opt.priceToAdmission) : null,
+              externalLabCost: opt.externalLabCost != null ? Number(opt.externalLabCost) : null,
+              isDefault: opt.isDefault,
+            })),
           }}
         />
       </CardContent>

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, X } from "lucide-react";
+import { Bell, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   hasAnyPermission,
@@ -181,6 +181,18 @@ export function NotificationBell({ session }: { session: Session | null }) {
     setComandaItem(null);
   };
 
+  const clearAllAlerts = async () => {
+    if (items.length === 0) return;
+    setLoading(true);
+    try {
+      await Promise.all(items.map((n) => fetch(`/api/notifications/${n.id}/read`, { method: "POST" })));
+      setItems([]);
+      setComandaItem(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!comandaItem) return;
     const id = comandaItem.id;
@@ -219,12 +231,28 @@ export function NotificationBell({ session }: { session: Session | null }) {
           role="menu"
         >
           <div className="border-b border-slate-200 px-3 py-2 dark:border-slate-700">
-            <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-              Alertas de Laboratorio
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {items.length === 0 ? "Sin notificaciones nuevas" : `${items.length} sin leer`}
-            </p>
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  Alertas de Laboratorio
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {items.length === 0 ? "Sin notificaciones nuevas" : `${items.length} sin leer`}
+                </p>
+              </div>
+              {items.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => void clearAllAlerts()}
+                  disabled={loading}
+                  className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                  title="Borrar todas las alertas"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Borrar alertas
+                </button>
+              )}
+            </div>
           </div>
           <div className="max-h-72 overflow-y-auto">
             {items.length === 0 ? (

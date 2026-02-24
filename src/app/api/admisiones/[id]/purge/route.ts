@@ -3,17 +3,19 @@ import { getServerSession } from "next-auth";
 
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
-import { authOptions, ADMIN_ROLE_CODE } from "@/lib/auth";
+import { authOptions, hasPermission, PERMISSION_PURGE_ADMISION, ADMIN_ROLE_CODE } from "@/lib/auth";
 
 type Params = { params: Promise<{ id: string }> };
 
-/** Elimina permanentemente una pre-orden de admisión. Solo administradores. */
+/** Elimina permanentemente una pre-orden de admisión. Requiere permiso PURGE_ADMISION o rol ADMIN. */
 export async function DELETE(_: Request, { params }: Params) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  if (session.user.roleCode !== ADMIN_ROLE_CODE) {
+  const canPurge =
+    session.user.roleCode === ADMIN_ROLE_CODE || hasPermission(session, PERMISSION_PURGE_ADMISION);
+  if (!canPurge) {
     return NextResponse.json(
-      { error: "Solo administradores pueden eliminar registros de admisión" },
+      { error: "Sin permiso para eliminar pre-órdenes de admisión" },
       { status: 403 },
     );
   }

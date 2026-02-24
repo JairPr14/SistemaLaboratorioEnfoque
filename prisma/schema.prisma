@@ -173,9 +173,28 @@ model ReferredLab {
   updatedAt     DateTime @updatedAt
 
   labTests      LabTest[]
+  testOptions   LabTestReferredLab[]
   payments      ReferredLabPayment[]
+  orderItems    LabOrderItem[]
 
   @@index([isActive])
+}
+
+model LabTestReferredLab {
+  id              String   @id @default(cuid())
+  labTestId       String
+  referredLabId   String
+  priceToAdmission Float?
+  externalLabCost  Float?
+  isDefault       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  labTest     LabTest     @relation(fields: [labTestId], references: [id], onDelete: Cascade)
+  referredLab ReferredLab @relation(fields: [referredLabId], references: [id], onDelete: Restrict)
+
+  @@unique([labTestId, referredLabId])
+  @@index([referredLabId])
 }
 
 model LabTest {
@@ -201,6 +220,7 @@ model LabTest {
   admissionItems AdmissionRequestItem[]
   favoriteUsers  UserFavoriteTest[]
   profileItems   TestProfileItem[]
+  referredLabOptions LabTestReferredLab[]
 
   @@index([sectionId])
   @@index([isActive])
@@ -330,20 +350,26 @@ model ReferredLabPayment {
 }
 
 model LabOrderItem {
-  id               String          @id @default(cuid())
-  orderId          String
-  labTestId        String
-  status           OrderItemStatus @default(PENDIENTE)
-  priceSnapshot    Float
-  templateSnapshot Json?
-  promotionId      String?         // Si viene de una promoción, id del TestProfile
-  promotionName    String?         // Nombre de la promoción (para mostrar en detalle)
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  id                       String          @id @default(cuid())
+  orderId                  String
+  labTestId                String
+  status                   OrderItemStatus @default(PENDIENTE)
+  priceSnapshot            Float           // Precio público (lo que paga el paciente / cobra admisión)
+  priceConventionSnapshot  Float?          // Precio convenio (lo que cobra el lab a admisión); solo en órdenes desde admisión
+  templateSnapshot         Json?
+  promotionId              String?         // Si viene de una promoción, id del TestProfile
+  promotionName            String?         // Nombre de la promoción (para mostrar en detalle)
+  referredLabId            String?
+  externalLabCostSnapshot  Float?
+  createdAt                DateTime        @default(now())
+  updatedAt                DateTime        @updatedAt
 
-  order    LabOrder   @relation(fields: [orderId], references: [id])
-  labTest  LabTest    @relation(fields: [labTestId], references: [id])
-  result   LabResult?
+  order       LabOrder   @relation(fields: [orderId], references: [id])
+  labTest     LabTest    @relation(fields: [labTestId], references: [id])
+  referredLab ReferredLab? @relation(fields: [referredLabId], references: [id], onDelete: SetNull)
+  result      LabResult?
+
+  @@index([referredLabId])
 }
 
 model LabResult {

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 
-import { authOptions, hasPermission, PERMISSION_ELIMINAR_REGISTROS, PERMISSION_REGISTRAR_PAGOS } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { authOptions, hasPermission, PERMISSION_ELIMINAR_REGISTROS, PERMISSION_REGISTRAR_PAGOS, PERMISSION_VER_ORDENES } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getPaidTotalsByOrderIds } from "@/lib/payments";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -51,6 +52,9 @@ export default async function OrdersPage({
   const sortDir = params.sortDir === "asc" ? "asc" : "desc";
   const focusSearch = params.focusSearch === "1";
   const session = await getServerSession(authOptions);
+  if (!session?.user || !hasPermission(session, PERMISSION_VER_ORDENES)) {
+    redirect("/dashboard");
+  }
   const canDeleteOrders = hasPermission(session, PERMISSION_ELIMINAR_REGISTROS);
   const canRegisterPayment = hasPermission(session, PERMISSION_REGISTRAR_PAGOS);
 
@@ -331,8 +335,13 @@ export default async function OrdersPage({
                       PARCIAL: "hover:bg-blue-50/50 dark:hover:bg-blue-950/20",
                       PAGADO: "hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20",
                     };
+                    const sinDatosCapturados = order.status === "PENDIENTE" || order.status === "EN_PROCESO";
                     return (
-                      <TableRow key={order.id} className={`${paymentRowColors[order.paymentStatus]} transition-colors`}>
+                      <TableRow
+                        key={order.id}
+                        className={`${paymentRowColors[order.paymentStatus]} transition-colors ${sinDatosCapturados ? "bg-amber-50/80 dark:bg-amber-950/40 border-l-4 border-l-amber-400 dark:border-l-amber-500" : ""}`}
+                        title={sinDatosCapturados ? "Orden sin datos capturados aún" : undefined}
+                      >
                         <TableCell className="text-center text-slate-500 dark:text-slate-400 font-medium">
                           {idx + 1}
                         </TableCell>

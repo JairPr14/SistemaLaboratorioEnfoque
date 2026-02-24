@@ -121,13 +121,16 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [],
     setPatientSearch("");
   };
 
+  const selectedProfileIds = form.watch("profileIds") ?? [];
+  const selectedLabTestIds = form.watch("labTestIds");
+
   const testIdsInPromos = useMemo(
     () =>
       new Set(
-        (form.watch("profileIds") ?? [])
+        selectedProfileIds
           .flatMap((pid) => profiles.find((p) => p.id === pid)?.tests.map((t) => t.id) ?? [])
       ),
-    [profiles, form.watch("profileIds")]
+    [profiles, selectedProfileIds]
   );
 
   const getProfileContainingTest = (testId: string) =>
@@ -216,8 +219,7 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [],
     }
   };
 
-  const selectedIds = new Set(form.watch("labTestIds"));
-  const selectedProfileIds = form.watch("profileIds") ?? [];
+  const selectedIds = new Set(selectedLabTestIds);
   const selectedProfiles = profiles.filter((p) => selectedProfileIds.includes(p.id));
   const selectedIndividualTests = tests.filter(
     (t) => selectedIds.has(t.id) && !testIdsInPromos.has(t.id)

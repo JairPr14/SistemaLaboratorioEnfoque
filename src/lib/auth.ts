@@ -99,10 +99,12 @@ export const PERMISSION_GESTIONAR_CATALOGO = "GESTIONAR_CATALOGO";
 export const PERMISSION_EDITAR_PRECIO_CATALOGO = "EDITAR_PRECIO_CATALOGO";
 export const PERMISSION_GESTIONAR_PLANTILLAS = "GESTIONAR_PLANTILLAS";
 export const PERMISSION_GESTIONAR_SELLO = "GESTIONAR_SELLO";
+export const PERMISSION_GESTIONAR_LAB_REFERIDOS = "GESTIONAR_LAB_REFERIDOS";
 export const PERMISSION_VER_ADMISION = "VER_ADMISION";
 export const PERMISSION_GESTIONAR_ADMISION = "GESTIONAR_ADMISION";
 export const PERMISSION_CONVERTIR_ADMISION_A_ORDEN = "CONVERTIR_ADMISION_A_ORDEN";
 export const PERMISSION_AJUSTAR_PRECIO_ADMISION = "AJUSTAR_PRECIO_ADMISION";
+export const PERMISSION_PURGE_ADMISION = "PURGE_ADMISION";
 
 /** Permisos agrupados por módulo para la configuración de roles. */
 export const PERMISSION_GROUPS = [
@@ -116,6 +118,7 @@ export const PERMISSION_GROUPS = [
       { code: PERMISSION_GESTIONAR_SECCIONES, label: "Gestionar secciones de laboratorio" },
       { code: PERMISSION_GESTIONAR_PREANALITICOS, label: "Gestionar notas preanalíticas" },
       { code: PERMISSION_GESTIONAR_SELLO, label: "Gestionar sello virtual de PDFs" },
+      { code: PERMISSION_GESTIONAR_LAB_REFERIDOS, label: "Gestionar laboratorios referidos" },
     ],
   },
   {
@@ -134,6 +137,7 @@ export const PERMISSION_GROUPS = [
       { code: PERMISSION_GESTIONAR_ADMISION, label: "Crear y gestionar pre-órdenes de admisión" },
       { code: PERMISSION_CONVERTIR_ADMISION_A_ORDEN, label: "Convertir pre-orden de admisión a orden de laboratorio" },
       { code: PERMISSION_AJUSTAR_PRECIO_ADMISION, label: "Ajustar precio puntual en pre-orden de admisión" },
+      { code: PERMISSION_PURGE_ADMISION, label: "Eliminar pre-órdenes de admisión (purga)" },
     ],
   },
   {
