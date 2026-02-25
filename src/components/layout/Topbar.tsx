@@ -135,7 +135,7 @@ export function Topbar({
             )}
           </div>
         )}
-        <div className="w-full min-w-0 shrink sm:w-auto sm:max-w-md sm:flex-1">
+        <div className="hidden min-w-0 shrink sm:block sm:w-auto sm:max-w-md md:flex-1">
           <GlobalSearch />
         </div>
         <div className="flex shrink-0 items-center gap-2">
