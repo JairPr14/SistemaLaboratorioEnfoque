@@ -14,6 +14,17 @@ export async function POST(_: Request, { params }: Params) {
 
   const { id } = await params;
 
+  const userExists = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { id: true },
+  });
+  if (!userExists) {
+    return NextResponse.json(
+      { error: "Sesión inválida: usuario no encontrado. Inicia sesión de nuevo." },
+      { status: 401 },
+    );
+  }
+
   const notification = await prisma.notification.findUnique({
     where: { id },
   });

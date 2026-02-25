@@ -418,8 +418,8 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                                     {res.paramNameSnapshot}
                                   </td>
                                   <td
-                                    className={`py-2 px-3 font-semibold text-slate-900 align-top ${
-                                      res.isHighlighted ? "font-bold" : ""
+                                    className={`py-2 px-3 text-slate-900 align-top ${
+                                      (res as { isHighlighted?: boolean }).isHighlighted ? "font-bold" : ""
                                     }`}
                                   >
                                     {displayValue}

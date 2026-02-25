@@ -33,7 +33,7 @@ export async function GET(request: Request) {
             }
           : {}),
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { code: "desc" },
     });
 
     return NextResponse.json({ items });
@@ -56,28 +56,41 @@ export async function POST(request: Request) {
     const payload = await request.json();
     const parsed = patientSchema.parse(payload);
 
-    const code = await generateNextPatientCode();
     const firstName = parsed.firstName.trim().toUpperCase();
     const lastName = parsed.lastName.trim().toUpperCase();
 
-    const createData: Parameters<typeof prisma.patient.create>[0]["data"] = {
-      code,
-      dni: parsed.dni.trim(),
-      firstName,
-      lastName,
-      birthDate: new Date(parsed.birthDate),
-      sex: parsed.sex,
-      phone: parsed.phone || null,
-      address: parsed.address || null,
-      email: parsed.email || null,
-    };
-    if (parsed.createdAt && parsed.createdAt.trim()) {
-      createData.createdAt = new Date(parsed.createdAt);
+    let item: Awaited<ReturnType<typeof prisma.patient.create>> | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const code = await generateNextPatientCode();
+      const createData: Parameters<typeof prisma.patient.create>[0]["data"] = {
+        code,
+        dni: parsed.dni.trim(),
+        firstName,
+        lastName,
+        birthDate: new Date(parsed.birthDate),
+        sex: parsed.sex,
+        phone: parsed.phone || null,
+        address: parsed.address || null,
+        email: parsed.email || null,
+      };
+      if (parsed.createdAt && parsed.createdAt.trim()) {
+        createData.createdAt = new Date(parsed.createdAt);
+      }
+      try {
+        item = await prisma.patient.create({ data: createData });
+        break;
+      } catch (err) {
+        const prismaErr = err as { code?: string; meta?: { target?: string[] } };
+        if (prismaErr?.code === "P2002" && prismaErr?.meta?.target?.includes("code")) {
+          if (attempt < 2) continue;
+        }
+        throw err;
+      }
     }
-    const item = await prisma.patient.create({
-      data: createData,
-    });
 
+    if (!item) {
+      return NextResponse.json({ error: "No se pudo generar el código de paciente." }, { status: 500 });
+    }
     return NextResponse.json({ item });
   } catch (error) {
     logger.error("Error creating patient:", error);
@@ -87,11 +100,18 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
-    // Prisma: clave única (por ejemplo, DNI duplicado)
-    const prismaErr = error as PrismaErrorWithCode | null;
+    // Prisma: clave única (DNI o código duplicado)
+    const prismaErr = error as PrismaErrorWithCode & { meta?: { target?: string[] } } | null;
     if (prismaErr?.code === "P2002") {
+      const target = prismaErr.meta?.target ?? [];
+      if (target.includes("dni")) {
+        return NextResponse.json(
+          { error: "Ya existe un paciente registrado con ese DNI." },
+          { status: 409 },
+        );
+      }
       return NextResponse.json(
-        { error: "Ya existe un paciente registrado con ese DNI." },
+        { error: "Error al generar código único. Intente guardar de nuevo." },
         { status: 409 },
       );
     }

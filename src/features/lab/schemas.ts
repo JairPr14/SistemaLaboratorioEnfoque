@@ -48,9 +48,18 @@ export const patientSchema = z.object({
   lastName: z.string().min(2),
   birthDate: z.string().min(1),
   sex: z.enum(sexValues),
-  phone: z.string().optional().nullable(),
-  address: z.string().optional().nullable(),
-  email: z.string().email().optional().nullable(),
+  phone: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? null : String(v)),
+    z.string().optional().nullable(),
+  ),
+  address: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? null : String(v)),
+    z.string().optional().nullable(),
+  ),
+  email: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? null : String(v)),
+    z.union([z.string().email(), z.literal(null)]).optional().nullable(),
+  ),
   createdAt: z.string().optional(),
 });
 
