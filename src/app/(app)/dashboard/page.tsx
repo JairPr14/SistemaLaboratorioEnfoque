@@ -324,7 +324,7 @@ export default async function DashboardPage({
     const total = order.totalPrice;
     const paymentStatus = paid <= 0 ? "PENDIENTE" : paid + 0.0001 < total ? "PARCIAL" : "PAGADO";
     return { ...order, paymentStatus: paymentStatus as "PENDIENTE" | "PARCIAL" | "PAGADO" };
-  });
+  }) as Parameters<typeof DashboardPendingTable>[0]["orders"];
 
   const showAnyMetrics =
     hasAdmission || hasPatients || hasOrders || hasCatalog;
