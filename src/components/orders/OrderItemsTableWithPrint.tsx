@@ -72,6 +72,7 @@ type OrderItem = {
       refMaxSnapshot: number | null;
       value: string;
       isOutOfRange: boolean;
+      isHighlighted?: boolean;
       order: number;
     }>;
   } | null;
