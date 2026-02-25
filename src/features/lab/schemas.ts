@@ -48,14 +48,17 @@ export const patientSchema = z.object({
   lastName: z.string().min(2),
   birthDate: z.string().min(1),
   sex: z.enum(sexValues),
+  /** Opcional: se guarda null si está vacío */
   phone: z.preprocess(
     (v) => (v === "" || v === null || v === undefined ? null : String(v)),
     z.string().optional().nullable(),
   ),
+  /** Opcional: se guarda null si está vacío */
   address: z.preprocess(
     (v) => (v === "" || v === null || v === undefined ? null : String(v)),
     z.string().optional().nullable(),
   ),
+  /** Opcional: se guarda null si está vacío. Si se ingresa valor, debe ser email válido */
   email: z.preprocess(
     (v) => (v === "" || v === null || v === undefined ? null : String(v)),
     z.union([z.string().email(), z.literal(null)]).optional().nullable(),

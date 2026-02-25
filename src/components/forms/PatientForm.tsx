@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { User, Hash, Mail, Phone, MapPin } from "lucide-react";
@@ -34,7 +34,7 @@ export function PatientForm({ patientId, defaultValues, canEdit = true, createdA
   const [loadingCode, setLoadingCode] = useState(false);
 
   const form = useForm<PatientFormValues>({
-    resolver: zodResolver(patientSchema),
+    resolver: zodResolver(patientSchema) as Resolver<PatientFormValues>,
     defaultValues: {
       dni: "",
       firstName: "",
