@@ -409,7 +409,7 @@ export function ResultForm({
                       const hasValue = currentValue && currentValue.trim() !== "";
 
                       return (
-                        <TableRow key={item.id}>
+                        <TableRow key={`${item.id}-${formIndex}`}>
                           <TableCell className="text-xs text-slate-500">
                             {form.watch(`items.${formIndex}.order`) || item.order}
                           </TableCell>
@@ -934,7 +934,7 @@ export function ResultForm({
                         const hasValue = currentValue && currentValue.trim() !== "";
 
                         return (
-                          <TableRow key={item.id} className="border-b border-slate-200 dark:border-slate-700">
+                          <TableRow key={`${item.id}-${formIndex}`} className="border-b border-slate-200 dark:border-slate-700">
                             <TableCell className="align-top text-sm font-medium text-slate-900 dark:text-slate-100">
                               {form.watch(`items.${formIndex}.paramNameSnapshot`) || item.paramName}
                             </TableCell>
@@ -1086,7 +1086,7 @@ export function ResultForm({
 
                   return (
                     <div
-                      key={item.id}
+                      key={`${item.id}-${formIndex}`}
                       className={`bg-white rounded-md border p-4 ${
                         hasValue && isOutOfRange ? "border-red-300 bg-red-50" : "border-slate-200"
                       }`}
