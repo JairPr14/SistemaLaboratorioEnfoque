@@ -30,9 +30,12 @@ export function useAutosaveResults<T extends FieldValues>({
   const items = useWatch({ control: form.control, name: "items" as never });
 
   const saveDraft = useCallback(async () => {
-    const values = form.getValues() as { items?: Array<Record<string, unknown>> };
+    const values = form.getValues() as { items?: Array<Record<string, unknown> | null> };
     const rawItems = values.items ?? [];
-    const payloadItems = rawItems.map((item: Record<string, unknown>) => ({
+    // Filtrar null/undefined (arrays dispersos se serializan con null)
+    const validItems = Array.isArray(rawItems) ? rawItems.filter((item): item is Record<string, unknown> => item != null) : [];
+    if (validItems.length === 0) return;
+    const payloadItems = validItems.map((item: Record<string, unknown>) => ({
       templateItemId: (item.templateItemId as string | null) ?? null,
       paramNameSnapshot: String(item.paramNameSnapshot ?? "Param"),
       unitSnapshot: (item.unitSnapshot as string | null) ?? null,
@@ -41,6 +44,7 @@ export function useAutosaveResults<T extends FieldValues>({
       refMaxSnapshot: (item.refMaxSnapshot as number | null) ?? null,
       value: String(item.value ?? ""),
       isOutOfRange: Boolean(item.isOutOfRange ?? false),
+      isHighlighted: Boolean(item.isHighlighted ?? false),
       order: Number(item.order ?? 0),
     }));
 
@@ -99,7 +103,7 @@ export function useAutosaveResults<T extends FieldValues>({
       clearTimeout(pendingRef.current);
       pendingRef.current = null;
     }
-    saveDraft();
+    return saveDraft();
   }, [saveDraft]);
 
   const retry = useCallback(() => {

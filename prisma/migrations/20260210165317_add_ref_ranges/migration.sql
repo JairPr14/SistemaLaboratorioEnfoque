@@ -5,11 +5,11 @@ CREATE TABLE "LabTemplateItemRefRange" (
     "ageGroup" TEXT,
     "sex" TEXT,
     "refRangeText" TEXT,
-    "refMin" REAL,
-    "refMax" REAL,
+    "refMin" DOUBLE PRECISION,
+    "refMax" DOUBLE PRECISION,
     "order" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "LabTemplateItemRefRange_templateItemId_fkey" FOREIGN KEY ("templateItemId") REFERENCES "LabTemplateItem" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 

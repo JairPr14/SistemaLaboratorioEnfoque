@@ -24,9 +24,18 @@ CREATE UNIQUE INDEX "LabTestReferredLab_labTestId_referredLabId_key"
 CREATE INDEX "LabTestReferredLab_referredLabId_idx"
   ON "LabTestReferredLab"("referredLabId");
 
--- Seed existing single referredLab config into the new table
-INSERT INTO "LabTestReferredLab" ("labTestId", "referredLabId", "priceToAdmission", "externalLabCost", "isDefault")
-SELECT "id", "referredLabId", "priceToAdmission", "externalLabCost", TRUE
-FROM "LabTest"
-WHERE "referredLabId" IS NOT NULL;
+-- Seed: solo si LabTest tiene referredLabId (puede no existir en BDs nuevas)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'LabTest' AND column_name = 'referredLabId'
+  ) THEN
+    INSERT INTO "LabTestReferredLab" ("id", "labTestId", "referredLabId", "priceToAdmission", "externalLabCost", "isDefault", "createdAt", "updatedAt")
+    SELECT gen_random_uuid()::text, "id", "referredLabId", "priceToAdmission", "externalLabCost", TRUE, NOW(), NOW()
+    FROM "LabTest"
+    WHERE "referredLabId" IS NOT NULL;
+  END IF;
+END
+$$;
 

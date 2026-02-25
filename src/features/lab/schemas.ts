@@ -322,6 +322,7 @@ export const resultItemSchema = z.object({
   refMaxSnapshot: z.coerce.number().optional().nullable(),
   value: z.string().min(1),
   isOutOfRange: z.coerce.boolean().default(false),
+  isHighlighted: z.coerce.boolean().optional().default(false),
   order: z.coerce.number().int().min(0),
 });
 
@@ -340,6 +341,7 @@ export const resultDraftItemSchema = z.object({
   refMaxSnapshot: z.coerce.number().optional().nullable(),
   value: z.string(),
   isOutOfRange: z.coerce.boolean().default(false),
+  isHighlighted: z.coerce.boolean().optional().default(false),
   order: z.coerce.number().int().min(0),
 });
 

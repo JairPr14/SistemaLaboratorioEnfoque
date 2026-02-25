@@ -1,2 +1,2 @@
 -- AlterTable
-ALTER TABLE "TestProfile" ADD COLUMN "packagePrice" REAL;
+ALTER TABLE "TestProfile" ADD COLUMN "packagePrice" DOUBLE PRECISION;

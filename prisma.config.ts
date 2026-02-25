@@ -8,8 +8,7 @@ export default defineConfig({
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
-    // DATABASE_URL es opcional durante prisma generate
-    // Se usa un fallback para desarrollo local, pero en producción Vercel lo proveerá
+    // DATABASE_URL: PostgreSQL (Seenode, Neon, etc.) o file:./dev.db para SQLite local
     url: process.env.DATABASE_URL || "file:./dev.db",
   },
 });

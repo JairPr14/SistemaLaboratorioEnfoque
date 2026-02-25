@@ -5,14 +5,14 @@ CREATE TABLE "Patient" (
     "dni" TEXT NOT NULL,
     "firstName" TEXT NOT NULL,
     "lastName" TEXT NOT NULL,
-    "birthDate" DATETIME NOT NULL,
+    "birthDate" TIMESTAMP(3) NOT NULL,
     "sex" TEXT NOT NULL,
     "phone" TEXT,
     "address" TEXT,
     "email" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
-    "deletedAt" DATETIME
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "deletedAt" TIMESTAMP(3)
 );
 
 -- CreateTable
@@ -21,12 +21,12 @@ CREATE TABLE "LabTest" (
     "code" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "section" TEXT NOT NULL,
-    "price" REAL NOT NULL,
+    "price" DOUBLE PRECISION NOT NULL,
     "estimatedTimeMinutes" INTEGER,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
-    "deletedAt" DATETIME
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "deletedAt" TIMESTAMP(3)
 );
 
 -- CreateTable
@@ -35,8 +35,8 @@ CREATE TABLE "LabTemplate" (
     "labTestId" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "notes" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "LabTemplate_labTestId_fkey" FOREIGN KEY ("labTestId") REFERENCES "LabTest" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
@@ -48,13 +48,13 @@ CREATE TABLE "LabTemplateItem" (
     "paramName" TEXT NOT NULL,
     "unit" TEXT,
     "refRangeText" TEXT,
-    "refMin" REAL,
-    "refMax" REAL,
+    "refMin" DOUBLE PRECISION,
+    "refMax" DOUBLE PRECISION,
     "valueType" TEXT NOT NULL,
     "selectOptions" TEXT NOT NULL DEFAULT '[]',
     "order" INTEGER NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "LabTemplateItem_templateId_fkey" FOREIGN KEY ("templateId") REFERENCES "LabTemplate" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
@@ -66,10 +66,10 @@ CREATE TABLE "LabOrder" (
     "requestedBy" TEXT,
     "notes" TEXT,
     "status" TEXT NOT NULL DEFAULT 'PENDIENTE',
-    "totalPrice" REAL NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
-    "deliveredAt" DATETIME,
+    "totalPrice" DOUBLE PRECISION NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "deliveredAt" TIMESTAMP(3),
     CONSTRAINT "LabOrder_patientId_fkey" FOREIGN KEY ("patientId") REFERENCES "Patient" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
@@ -79,10 +79,10 @@ CREATE TABLE "LabOrderItem" (
     "orderId" TEXT NOT NULL,
     "labTestId" TEXT NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'PENDIENTE',
-    "priceSnapshot" REAL NOT NULL,
+    "priceSnapshot" DOUBLE PRECISION NOT NULL,
     "templateSnapshot" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "LabOrderItem_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "LabOrder" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT "LabOrderItem_labTestId_fkey" FOREIGN KEY ("labTestId") REFERENCES "LabTest" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
@@ -91,11 +91,11 @@ CREATE TABLE "LabOrderItem" (
 CREATE TABLE "LabResult" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "orderItemId" TEXT NOT NULL,
-    "reportedAt" DATETIME,
+    "reportedAt" TIMESTAMP(3),
     "reportedBy" TEXT,
     "comment" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "LabResult_orderItemId_fkey" FOREIGN KEY ("orderItemId") REFERENCES "LabOrderItem" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
@@ -107,13 +107,13 @@ CREATE TABLE "LabResultItem" (
     "paramNameSnapshot" TEXT NOT NULL,
     "unitSnapshot" TEXT,
     "refTextSnapshot" TEXT,
-    "refMinSnapshot" REAL,
-    "refMaxSnapshot" REAL,
+    "refMinSnapshot" DOUBLE PRECISION,
+    "refMaxSnapshot" DOUBLE PRECISION,
     "value" TEXT NOT NULL,
     "isOutOfRange" BOOLEAN NOT NULL DEFAULT false,
     "order" INTEGER NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "LabResultItem_resultId_fkey" FOREIGN KEY ("resultId") REFERENCES "LabResult" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT "LabResultItem_templateItemId_fkey" FOREIGN KEY ("templateItemId") REFERENCES "LabTemplateItem" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );

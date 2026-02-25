@@ -6,6 +6,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export const authOptions: NextAuthOptions = {
+  /** Necesario para que el cliente pueda obtener la sesión cuando el host no coincide (dev, proxy, Vercel). Evita CLIENT_FETCH_ERROR. */
+  trustHost: true,
   providers: [
     CredentialsProvider({
       name: "Credenciales",

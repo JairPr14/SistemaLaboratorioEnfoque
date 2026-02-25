@@ -1,3 +1,17 @@
+-- CreateTable ReferredLab (debe existir antes de ReferredLabPayment)
+CREATE TABLE IF NOT EXISTS "ReferredLab" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "logoUrl" TEXT,
+    "stampImageUrl" TEXT,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ReferredLab_pkey" PRIMARY KEY ("id")
+);
+CREATE INDEX IF NOT EXISTS "ReferredLab_isActive_idx" ON "ReferredLab"("isActive");
+
 -- CreateTable
 CREATE TABLE "ReferredLabPayment" (
     "id" TEXT NOT NULL,

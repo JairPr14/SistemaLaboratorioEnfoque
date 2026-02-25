@@ -1,4 +1,5 @@
 -- CreateEnum
+CREATE TYPE "OrderPatientType" AS ENUM ('CLINICA', 'EXTERNO', 'IZAGA');
 CREATE TYPE "AdmissionStatus" AS ENUM ('PENDIENTE', 'CONVERTIDA', 'CANCELADA');
 
 -- CreateTable

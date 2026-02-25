@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ResultForm } from "@/components/forms/ResultForm";
+import { ResultForm, type ResultFormHandle } from "@/components/forms/ResultForm";
 
 type TemplateItem = {
   id: string;
@@ -28,6 +29,7 @@ type ResultItem = {
   refMaxSnapshot: number | null;
   value: string;
   isOutOfRange: boolean;
+  isHighlighted?: boolean;
   order: number;
 };
 
@@ -57,10 +59,37 @@ export function OrderItemResultDialog({
   open: controlledOpen,
   onOpenChange,
 }: Props) {
+  const router = useRouter();
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
-  const setOpen = isControlled ? (onOpenChange ?? (() => {})) : setInternalOpen;
+  const resultFormRef = useRef<ResultFormHandle | null>(null);
+
+  const handleSaved = () => {
+    // Cerrar directamente sin saveDraft (ya se guardó con el botón Guardar)
+    if (isControlled) onOpenChange?.(false);
+    else setInternalOpen(false);
+    router.refresh();
+  };
+
+  const setOpen = (next: boolean) => {
+    if (!next) {
+      // Al cerrar el modal, guardar borrador primero para que los datos persistan
+      const savePromise = resultFormRef.current?.saveDraft();
+      if (savePromise) {
+        savePromise.finally(() => {
+          if (isControlled) onOpenChange?.(false);
+          else setInternalOpen(false);
+        });
+        return;
+      }
+    }
+    if (isControlled) {
+      onOpenChange?.(next);
+    } else {
+      setInternalOpen(next);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -88,7 +117,8 @@ export function OrderItemResultDialog({
             orderId={orderId}
             itemId={itemId}
             templateItems={templateItems}
-            onSaved={() => setOpen(false)}
+            resultFormRef={resultFormRef}
+            onSaved={handleSaved}
             defaultValues={
               existing
                 ? {
@@ -103,6 +133,7 @@ export function OrderItemResultDialog({
                       refMaxSnapshot: item.refMaxSnapshot ?? undefined,
                       value: item.value,
                       isOutOfRange: item.isOutOfRange,
+                      isHighlighted: (item as { isHighlighted?: boolean }).isHighlighted ?? false,
                       order: item.order,
                     })),
                   }

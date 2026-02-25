@@ -382,7 +382,16 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                             </tr>
                           </thead>
                           <tbody>
-                            {item.result!.items.map((res) => {
+                            {(() => {
+                              // Deduplicar por (paramName, unit) - la plantilla tiene cada parámetro una vez
+                              const seen = new Set<string>();
+                              const items = item.result!.items.filter((res) => {
+                                const key = `${(res.paramNameSnapshot ?? "").trim()}|${(res.unitSnapshot ?? "").trim()}`;
+                                if (seen.has(key)) return false;
+                                seen.add(key);
+                                return true;
+                              });
+                              return items.map((res) => {
                               // Buscar el templateItem original para obtener refRanges y valueType
                               const templateItem = res.templateItemId 
                                 ? item.labTest.template?.items.find((t) => t.id === res.templateItemId)
@@ -407,7 +416,7 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                                   </td>
                                   <td
                                     className={`py-2 px-3 font-semibold text-slate-900 align-top ${
-                                      res.isOutOfRange ? "font-bold underline" : ""
+                                      res.isHighlighted ? "font-bold" : ""
                                     }`}
                                   >
                                     {displayValue}
@@ -469,7 +478,8 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                                   </td>
                                 </tr>
                               );
-                            })}
+                            });
+                            })()}
                           </tbody>
                         </table>
                         {item.result?.comment && (

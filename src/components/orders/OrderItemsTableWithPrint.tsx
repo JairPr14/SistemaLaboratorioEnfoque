@@ -593,6 +593,7 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteIt
                                       : null,
                                     value: r.value,
                                     isOutOfRange: r.isOutOfRange,
+                                    isHighlighted: r.isHighlighted ?? false,
                                     order: r.order,
                                   })),
                                 }

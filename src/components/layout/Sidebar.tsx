@@ -149,9 +149,11 @@ export function Sidebar({
   const isMobile = useIsMobile();
   const { data: session } = useSession();
   const hasRole = hasRoleWithPermissions(session ?? null);
+  const isAdmin = session?.user?.roleCode === ADMIN_ROLE_CODE;
   const navItems = navItemsBase.filter((item) => {
     if (item.requiredPermissions.length === 0) return true; // Dashboard siempre visible
     if (!hasRole) return false; // Sin rol/permisos: solo Dashboard
+    if (isAdmin) return true; // Administrador accede a todo
     return hasAnyPermission(session ?? null, item.requiredPermissions);
   });
 

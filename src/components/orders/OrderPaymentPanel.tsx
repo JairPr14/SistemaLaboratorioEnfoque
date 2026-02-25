@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -50,7 +50,7 @@ export function OrderPaymentPanel({
     totalBalanceOwed: number;
   } | null>(null);
 
-  const reloadReferredLabSummary = async () => {
+  const reloadReferredLabSummary = useCallback(async () => {
     const res = await fetch(`/api/orders/${orderId}/referred-lab-payments`);
     const data = await res.json().catch(() => ({}));
     if (res.ok && data.totalExternalCost != null) {
@@ -62,9 +62,9 @@ export function OrderPaymentPanel({
     } else {
       setReferredLabSummary(null);
     }
-  };
+  }, [orderId]);
 
-  const reloadPayments = async () => {
+  const reloadPayments = useCallback(async () => {
     const res = await fetch(`/api/orders/${orderId}/payments`);
     const data = await res.json().catch(() => ({}));
     if (res.ok && data.item?.payments) {
@@ -72,14 +72,16 @@ export function OrderPaymentPanel({
       return;
     }
     toast.error(data.error ?? "No se pudo cargar los pagos");
-  };
+  }, [orderId]);
 
-  const [didInitLoad, setDidInitLoad] = useState(false);
-  if (!didInitLoad) {
-    setDidInitLoad(true);
-    void reloadPayments();
-    void reloadReferredLabSummary();
-  }
+  useEffect(() => {
+    const load = () => {
+      void reloadPayments();
+      void reloadReferredLabSummary();
+    };
+    const id = setTimeout(load, 0);
+    return () => clearTimeout(id);
+  }, [orderId, reloadPayments, reloadReferredLabSummary]);
   const paidTotal = useMemo(
     () => payments.reduce((acc, p) => acc + Number(p.amount), 0),
     [payments],

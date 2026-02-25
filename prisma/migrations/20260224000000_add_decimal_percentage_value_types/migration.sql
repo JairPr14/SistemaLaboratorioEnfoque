@@ -1,5 +1,11 @@
--- AlterEnum
--- Add DECIMAL and PERCENTAGE to ValueType enum (PostgreSQL)
--- If the column uses TEXT instead of enum, remove this migration
-ALTER TYPE "ValueType" ADD VALUE IF NOT EXISTS 'DECIMAL';
-ALTER TYPE "ValueType" ADD VALUE IF NOT EXISTS 'PERCENTAGE';
+-- CreateEnum (si no existe) y añadir valores
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ValueType') THEN
+    CREATE TYPE "ValueType" AS ENUM ('NUMBER', 'TEXT', 'SELECT', 'DECIMAL', 'PERCENTAGE');
+  ELSE
+    ALTER TYPE "ValueType" ADD VALUE IF NOT EXISTS 'DECIMAL';
+    ALTER TYPE "ValueType" ADD VALUE IF NOT EXISTS 'PERCENTAGE';
+  END IF;
+END
+$$;

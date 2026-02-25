@@ -51,6 +51,7 @@ export async function PUT(request: Request, { params }: Params) {
           refMaxSnapshot: item.refMaxSnapshot ?? null,
           value: item.value,
           isOutOfRange: item.isOutOfRange ?? false,
+          isHighlighted: item.isHighlighted ?? false,
           order: item.order,
         })),
       });

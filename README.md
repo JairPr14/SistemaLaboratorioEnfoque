@@ -250,7 +250,29 @@ pnpm exec prisma db seed
 
 Para desplegar en producción, consulta la guía completa en [DEPLOYMENT.md](./DEPLOYMENT.md).
 
-### Resumen Rápido (Vercel + Neon PostgreSQL)
+### Opción A: Seenode (PostgreSQL)
+
+1. **Crear cuenta en Seenode**: https://seenode.com
+2. **Crear base de datos PostgreSQL**:
+   - En el dashboard, ve a **Databases** → **Create first database**
+   - Tipo: **PostgreSQL**
+   - Nombre: `sistema-lab` (o el que prefieras)
+   - Elige el tier según tu necesidad
+3. **Obtener connection string**: En el panel de la base de datos verás host, usuario, contraseña y nombre. Arma la URL:
+   ```
+   postgresql://USUARIO:PASSWORD@HOST:5432/NOMBRE_DB?sslmode=require
+   ```
+4. **Configurar `.env`**:
+   ```env
+   DATABASE_URL="postgresql://usuario:password@tu-host.seenode.com:5432/tu_database?sslmode=require"
+   ```
+5. **Ejecutar migraciones y seed**:
+   ```bash
+   pnpm exec prisma migrate deploy
+   pnpm exec prisma db seed
+   ```
+
+### Opción B: Resumen Rápido (Vercel + Neon PostgreSQL)
 
 1. **Crear cuenta en Neon** (gratis): https://neon.tech
 2. **Crear proyecto en Vercel**: https://vercel.com
