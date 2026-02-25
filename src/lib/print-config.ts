@@ -40,6 +40,9 @@ export async function updatePrintConfig(data: Partial<PrintConfig>): Promise<Pri
       create: { key: KEYS.STAMP_IMAGE_URL, value },
       update: { value },
     });
+    if (value === "") {
+      await prisma.storedImage.deleteMany({ where: { key: "print_stamp" } }).catch(() => {});
+    }
   }
   return getPrintConfig();
 }

@@ -320,7 +320,7 @@ export const resultItemSchema = z.object({
   refTextSnapshot: z.string().optional().nullable(),
   refMinSnapshot: z.coerce.number().optional().nullable(),
   refMaxSnapshot: z.coerce.number().optional().nullable(),
-  value: z.string().min(1),
+  value: z.string(),
   isOutOfRange: z.coerce.boolean().default(false),
   isHighlighted: z.coerce.boolean().optional().default(false),
   order: z.coerce.number().int().min(0),

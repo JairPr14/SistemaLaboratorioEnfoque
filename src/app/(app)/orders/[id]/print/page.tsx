@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { formatDate, formatPatientDisplayName } from "@/lib/format";
 import { formatWithThousands } from "@/lib/formatNumber";
+import { parseSelectOptions } from "@/lib/json-helpers";
 import { getPrintConfig } from "@/lib/print-config";
 import { PrintActions } from "@/components/orders/PrintActions";
 import { PrintFitToPage } from "@/components/orders/PrintFitToPage";
@@ -404,10 +405,12 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                                 refRanges = (snapshotItem?.refRanges ?? []) as RefRangeItem[];
                               }
                               const valueType = (templateItem as { valueType?: string } | null)?.valueType;
+                              const optionsArr = parseSelectOptions((templateItem as { selectOptions?: string | string[] } | null)?.selectOptions);
                               const isNumeric = ["NUMBER", "DECIMAL", "PERCENTAGE"].includes(valueType ?? "");
-                              const displayValue = isNumeric && res.value
-                                ? formatWithThousands(res.value) + (valueType === "PERCENTAGE" ? " %" : "")
-                                : res.value;
+                              const rawVal = (res.value ?? "").trim();
+                              const displayValue = rawVal
+                                ? (isNumeric ? formatWithThousands(rawVal) + (valueType === "PERCENTAGE" ? " %" : "") : rawVal)
+                                : "-";
                               
                               return (
                                 <tr key={res.id} className="border-b border-slate-200 last:border-b-0">
@@ -471,9 +474,13 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                                           })}
                                         </div>
                                       )}
-                                      {!res.refTextSnapshot && refRanges.length === 0 ? (
-                                        <span className="font-medium">-</span>
-                                      ) : null}
+                                      {!res.refTextSnapshot && refRanges.length === 0 && (
+                                        optionsArr.length > 0 ? (
+                                          <span className="text-slate-600">{optionsArr.join(" / ")}</span>
+                                        ) : (
+                                          <span className="font-medium">-</span>
+                                        )
+                                      )}
                                     </div>
                                   </td>
                                 </tr>
@@ -482,10 +489,15 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                             })()}
                           </tbody>
                         </table>
-                        {item.result?.comment && (
-                          <p className="mt-2 text-xs text-slate-600 italic">
-                            {item.result.comment}
-                          </p>
+                        {(item.result?.reportedBy || item.result?.comment) && (
+                          <div className="mt-2 space-y-1 text-xs text-slate-600">
+                            {item.result?.reportedBy && (
+                              <p><span className="font-medium">Reportado por:</span> {item.result.reportedBy}</p>
+                            )}
+                            {item.result?.comment && (
+                              <p className="italic">{item.result.comment}</p>
+                            )}
+                          </div>
                         )}
                       </>
                     ) : (

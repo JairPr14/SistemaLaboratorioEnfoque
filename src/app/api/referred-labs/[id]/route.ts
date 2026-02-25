@@ -37,14 +37,26 @@ export async function PUT(request: Request, { params }: Params) {
     const body = await request.json();
     const parsed = referredLabSchema.parse(body);
 
+    const data: { name: string; logoUrl?: string | null; stampImageUrl?: string | null; isActive: boolean } = {
+      name: parsed.name,
+      isActive: parsed.isActive ?? true,
+    };
+    if ("logoUrl" in body) {
+      data.logoUrl = parsed.logoUrl ?? null;
+      if (data.logoUrl === null) {
+        await prisma.storedImage.deleteMany({ where: { key: `referred-lab:${id}:logo` } }).catch(() => {});
+      }
+    }
+    if ("stampImageUrl" in body) {
+      data.stampImageUrl = parsed.stampImageUrl ?? null;
+      if (data.stampImageUrl === null) {
+        await prisma.storedImage.deleteMany({ where: { key: `referred-lab:${id}:stamp` } }).catch(() => {});
+      }
+    }
+
     const item = await prisma.referredLab.update({
       where: { id },
-      data: {
-        name: parsed.name,
-        logoUrl: parsed.logoUrl ?? null,
-        stampImageUrl: parsed.stampImageUrl ?? null,
-        isActive: parsed.isActive ?? true,
-      },
+      data,
     });
 
     return NextResponse.json({ item });
@@ -85,6 +97,9 @@ export async function DELETE(_request: Request, { params }: Params) {
       );
     }
 
+    await prisma.storedImage.deleteMany({
+      where: { key: { in: [`referred-lab:${id}:logo`, `referred-lab:${id}:stamp`] } },
+    }).catch(() => {});
     await prisma.referredLab.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {

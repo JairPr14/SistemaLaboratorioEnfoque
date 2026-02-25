@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { writeFile } from "fs/promises";
-import path from "path";
+import { prisma } from "@/lib/prisma";
 import { updatePrintConfig } from "@/lib/print-config";
 import { requireAdmin } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+
+const STORED_IMAGE_KEY = "print_stamp";
 
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB (aumentado según el plan)
@@ -90,19 +91,17 @@ export async function POST(request: Request) {
       );
     }
 
-    const ext = file.type.includes("png") ? "png" : file.type.includes("webp") ? "webp" : "jpg";
-    const filename = `stamp.${ext}`;
-    const publicDir = path.join(process.cwd(), "public");
-    const stampPath = path.join(publicDir, filename);
-
-    await writeFile(stampPath, buffer);
-
-    await updatePrintConfig({
-      stampImageUrl: `/${filename}`,
+    await prisma.storedImage.upsert({
+      where: { key: STORED_IMAGE_KEY },
+      create: { key: STORED_IMAGE_KEY, mimeType: file.type, data: buffer },
+      update: { mimeType: file.type, data: buffer },
     });
 
+    const stampImageUrl = "/api/images/print_stamp";
+    await updatePrintConfig({ stampImageUrl });
+
     return NextResponse.json({
-      stampImageUrl: `/${filename}`,
+      stampImageUrl,
       message: "Sello subido correctamente",
     });
   } catch (error) {

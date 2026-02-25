@@ -550,7 +550,22 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteIt
                         variant="success"
                         className="bg-emerald-100 text-emerald-700"
                       >
-                        {item.result!.items.length} parámetros
+                        {(() => {
+                          // Usar el conteo de la plantilla (source of truth) si existe
+                          const templateCount = item.labTest.template?.items?.length;
+                          if (templateCount != null && templateCount > 0) {
+                            return `${templateCount} parámetro${templateCount !== 1 ? "s" : ""}`;
+                          }
+                          // Fallback: deduplicar por (paramName, unit) por si result tiene duplicados
+                          const items = item.result!.items;
+                          const seen = new Set<string>();
+                          items.forEach((r) => {
+                            const key = `${(r.paramNameSnapshot ?? "").trim()}|${(r.unitSnapshot ?? "").trim()}`;
+                            seen.add(key);
+                          });
+                          const count = seen.size;
+                          return `${count} parámetro${count !== 1 ? "s" : ""}`;
+                        })()}
                       </Badge>
                     ) : (
                       <Badge

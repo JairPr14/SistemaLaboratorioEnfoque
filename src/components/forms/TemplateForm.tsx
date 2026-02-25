@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Search, Check, FileText } from "lucide-react";
 
-import { templateSchema, valueTypeValues, valueTypeLabels } from "@/features/lab/schemas";
+import { templateSchema } from "@/features/lab/schemas";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -208,9 +208,6 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
         if (firstError?.paramName) {
           const message = firstError.paramName.message || "requiere un nombre de al menos 2 caracteres";
           toast.error(`Parámetro ${firstErrorIndex + 1}: ${message}`);
-          return;
-        } else if (firstError?.valueType) {
-          toast.error(`El parámetro ${firstErrorIndex + 1} requiere un tipo válido.`);
           return;
         } else if (firstError?.order) {
           toast.error(`El parámetro ${firstErrorIndex + 1} requiere un orden válido.`);
@@ -541,7 +538,6 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
                     <TableHead className="text-slate-600 dark:text-slate-300">Parámetro</TableHead>
                     <TableHead className="text-slate-600 dark:text-slate-300 w-24">Unidad</TableHead>
                     <TableHead className="text-slate-600 dark:text-slate-300 min-w-[100px]">Ref. texto</TableHead>
-                    <TableHead className="text-slate-600 dark:text-slate-300 w-24">Tipo</TableHead>
                     <TableHead className="text-slate-600 dark:text-slate-300 w-20">Min</TableHead>
                     <TableHead className="text-slate-600 dark:text-slate-300 w-20">Max</TableHead>
                     <TableHead className="text-slate-600 dark:text-slate-300 w-14">Ord.</TableHead>
@@ -585,19 +581,6 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
                           placeholder="12-16"
                           {...form.register(`items.${index}.refRangeText`)}
                         />
-                      </TableCell>
-                      <TableCell>
-                        <select
-                          className="h-8 w-full rounded-md border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 text-xs text-slate-900 dark:text-slate-100"
-                          {...form.register(`items.${index}.valueType`)}
-                          title="Tipo de dato para la captura de resultados"
-                        >
-                          {valueTypeValues.map((value) => (
-                            <option key={value} value={value}>
-                              {valueTypeLabels[value]}
-                            </option>
-                          ))}
-                        </select>
                       </TableCell>
                       <TableCell>
                         <Input
@@ -772,18 +755,6 @@ export function TemplateForm({ templateId, labTests, defaultValues }: Props) {
                         placeholder="12-16"
                         {...form.register(`items.${index}.refRangeText`)}
                       />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-slate-600 dark:text-slate-300">Tipo de dato</Label>
-                      <select
-                        className="h-9 w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 text-sm text-slate-900 dark:text-slate-100"
-                        {...form.register(`items.${index}.valueType`)}
-                        title="Define el tipo de valor que se capturará (modificable en cualquier momento)"
-                      >
-                        {valueTypeValues.map((v) => (
-                          <option key={v} value={v}>{valueTypeLabels[v]}</option>
-                        ))}
-                      </select>
                     </div>
                     <div className="space-y-1.5 sm:col-span-2 lg:col-span-1 grid grid-cols-2 gap-2">
                       <div>

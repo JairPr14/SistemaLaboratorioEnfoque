@@ -392,6 +392,18 @@ model AppConfig {
   value String
 }
 
+/** Imágenes almacenadas en BD (sellos, logos de laboratorios referidos, etc.) */
+model StoredImage {
+  id       String   @id @default(cuid())
+  key      String   @unique
+  mimeType String
+  data     Bytes
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([key])
+}
+
 model Branch {
   id        String   @id @default(cuid())
   code      String   @unique

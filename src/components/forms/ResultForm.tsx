@@ -163,6 +163,10 @@ export function ResultForm({
   const handleSave = async () => {
     const values = form.getValues();
     const items = values.items ?? [];
+    if (items.length === 0) {
+      toast.error("No hay parámetros para guardar");
+      return;
+    }
     const validatedItems = items.map((item, idx) => {
       const t = templateItems[idx];
       return {
@@ -174,16 +178,37 @@ export function ResultForm({
         refMaxSnapshot: item.refMaxSnapshot ?? t?.refMax ?? null,
       };
     });
+    const payload = {
+      reportedBy: values.reportedBy ?? "",
+      comment: values.comment ?? "",
+      items: validatedItems,
+    };
     setSaving(true);
     try {
       const res = await fetch(`/api/orders/${orderId}/items/${itemId}/result`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...values, items: validatedItems }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        toast.error(data.error ?? "No se pudo guardar");
+        const firstIssue = data.details?.issues?.[0] ?? data.details?.errors?.[0];
+        const path = firstIssue?.path;
+        const msg = firstIssue?.message ?? data.error ?? "No se pudo guardar";
+        if (
+          path &&
+          Array.isArray(path) &&
+          path[0] === "items" &&
+          path[2] === "value"
+        ) {
+          const paramIdx = path[1];
+          const paramName =
+            validatedItems[paramIdx]?.paramNameSnapshot ||
+            `Parámetro ${(paramIdx as number) + 1}`;
+          toast.error(`Completa el resultado de "${paramName}" antes de guardar`);
+        } else {
+          toast.error(typeof msg === "string" ? msg : "No se pudo guardar");
+        }
         return;
       }
       toast.success("Resultados guardados");
@@ -254,6 +279,12 @@ export function ResultForm({
                         : "");
                     const refRanges = item.refRanges ?? [];
                     const additionalRefs = refRanges.map(formatRefRange).filter(Boolean);
+                    // Para parámetros tipo SELECT sin rango definido: mostrar opciones válidas como valor referencial
+                    const selectOptions = item.selectOptions ?? [];
+                    const optionsAsRef =
+                      selectOptions.length > 0 && !mainRef && additionalRefs.length === 0
+                        ? selectOptions.join(" / ")
+                        : "";
 
                     return (
                       <TableRow key={`${item.id}-${formIndex}`}>
@@ -307,7 +338,10 @@ export function ResultForm({
                                 ))}
                               </div>
                             )}
-                            {!mainRef && additionalRefs.length === 0 && (
+                            {optionsAsRef && (
+                              <div className="text-slate-600 dark:text-slate-400">{optionsAsRef}</div>
+                            )}
+                            {!mainRef && additionalRefs.length === 0 && !optionsAsRef && (
                               <span className="text-slate-400">-</span>
                             )}
                           </div>

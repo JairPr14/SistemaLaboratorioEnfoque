@@ -1,6 +1,4 @@
 import { NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
 import { getServerSession } from "next-auth";
 import { authOptions, hasPermission, PERMISSION_GESTIONAR_CATALOGO, PERMISSION_GESTIONAR_LAB_REFERIDOS } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -85,15 +83,14 @@ export async function POST(request: Request, { params }: Params) {
       );
     }
 
-    const ext = file.type.includes("png") ? "png" : file.type.includes("webp") ? "webp" : "jpg";
-    const filename = `${type}.${ext}`;
-    const publicDir = path.join(process.cwd(), "public", "referred-labs", id);
-    await mkdir(publicDir, { recursive: true });
-    const filePath = path.join(publicDir, filename);
-    await writeFile(filePath, buffer);
+    const key = `referred-lab:${id}:${type}`;
+    await prisma.storedImage.upsert({
+      where: { key },
+      create: { key, mimeType: file.type, data: buffer },
+      update: { mimeType: file.type, data: buffer },
+    });
 
-    const url = `/referred-labs/${id}/${filename}`;
-
+    const url = `/api/images/referred-lab/${id}/${type}`;
     const updateData = type === "logo" ? { logoUrl: url } : { stampImageUrl: url };
     await prisma.referredLab.update({
       where: { id },
