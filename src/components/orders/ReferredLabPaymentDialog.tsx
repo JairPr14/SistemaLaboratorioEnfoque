@@ -15,7 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatDate } from "@/lib/format";
 
 type LabSummary = {
   referredLabId: string;
@@ -240,7 +240,7 @@ export function ReferredLabPaymentDialog({
                       <p className="font-medium">{p.referredLabName}</p>
                       <p className="text-xs text-slate-500">{formatCurrency(p.amount)}</p>
                     </div>
-                    <p className="text-xs text-slate-500">{new Date(p.paidAt).toLocaleDateString()}</p>
+                    <p className="text-xs text-slate-500">{formatDate(p.paidAt)}</p>
                   </div>
                 ))}
               </div>

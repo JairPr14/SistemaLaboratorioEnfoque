@@ -1,5 +1,5 @@
 import { getSlaLevel, formatTimeAgo } from "@/lib/time-utils";
-import { formatDate } from "@/lib/format";
+import { formatDateTime } from "@/lib/format";
 
 export type AlertType = "INCOMPLETE" | "UNVALIDATED" | "SLA";
 export type AlertSeverity = "green" | "yellow" | "red";
@@ -29,7 +29,7 @@ export type OrderForAlerts = {
  */
 export function getOrderAlerts(order: OrderForAlerts, now?: Date | null): OrderAlert[] {
   const createdAgo = formatTimeAgo(order.createdAt, now);
-  const createdDate = formatDate(order.createdAt);
+  const createdDateTime = formatDateTime(order.createdAt);
   const sla = getSlaLevel(order.createdAt, now);
   const alerts: OrderAlert[] = [];
 
@@ -44,7 +44,7 @@ export function getOrderAlerts(order: OrderForAlerts, now?: Date | null): OrderA
       type: "INCOMPLETE",
       severity,
       label: `Incompleta (${order.completedTests}/${order.totalTests})`,
-      tooltip: `Faltan ${missing} análisis por capturar. Fecha de creación: ${createdDate} (${createdAgo}).`,
+      tooltip: `Faltan ${missing} análisis por capturar. Creado: ${createdDateTime} (${createdAgo}).`,
     });
   }
 
@@ -57,15 +57,15 @@ export function getOrderAlerts(order: OrderForAlerts, now?: Date | null): OrderA
       type: "UNVALIDATED",
       severity,
       label: "Sin validar",
-      tooltip: `Captura completa pero falta validación. Fecha de creación: ${createdDate} (${createdAgo}).`,
+      tooltip: `Captura completa pero falta validación. Creado: ${createdDateTime} (${createdAgo}).`,
     });
   }
 
   // 3) SLA: tiempo desde creación (y desde entrega si aplica)
   const slaTooltip =
     order.deliveredAt != null
-      ? `Fecha de creación: ${createdDate} (${createdAgo}). Entregada ${formatTimeAgo(order.deliveredAt, now)}.`
-      : `Fecha de creación: ${createdDate}. Tiempo desde creación: ${createdAgo}.`;
+      ? `Creado: ${createdDateTime} (${createdAgo}). Entregada ${formatTimeAgo(order.deliveredAt, now)}.`
+      : `Creado: ${createdDateTime}. Tiempo transcurrido: ${createdAgo}.`;
   alerts.push({
     type: "SLA",
     severity: sla,

@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
+import { parseDateTimePeru } from "@/lib/date";
 import { getServerSession, requirePermission, PERMISSION_REGISTRAR_PAGOS } from "@/lib/auth";
 import { referredLabPaymentSchema } from "@/features/lab/schemas";
 
@@ -194,7 +195,7 @@ export async function POST(request: Request, { params }: Params) {
     }
 
     const paymentId = randomUUID();
-    const paidAt = parsed.paidAt ? new Date(parsed.paidAt) : new Date();
+    const paidAt = parsed.paidAt ? parseDateTimePeru(parsed.paidAt) : new Date();
 
     await prisma.referredLabPayment.create({
       data: {

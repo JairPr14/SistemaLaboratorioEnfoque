@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
+import { parseDateTimePeru } from "@/lib/date";
 import { getServerSession, requirePermission, PERMISSION_REGISTRAR_PAGOS } from "@/lib/auth";
 import { orderPaymentSchema } from "@/features/lab/schemas";
 import { isMissingPaymentTableError } from "@/lib/payments";
@@ -154,7 +155,7 @@ export async function POST(request: Request, { params }: Params) {
     }
 
     const paymentId = randomUUID();
-    const paidAt = parsed.paidAt ? new Date(parsed.paidAt) : new Date();
+    const paidAt = parsed.paidAt ? parseDateTimePeru(parsed.paidAt) : new Date();
     await prisma.$executeRaw`
       INSERT INTO "Payment" ("id", "orderId", "amount", "method", "notes", "paidAt", "recordedById", "createdAt", "updatedAt")
       VALUES (

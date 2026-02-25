@@ -9,6 +9,7 @@ import {
   parseOrderCodeSequence,
 } from "@/features/lab/order-utils";
 import { generateNextPatientCode } from "@/lib/patient-code";
+import { parseDatePeru } from "@/lib/date";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { logger } from "@/lib/logger";
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
           dni: draft.dni.trim(),
           firstName,
           lastName,
-          birthDate: new Date(draft.birthDate),
+          birthDate: parseDatePeru(draft.birthDate),
           sex: draft.sex,
         },
       });

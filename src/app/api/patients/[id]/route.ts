@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { patientSchema } from "@/features/lab/schemas";
+import { parseDateTimePeru, parseDatePeru } from "@/lib/date";
 import {
   requirePermission,
   PERMISSION_EDITAR_PACIENTES,
@@ -54,13 +55,13 @@ export async function PUT(request: Request, { params }: Params) {
       ...restWithoutCreatedAt,
       firstName,
       lastName,
-      birthDate: new Date(rest.birthDate),
+      birthDate: parseDatePeru(rest.birthDate),
       phone: rest.phone || null,
       address: rest.address || null,
       email: rest.email || null,
     };
     if (createdAtStr && createdAtStr.trim()) {
-      updateData.createdAt = new Date(createdAtStr);
+      updateData.createdAt = parseDateTimePeru(createdAtStr);
     }
     const item = await prisma.patient.update({
       where: { id },

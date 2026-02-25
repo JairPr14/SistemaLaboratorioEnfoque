@@ -146,7 +146,7 @@ export function PaymentTicketClient({
           )}
 
           <p className="mt-6 text-center text-xs text-slate-400">
-            {new Date().toLocaleString("es-PE")}
+            {formatDateTime(new Date())}
           </p>
         </div>
       </div>

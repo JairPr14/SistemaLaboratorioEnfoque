@@ -11,6 +11,7 @@ import {
   orderCodePrefixForDate,
   parseOrderCodeSequence,
 } from "@/features/lab/order-utils";
+import { parseDatePeru } from "@/lib/date";
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
@@ -140,7 +141,7 @@ export async function POST(request: Request) {
     const totalPrice = orderItemsPayload.reduce((acc, x) => acc + x.priceSnapshot, 0);
 
     const orderDate = parsed.orderDate
-      ? new Date(parsed.orderDate + "T00:00:00")
+      ? parseDatePeru(parsed.orderDate)
       : new Date();
     const dayStart = new Date(orderDate);
     dayStart.setHours(0, 0, 0, 0);

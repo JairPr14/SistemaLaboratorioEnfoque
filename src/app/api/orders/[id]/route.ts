@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { parseDateTimePeru } from "@/lib/date";
 import { orderUpdateSchema } from "@/features/lab/schemas";
 import { requirePermission, PERMISSION_ELIMINAR_REGISTROS, getServerSession } from "@/lib/auth";
 import { logger } from "@/lib/logger";
@@ -65,12 +66,12 @@ export async function PUT(request: Request, { params }: Params) {
         branchId: parsed.branchId !== undefined ? parsed.branchId : undefined,
         admissionSettledAt:
           parsed.admissionSettledAt !== undefined
-            ? (parsed.admissionSettledAt ? new Date(parsed.admissionSettledAt) : null)
+            ? (parsed.admissionSettledAt ? parseDateTimePeru(parsed.admissionSettledAt) : null)
             : undefined,
         deliveredAt:
           parsed.deliveredAt !== undefined
             ? parsed.deliveredAt
-              ? new Date(parsed.deliveredAt)
+              ? parseDateTimePeru(parsed.deliveredAt)
               : null
             : parsed.status === "ENTREGADO"
               ? new Date()

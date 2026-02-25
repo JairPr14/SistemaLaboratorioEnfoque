@@ -3,11 +3,18 @@
  * @param date - Fecha de referencia
  * @param now - Si se pasa null (p. ej. antes del mount en cliente), devuelve la fecha formateada para evitar "hace X" con hora del servidor. Si es undefined, usa la hora actual (comportamiento por defecto).
  */
+const PERU_TIMEZONE = "America/Lima";
+
 export function formatTimeAgo(date: Date | string, now?: Date | null): string {
   const d = typeof date === "string" ? new Date(date) : date;
   const nowToUse = now === null ? null : (now ?? new Date());
   if (nowToUse === null) {
-    return d.toLocaleDateString("es-PE", { day: "2-digit", month: "2-digit", year: "numeric" });
+    return d.toLocaleDateString("es-PE", {
+      timeZone: PERU_TIMEZONE,
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
   }
   const diffMs = nowToUse.getTime() - d.getTime();
   const diffMins = Math.floor(diffMs / 60_000);
@@ -18,7 +25,7 @@ export function formatTimeAgo(date: Date | string, now?: Date | null): string {
   if (diffMins < 60) return `hace ${diffMins}m`;
   if (diffHours < 24) return `hace ${diffHours}h`;
   if (diffDays < 7) return `hace ${diffDays}d`;
-  return d.toLocaleDateString("es-PE");
+  return d.toLocaleDateString("es-PE", { timeZone: PERU_TIMEZONE });
 }
 
 /** Semáforo SLA: verde < 4h, amarillo 4-12h, rojo > 12h */

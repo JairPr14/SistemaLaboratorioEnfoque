@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { patientSchema } from "@/features/lab/schemas";
 import { generateNextPatientCode } from "@/lib/patient-code";
+import { parseDateTimePeru, parseDatePeru } from "@/lib/date";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { logger } from "@/lib/logger";
@@ -67,14 +68,14 @@ export async function POST(request: Request) {
         dni: parsed.dni.trim(),
         firstName,
         lastName,
-        birthDate: new Date(parsed.birthDate),
+        birthDate: parseDatePeru(parsed.birthDate),
         sex: parsed.sex,
         phone: parsed.phone || null,
         address: parsed.address || null,
         email: parsed.email || null,
       };
       if (parsed.createdAt && parsed.createdAt.trim()) {
-        createData.createdAt = new Date(parsed.createdAt);
+        createData.createdAt = parseDateTimePeru(parsed.createdAt);
       }
       try {
         item = await prisma.patient.create({ data: createData });

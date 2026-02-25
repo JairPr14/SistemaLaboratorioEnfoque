@@ -7,6 +7,7 @@ import { logger } from "@/lib/logger";
 import { authOptions, hasPermission, PERMISSION_AJUSTAR_PRECIO_ADMISION, PERMISSION_GESTIONAR_ADMISION, PERMISSION_VER_ADMISION } from "@/lib/auth";
 import { admissionCreateSchema } from "@/features/lab/schemas";
 import { generateNextPatientCode } from "@/lib/patient-code";
+import { parseDatePeru } from "@/lib/date";
 import {
   admissionCodePrefixForDate,
   buildAdmissionCode,
@@ -79,6 +80,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Sin permiso para crear admisiones" }, { status: 403 });
   }
 
+  const userExists = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { id: true },
+  });
+  if (!userExists) {
+    return NextResponse.json(
+      { error: "Sesión inválida: usuario no encontrado. Inicia sesión de nuevo." },
+      { status: 401 },
+    );
+  }
+
   try {
     const body = await request.json();
     const parsed = admissionCreateSchema.parse(body);
@@ -101,7 +113,7 @@ export async function POST(request: Request) {
           dni: draft.dni.trim(),
           firstName: draft.firstName.trim().toUpperCase(),
           lastName: draft.lastName.trim().toUpperCase(),
-          birthDate: new Date(draft.birthDate),
+          birthDate: parseDatePeru(draft.birthDate),
           sex: draft.sex,
         },
       });

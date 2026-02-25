@@ -69,16 +69,20 @@ export default async function ResultsPage({
   }
 
   const groups = Array.from(grouped.entries()).map(([key, ordersInGroup]) => {
-    const patient = ordersInGroup[0]!.patient;
-    const dateKey = getOrderDateKey(ordersInGroup[0]!);
-    const displayDate = formatDate(ordersInGroup[0]!.createdAt);
+    const sorted = [...ordersInGroup].sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    const patient = sorted[0]!.patient;
+    const dateKey = getOrderDateKey(sorted[0]!);
+    const displayDate = formatDate(sorted[0]!.createdAt);
     return {
       key,
       patientName: `${patient.lastName} ${patient.firstName}`,
       patientDni: patient.dni,
       displayDate,
       dateKey,
-      orders: ordersInGroup,
+      orders: sorted,
     };
   });
 
