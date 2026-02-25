@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatPatientDisplayName } from "@/lib/format";
 import { statusBadgeVariant } from "@/lib/order-utils";
 import { OrdersFilters, type OrdersFilterState } from "./OrdersFilters";
 import { OrderAlertsCell } from "@/components/orders/OrderAlertsCell";
@@ -180,8 +180,8 @@ export function DashboardPendingTable({ orders, defaultFilters, sectionOptions }
                         {order.orderCode}
                       </Link>
                     </TableCell>
-                    <TableCell>
-                      {order.patient.firstName} {order.patient.lastName}
+                    <TableCell className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                      {formatPatientDisplayName(order.patient.firstName, order.patient.lastName)}
                     </TableCell>
                     <TableCell className="text-slate-600 dark:text-slate-300">
                       {formatDate(order.createdAt)}

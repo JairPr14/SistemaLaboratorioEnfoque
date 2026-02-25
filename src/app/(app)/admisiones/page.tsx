@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
-import { Search, Filter, RotateCcw, Clock, CheckCircle, XCircle, FileText, CalendarDays, User } from "lucide-react";
+import { Search, Filter, RotateCcw, Clock, CheckCircle, XCircle, FileText, User } from "lucide-react";
 
 import { prisma } from "@/lib/prisma";
 import {
@@ -13,27 +13,14 @@ import {
   PERMISSION_PURGE_ADMISION,
   PERMISSION_VER_ADMISION,
 } from "@/lib/auth";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate, formatPatientDisplayName } from "@/lib/format";
+import { parseLocalDate } from "@/lib/date";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { FilterDateRange } from "@/components/common/FilterDateRange";
 import { pageLayoutClasses, PageHeader } from "@/components/layout/PageHeader";
 import { AdmissionActions } from "@/components/admisiones/AdmissionActions";
-
-/** Parsea "YYYY-MM-DD" en hora local: inicio (00:00:00) o fin (23:59:59.999) del día */
-function parseLocalDate(dateStr: string, endOfDay: boolean): Date {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  if (y == null || m == null || d == null || Number.isNaN(y) || Number.isNaN(m) || Number.isNaN(d)) {
-    return new Date(dateStr);
-  }
-  const date = new Date(y, m - 1, d);
-  if (endOfDay) {
-    date.setHours(23, 59, 59, 999);
-  } else {
-    date.setHours(0, 0, 0, 0);
-  }
-  return date;
-}
 
 /** Devuelve límites de birthDate para un rango de edad (edad del paciente al día de hoy) */
 function getBirthDateRangeForAge(
@@ -235,32 +222,17 @@ export default async function AdmisionesPage({ searchParams }: { searchParams: S
                 <option value="CANCELADA">Cancelada</option>
               </select>
             </div>
-            <div className="min-w-[140px]">
-              <label htmlFor="adm-from" className="mb-1.5 flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-                <CalendarDays className="h-3.5 w-3.5" />
-                Fecha desde
-              </label>
-              <input
-                id="adm-from"
-                name="from"
-                type="date"
-                defaultValue={fromParam ?? ""}
-                className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm transition-colors focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-              />
-            </div>
-            <div className="min-w-[140px]">
-              <label htmlFor="adm-to" className="mb-1.5 flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-                <CalendarDays className="h-3.5 w-3.5" />
-                Fecha hasta
-              </label>
-              <input
-                id="adm-to"
-                name="to"
-                type="date"
-                defaultValue={toParam ?? ""}
-                className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm transition-colors focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-              />
-            </div>
+            <FilterDateRange
+              fromId="adm-from"
+              toId="adm-to"
+              fromLabel="Fecha desde"
+              toLabel="Fecha hasta"
+              defaultFrom={fromParam ?? ""}
+              defaultTo={toParam ?? ""}
+              fieldClassName="min-w-[140px]"
+              labelClassName="mb-1.5"
+              inputClassName="h-10 focus:border-teal-500 focus:ring-teal-500/20"
+            />
             <div className="min-w-[140px]">
               <label htmlFor="adm-age" className="mb-1.5 flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
                 <User className="h-3.5 w-3.5" />
@@ -428,8 +400,8 @@ export default async function AdmisionesPage({ searchParams }: { searchParams: S
                         </code>
                       </TableCell>
                       <TableCell>
-                        <p className="font-medium">{item.patient.lastName} {item.patient.firstName}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">DNI {item.patient.dni}</p>
+                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{formatPatientDisplayName(item.patient.firstName, item.patient.lastName)}</p>
+                        <p className="text-sm font-semibold text-slate-600 dark:text-slate-400">DNI {item.patient.dni}</p>
                       </TableCell>
                       <TableCell className="text-slate-600 dark:text-slate-400">
                         {ageFromBirthDate(item.patient.birthDate)} años

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { PaymentDialog } from "@/components/orders/PaymentDialog";
 import { ReferredLabPaymentDialog } from "@/components/orders/ReferredLabPaymentDialog";
+import { PAYMENT_METHOD_LABELS } from "@/lib/constants";
 
 type PaymentItem = {
   id: string;
@@ -31,13 +32,6 @@ type Props = {
   conventionTotal?: number | null;
   canRegisterPayment: boolean;
   canPrintTicket?: boolean;
-};
-
-const methodLabel: Record<PaymentItem["method"], string> = {
-  EFECTIVO: "Efectivo",
-  TARJETA: "Tarjeta",
-  TRANSFERENCIA: "Transferencia",
-  CREDITO: "Crédito",
 };
 
 export function OrderPaymentPanel({
@@ -202,7 +196,7 @@ export function OrderPaymentPanel({
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="font-semibold">{formatCurrency(Number(payment.amount))}</p>
-                  <Badge variant="secondary">{methodLabel[payment.method]}</Badge>
+                  <Badge variant="secondary">{PAYMENT_METHOD_LABELS[payment.method]}</Badge>
                 </div>
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                   {formatDate(new Date(payment.paidAt))}

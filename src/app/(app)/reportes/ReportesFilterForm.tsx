@@ -3,7 +3,8 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Calendar, RotateCcw, Filter, Building2, CreditCard, Activity, CalendarDays } from "lucide-react";
+import { FilterDateRange } from "@/components/common/FilterDateRange";
+import { Calendar, RotateCcw, Filter, Building2, CreditCard, Activity } from "lucide-react";
 
 function toYYYYMMDD(d: Date): string {
   const y = d.getFullYear();
@@ -113,37 +114,19 @@ export function ReportesFilterForm({
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Primera fila: Fechas */}
       <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
-        <div>
-          <label htmlFor="dateFrom" className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
-            Desde
-          </label>
-          <div className="relative">
-            <CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              id="dateFrom"
-              name="dateFrom"
-              type="date"
-              defaultValue={defaultDateFrom}
-              className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-10 pr-3 text-sm shadow-sm transition-colors focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-            />
-          </div>
-        </div>
-        
-        <div>
-          <label htmlFor="dateTo" className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
-            Hasta
-          </label>
-          <div className="relative">
-            <CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              id="dateTo"
-              name="dateTo"
-              type="date"
-              defaultValue={defaultDateTo}
-              className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-10 pr-3 text-sm shadow-sm transition-colors focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-            />
-          </div>
-        </div>
+        <FilterDateRange
+          fromId="dateFrom"
+          toId="dateTo"
+          fromName="dateFrom"
+          toName="dateTo"
+          defaultFrom={defaultDateFrom}
+          defaultTo={defaultDateTo}
+          showLabelIcon={false}
+          showInputIcon={true}
+          fieldClassName=""
+          labelClassName="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300"
+          inputClassName="h-10 border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500/20 dark:border-slate-600"
+        />
         
         <div>
           <label htmlFor="reportes-status" className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">

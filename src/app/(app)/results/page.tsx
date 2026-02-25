@@ -128,10 +128,10 @@ export default async function ResultsPage({
                 className="rounded-lg border border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700 overflow-hidden"
               >
                 <div className="flex flex-wrap items-center gap-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3">
-                  <span className="font-semibold text-slate-900 dark:text-slate-100">
+                  <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                     {group.patientName}
                   </span>
-                  <span className="text-sm text-slate-600 dark:text-slate-400">DNI {group.patientDni}</span>
+                  <span className="text-sm font-semibold text-slate-600 dark:text-slate-400">DNI {group.patientDni}</span>
                   <Badge variant="secondary" className="text-xs">
                     {group.displayDate}
                   </Badge>

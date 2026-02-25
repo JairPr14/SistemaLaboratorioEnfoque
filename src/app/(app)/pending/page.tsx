@@ -1,23 +1,26 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
-import { authOptions, hasAnyPermission, PERMISSION_VER_ORDENES, PERMISSION_QUICK_ACTIONS_ANALISTA, PERMISSION_CAPTURAR_RESULTADOS } from "@/lib/auth";
+
+import { authOptions, hasAnyPermission, PERMISSION_CAPTURAR_RESULTADOS, PERMISSION_QUICK_ACTIONS_ANALISTA, PERMISSION_VER_ORDENES } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { OrderAlertsCell } from "@/components/orders/OrderAlertsCell";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatPatientDisplayName } from "@/lib/format";
 import { pageLayoutClasses } from "@/components/layout/PageHeader";
+import { EmptyTableRow } from "@/components/common/EmptyTableRow";
 
 export default async function PendingPage() {
   const session = await getServerSession(authOptions);
-  const canView =
-    session?.user &&
-    hasAnyPermission(session, [PERMISSION_VER_ORDENES, PERMISSION_QUICK_ACTIONS_ANALISTA, PERMISSION_CAPTURAR_RESULTADOS]);
-  if (!canView) {
-    redirect("/dashboard");
-  }
+  const canView = session?.user && hasAnyPermission(session, [
+    PERMISSION_VER_ORDENES,
+    PERMISSION_QUICK_ACTIONS_ANALISTA,
+    PERMISSION_CAPTURAR_RESULTADOS,
+  ]);
+  if (!canView) redirect("/dashboard");
+
   const orders = await prisma.labOrder.findMany({
     where: { status: { in: ["PENDIENTE", "EN_PROCESO"] } },
     include: {
@@ -56,11 +59,7 @@ export default async function PendingPage() {
               </TableHeader>
               <TableBody>
                 {orders.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="py-8 text-center text-slate-500 dark:text-slate-400">
-                      No hay órdenes pendientes.
-                    </TableCell>
-                  </TableRow>
+                  <EmptyTableRow colSpan={7} message="No hay órdenes pendientes." />
                 ) : (
                   orders.map((order) => {
                     const totalTests = order.items?.length ?? 0;
@@ -85,8 +84,8 @@ export default async function PendingPage() {
                             {order.orderCode}
                           </Link>
                         </TableCell>
-                        <TableCell className="text-slate-900 dark:text-slate-200">
-                          {order.patient.firstName} {order.patient.lastName}
+                        <TableCell className="text-sm font-semibold text-slate-900 dark:text-slate-200">
+                          {formatPatientDisplayName(order.patient.firstName, order.patient.lastName)}
                         </TableCell>
                         <TableCell className="text-slate-700 dark:text-slate-300">{formatDate(order.createdAt)}</TableCell>
                         <TableCell>

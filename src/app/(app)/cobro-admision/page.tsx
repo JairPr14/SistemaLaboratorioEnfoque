@@ -2,28 +2,17 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 
-import { authOptions, hasPermission, PERMISSION_VER_ADMISION, PERMISSION_REGISTRAR_PAGOS } from "@/lib/auth";
+import { authOptions, ADMIN_ROLE_CODE, hasPermission, PERMISSION_VER_ADMISION, PERMISSION_REGISTRAR_PAGOS } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate, formatPatientDisplayName } from "@/lib/format";
+import { calculateConventionTotal } from "@/lib/order-pricing";
+import { parseLocalDate } from "@/lib/date";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { pageLayoutClasses, PageHeader } from "@/components/layout/PageHeader";
 import { SettleAdmissionButton } from "@/components/admisiones/SettleAdmissionButton";
+import { MetricCard } from "@/components/dashboard/MetricCard";
 import { FileText, CalendarDays, Building2, DollarSign, FlaskConical } from "lucide-react";
-
-function parseLocalDate(dateStr: string, endOfDay: boolean): Date {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  if (y == null || m == null || d == null || Number.isNaN(y) || Number.isNaN(m) || Number.isNaN(d)) {
-    return new Date(dateStr);
-  }
-  const date = new Date(y, m - 1, d);
-  if (endOfDay) {
-    date.setHours(23, 59, 59, 999);
-  } else {
-    date.setHours(0, 0, 0, 0);
-  }
-  return date;
-}
 
 function toYYYYMMDD(d: Date): string {
   const y = d.getFullYear();
@@ -40,7 +29,10 @@ export default async function CobroAdmisionPage({
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
   const session = await getServerSession(authOptions);
-  if (!hasPermission(session, PERMISSION_VER_ADMISION)) redirect("/dashboard");
+  const canAccess =
+    session?.user &&
+    (session.user.roleCode === ADMIN_ROLE_CODE || hasPermission(session, PERMISSION_VER_ADMISION));
+  if (!canAccess) redirect("/dashboard");
 
   const params = await searchParams;
   const today = new Date();
@@ -116,11 +108,7 @@ export default async function CobroAdmisionPage({
 
   const orderConventionTotal = (order: {
     items: Array<{ priceSnapshot: number; priceConventionSnapshot?: number | null }>;
-  }) =>
-    order.items.reduce(
-      (sum, i) => sum + Number("priceConventionSnapshot" in i && i.priceConventionSnapshot != null ? i.priceConventionSnapshot : i.priceSnapshot),
-      0,
-    );
+  }) => calculateConventionTotal(order.items);
   const totalPendiente = pendingOrders.reduce(
     (s, o) => s + orderConventionTotal(o),
     0,
@@ -169,59 +157,35 @@ export default async function CobroAdmisionPage({
         </CardHeader>
       </Card>
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/50">
-                <FileText className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-              </div>
-              <div>
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Pendiente de cobrar</p>
-                <p className="text-xl font-bold text-amber-600 dark:text-amber-400">{pendingOrders.length} órdenes</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/50">
-                <DollarSign className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <div>
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Total a cobrar a admisión</p>
-                <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(totalPendiente)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/50">
-                <FlaskConical className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div>
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Costo terciarización (devol. interna)</p>
-                <p className="text-xl font-bold text-blue-600 dark:text-blue-400">{formatCurrency(totalReferidoPendiente)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800">
-                <CalendarDays className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-              </div>
-              <div>
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Período</p>
-                <p className="text-sm font-semibold">{formatDate(dateFrom)} – {formatDate(dateTo)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricCard
+          title="Pendiente de cobrar"
+          value={`${pendingOrders.length} órdenes`}
+          subtitle="admisión"
+          icon={<FileText className="h-5 w-5" />}
+          accent="amber"
+        />
+        <MetricCard
+          title="Total a cobrar"
+          value={formatCurrency(totalPendiente)}
+          subtitle="precio convenio"
+          icon={<DollarSign className="h-5 w-5" />}
+          accent="emerald"
+        />
+        <MetricCard
+          title="Terciarización"
+          value={formatCurrency(totalReferidoPendiente)}
+          subtitle="devolución interna"
+          icon={<FlaskConical className="h-5 w-5" />}
+          accent="blue"
+        />
+        <MetricCard
+          title="Período"
+          value={`${formatDate(dateFrom)} – ${formatDate(dateTo)}`}
+          subtitle="rango activo"
+          icon={<CalendarDays className="h-5 w-5" />}
+          accent="sky"
+        />
       </div>
 
       <Card>
@@ -272,8 +236,8 @@ export default async function CobroAdmisionPage({
                         <TableCell className="text-slate-600 dark:text-slate-400">
                           {formatDate(order.createdAt)}
                         </TableCell>
-                        <TableCell>
-                          {order.patient.lastName} {order.patient.firstName}
+                        <TableCell className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                          {formatPatientDisplayName(order.patient.firstName, order.patient.lastName)}
                         </TableCell>
                         <TableCell>
                           <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-300">
@@ -351,8 +315,8 @@ export default async function CobroAdmisionPage({
                             ? formatDate(order.admissionSettledAt)
                             : "—"}
                         </TableCell>
-                        <TableCell>
-                          {order.patient.lastName} {order.patient.firstName}
+                        <TableCell className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                          {formatPatientDisplayName(order.patient.firstName, order.patient.lastName)}
                         </TableCell>
                         <TableCell className="text-right text-slate-600 dark:text-slate-400">
                           {formatCurrency(Number(order.totalPrice))}

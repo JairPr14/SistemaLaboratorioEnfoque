@@ -16,13 +16,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { formatCurrency } from "@/lib/format";
-
-const PAYMENT_METHOD_OPTIONS = [
-  { value: "EFECTIVO", label: "Efectivo" },
-  { value: "TARJETA", label: "Tarjeta" },
-  { value: "TRANSFERENCIA", label: "Transferencia" },
-  { value: "CREDITO", label: "Crédito (por cobrar)" },
-] as const;
+import { PAYMENT_METHOD_OPTIONS } from "@/lib/constants";
 
 type Props = {
   orderId: string;

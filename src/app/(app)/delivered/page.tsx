@@ -95,10 +95,10 @@ export default async function DeliveredPage() {
                 className="rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800/80 overflow-hidden"
               >
                 <div className="flex flex-wrap items-center gap-4 border-b border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-3">
-                  <span className="font-semibold text-slate-900 dark:text-slate-100">
+                  <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                     {group.patientName}
                   </span>
-                  <span className="text-sm text-slate-600 dark:text-slate-300">DNI {group.patientDni}</span>
+                  <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">DNI {group.patientDni}</span>
                   <Badge variant="secondary" className="text-xs">
                     {group.displayDate}
                   </Badge>

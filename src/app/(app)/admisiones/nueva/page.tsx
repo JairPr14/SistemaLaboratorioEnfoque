@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 
 import { prisma } from "@/lib/prisma";
+import { formatPatientDisplayName } from "@/lib/format";
 import {
   authOptions,
   hasPermission,
@@ -59,7 +60,7 @@ export default async function NuevaAdmisionPage() {
           branches={branches.map((branch) => ({ id: branch.id, name: branch.name }))}
           patients={patients.map((patient) => ({
               id: patient.id,
-              label: `${patient.lastName} ${patient.firstName} (${patient.dni})`,
+              label: `${formatPatientDisplayName(patient.firstName, patient.lastName)} (${patient.dni})`,
               dni: patient.dni,
               firstName: patient.firstName,
               lastName: patient.lastName,

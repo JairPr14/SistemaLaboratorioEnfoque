@@ -3,17 +3,24 @@ import { getServerSession } from "next-auth";
 
 import {
   authOptions,
+  hasAnyPermission,
   hasPermission,
   PERMISSION_CAPTURAR_RESULTADOS,
   PERMISSION_ELIMINAR_REGISTROS,
+  PERMISSION_GESTIONAR_ADMISION,
   PERMISSION_IMPRIMIR_TICKET_PAGO,
+  PERMISSION_QUICK_ACTIONS_ANALISTA,
+  PERMISSION_QUICK_ACTIONS_ENTREGA,
+  PERMISSION_QUICK_ACTIONS_RECEPCION,
   PERMISSION_REGISTRAR_PAGOS,
-  PERMISSION_VER_PAGOS,
+  PERMISSION_VER_ADMISION,
   PERMISSION_VER_ORDENES,
+  PERMISSION_VER_PAGOS,
 } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate, formatPatientDisplayName } from "@/lib/format";
 import { getPaidTotalByOrderId } from "@/lib/payments";
+import { calculateConventionTotal } from "@/lib/order-pricing";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { OrderStatusActions } from "@/components/orders/OrderStatusActions";
@@ -32,7 +39,15 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
   const { captureItem } = await searchParams;
   const session = await getServerSession(authOptions);
-  if (!session?.user || !hasPermission(session, PERMISSION_VER_ORDENES)) {
+  const canAccessOrder = hasAnyPermission(session, [
+    PERMISSION_VER_ORDENES,
+    PERMISSION_QUICK_ACTIONS_RECEPCION,
+    PERMISSION_QUICK_ACTIONS_ANALISTA,
+    PERMISSION_QUICK_ACTIONS_ENTREGA,
+    PERMISSION_GESTIONAR_ADMISION,
+    PERMISSION_VER_ADMISION,
+  ]);
+  if (!session?.user || !canAccessOrder) {
     redirect("/dashboard");
   }
   const canDeleteOrderItems = hasPermission(session, PERMISSION_ELIMINAR_REGISTROS);
@@ -85,16 +100,7 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
 
   const isFromAdmission = !!order.admissionRequestId;
   const conventionTotal = isFromAdmission
-    ? order.items.reduce(
-        (sum, i) =>
-          sum +
-          Number(
-            "priceConventionSnapshot" in i && i.priceConventionSnapshot != null
-              ? i.priceConventionSnapshot
-              : i.priceSnapshot,
-          ),
-        0,
-      )
+    ? calculateConventionTotal(order.items)
     : null;
 
   return (
@@ -136,7 +142,7 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
             />
             <RepeatOrderButton
               orderId={order.id}
-              patientName={`${order.patient.firstName} ${order.patient.lastName}`}
+              patientName={formatPatientDisplayName(order.patient.firstName, order.patient.lastName)}
             />
             <OrderStatusActions orderId={order.id} currentStatus={order.status} />
           </div>
@@ -145,15 +151,21 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
           <div className="grid gap-4 md:grid-cols-3">
             <div>
               <p className="text-sm text-slate-500 dark:text-slate-400">Paciente</p>
-              <p className="text-base font-semibold text-slate-900 dark:text-slate-100">
-                {order.patient.firstName} {order.patient.lastName}
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                {formatPatientDisplayName(order.patient.firstName, order.patient.lastName)}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-slate-500 dark:text-slate-400">DNI</p>
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                {order.patient.dni ?? "—"}
               </p>
             </div>
             <div>
               <p className="text-sm text-slate-500 dark:text-slate-400">Fecha</p>
-              <p className="text-base font-semibold text-slate-900 dark:text-slate-100">
-                {formatDate(order.createdAt)}
-              </p>
+<p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {formatDate(order.createdAt)}
+                </p>
             </div>
             <div>
               <p className="text-sm text-slate-500 dark:text-slate-400">Estado</p>
@@ -163,7 +175,7 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             <div>
               <p className="text-sm text-slate-500 dark:text-slate-400">Solicitante</p>
-              <p className="text-base font-semibold text-slate-900 dark:text-slate-100">
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                 {order.requestedBy || "-"}
               </p>
             </div>
@@ -171,7 +183,7 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
               <p className="text-sm text-slate-500 dark:text-slate-400">
                 {isFromAdmission ? "Total orden (público)" : "Total"}
               </p>
-              <p className="text-base font-semibold text-slate-900 dark:text-slate-100">
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                 {formatCurrency(Number(order.totalPrice))}
               </p>
               {isFromAdmission && (
@@ -183,7 +195,7 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
             {isFromAdmission && conventionTotal != null && (
               <div>
                 <p className="text-sm text-slate-500 dark:text-slate-400">A cobrar a admisión (convenio)</p>
-                <p className="text-base font-semibold text-emerald-600 dark:text-emerald-400">
+                <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
                   {formatCurrency(conventionTotal)}
                 </p>
                 <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
@@ -193,7 +205,7 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
             )}
             <div>
               <p className="text-sm text-slate-500 dark:text-slate-400">Sede de atención</p>
-              <p className="text-base font-semibold text-slate-900 dark:text-slate-100">
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                 {order.branch?.name ?? (
                   order.patientType === "CLINICA"
                     ? "Paciente Clínica"
@@ -207,13 +219,13 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
             </div>
             <div>
               <p className="text-sm text-slate-500 dark:text-slate-400">Cobrado</p>
-              <p className="text-base font-semibold text-slate-900 dark:text-slate-100">
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                 {formatCurrency(paidTotal)}
               </p>
             </div>
             <div>
               <p className="text-sm text-slate-500 dark:text-slate-400">Saldo pendiente</p>
-              <p className="text-base font-semibold text-slate-900 dark:text-slate-100">
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                 {formatCurrency(balance)}
               </p>
             </div>

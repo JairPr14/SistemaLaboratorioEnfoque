@@ -8,7 +8,7 @@ import { PatientForm } from "@/components/forms/PatientForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DeleteButton } from "@/components/common/DeleteButton";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatPatientDisplayName } from "@/lib/format";
 
 type Props = {
   searchParams: Promise<{ search?: string }>;
@@ -120,13 +120,13 @@ export default async function PatientsPage({ searchParams }: Props) {
                         <TableCell className="font-mono text-sm text-slate-900 dark:text-slate-100">{patient.code}</TableCell>
                         <TableCell>
                           <Link
-                            className="font-medium text-slate-900 dark:text-slate-100 hover:underline"
+                            className="text-sm font-semibold text-slate-900 dark:text-slate-100 hover:underline"
                             href={`/patients/${patient.id}`}
                           >
-                            {patient.firstName} {patient.lastName}
+                            {formatPatientDisplayName(patient.firstName, patient.lastName)}
                           </Link>
                         </TableCell>
-                        <TableCell className="text-slate-700 dark:text-slate-300">{patient.dni}</TableCell>
+                        <TableCell className="text-sm font-semibold text-slate-700 dark:text-slate-300">{patient.dni}</TableCell>
                         <TableCell className="text-slate-700 dark:text-slate-300">{formatDate(patient.birthDate)}</TableCell>
                         <TableCell className="text-right">
                           <Link

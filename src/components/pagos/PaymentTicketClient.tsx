@@ -7,6 +7,7 @@ import { Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
+import { PAYMENT_METHOD_LABELS } from "@/lib/constants";
 
 type PrintFormat = "a4" | "80mm";
 
@@ -26,13 +27,6 @@ type Props = {
   balance: number;
   paymentStatus: string;
   payments: PaymentItem[];
-};
-
-const methodLabel: Record<string, string> = {
-  EFECTIVO: "Efectivo",
-  TARJETA: "Tarjeta",
-  TRANSFERENCIA: "Transferencia",
-  CREDITO: "Crédito",
 };
 
 export function PaymentTicketClient({
@@ -102,11 +96,11 @@ export function PaymentTicketClient({
             </p>
             <p className="flex justify-between text-sm">
               <span className="text-slate-500">Paciente:</span>
-              <span className="font-medium">{patientName}</span>
+              <span className="font-semibold">{patientName}</span>
             </p>
             <p className="flex justify-between text-sm">
               <span className="text-slate-500">DNI:</span>
-              <span>{patientDni ?? "—"}</span>
+              <span className="font-semibold">{patientDni ?? "—"}</span>
             </p>
             <p className="flex justify-between text-sm">
               <span className="text-slate-500">Fecha:</span>
@@ -142,7 +136,7 @@ export function PaymentTicketClient({
                 {payments.map((p, i) => (
                   <li key={i} className="flex justify-between text-xs text-slate-700">
                     <span>
-                      {formatDateTime(p.paidAt)} — {methodLabel[p.method] ?? p.method}
+                      {formatDateTime(p.paidAt)} — {PAYMENT_METHOD_LABELS[p.method as keyof typeof PAYMENT_METHOD_LABELS] ?? p.method}
                     </span>
                     <span className="font-medium">{formatCurrency(p.amount)}</span>
                   </li>

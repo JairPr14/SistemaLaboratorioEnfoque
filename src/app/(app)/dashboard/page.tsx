@@ -17,6 +17,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { getPaidTotalsByOrderIds } from "@/lib/payments";
 import { formatCurrency } from "@/lib/format";
+import { parseLocalDate } from "@/lib/date";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Users,
@@ -34,21 +35,6 @@ import { DashboardPendingTable } from "@/components/dashboard/DashboardPendingTa
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
 
 export const dynamic = "force-dynamic";
-
-/** Parsea YYYY-MM-DD a inicio o fin de día en hora local */
-function parseLocalDate(dateStr: string, endOfDay: boolean): Date {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  if (y == null || m == null || d == null || Number.isNaN(y) || Number.isNaN(m) || Number.isNaN(d)) {
-    return new Date(dateStr);
-  }
-  const date = new Date(y, m - 1, d);
-  if (endOfDay) {
-    date.setHours(23, 59, 59, 999);
-  } else {
-    date.setHours(0, 0, 0, 0);
-  }
-  return date;
-}
 
 function toYYYYMMDD(d: Date): string {
   const y = d.getFullYear();

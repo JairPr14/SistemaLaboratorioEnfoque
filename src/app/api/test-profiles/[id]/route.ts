@@ -4,28 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { testProfileSchema } from "@/features/lab/schemas";
 import { requireAdmin } from "@/lib/auth";
 import { logger } from "@/lib/logger";
-
-const includeItems = {
-  items: {
-    orderBy: { order: "asc" as const },
-    include: { labTest: { include: { section: true } } },
-  },
-} as const;
-
-function mapProfile(p: { id: string; name: string; packagePrice: number | null; items: { labTest: { id: string; code: string; name: string; section: { code: string } | null; price: number } }[] }) {
-  return {
-    id: p.id,
-    name: p.name,
-    packagePrice: p.packagePrice != null ? Number(p.packagePrice) : null,
-    tests: p.items.map((i) => ({
-      id: i.labTest.id,
-      code: i.labTest.code,
-      name: i.labTest.name,
-      section: i.labTest.section?.code ?? "",
-      price: Number(i.labTest.price),
-    })),
-  };
-}
+import { mapTestProfile, testProfileIncludeItems } from "@/lib/test-profiles";
 
 export async function GET(
   _request: Request,
@@ -36,12 +15,12 @@ export async function GET(
     const { id } = await params;
     const profile = await prisma.testProfile.findUnique({
       where: { id },
-      include: includeItems,
+      include: testProfileIncludeItems,
     });
     if (!profile) {
       return NextResponse.json({ error: "Promoción no encontrada" }, { status: 404 });
     }
-    return NextResponse.json({ profile: mapProfile(profile) });
+    return NextResponse.json({ profile: mapTestProfile(profile) });
   } catch (error) {
     logger.error("Error fetching test profile:", error);
     return NextResponse.json(
@@ -82,12 +61,12 @@ export async function PATCH(
 
     const profile = await prisma.testProfile.findUnique({
       where: { id },
-      include: includeItems,
+      include: testProfileIncludeItems,
     });
     if (!profile) {
       return NextResponse.json({ error: "Promoción no encontrada" }, { status: 404 });
     }
-    return NextResponse.json({ profile: mapProfile(profile) });
+    return NextResponse.json({ profile: mapTestProfile(profile) });
   } catch (error) {
     logger.error("Error updating test profile:", error);
     if (error instanceof Error && error.name === "ZodError") {

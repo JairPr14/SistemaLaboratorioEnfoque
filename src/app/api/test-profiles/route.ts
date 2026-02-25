@@ -4,28 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { testProfileSchema } from "@/features/lab/schemas";
 import { requireAdmin } from "@/lib/auth";
 import { logger } from "@/lib/logger";
-
-const includeItems = {
-  items: {
-    orderBy: { order: "asc" as const },
-        include: { labTest: { include: { section: true } } },
-  },
-} as const;
-
-function mapProfile(p: { id: string; name: string; packagePrice: number | null; items: { labTest: { id: string; code: string; name: string; section: { code: string } | null; price: number } }[] }) {
-  return {
-    id: p.id,
-    name: p.name,
-    packagePrice: p.packagePrice != null ? Number(p.packagePrice) : null,
-    tests: p.items.map((i) => ({
-      id: i.labTest.id,
-      code: i.labTest.code,
-      name: i.labTest.name,
-      section: i.labTest.section?.code ?? "",
-      price: Number(i.labTest.price),
-    })),
-  };
-}
+import { mapTestProfile, testProfileIncludeItems } from "@/lib/test-profiles";
 
 export async function GET(request: Request) {
   // GET puede ser público para que todos vean las promociones disponibles
@@ -35,12 +14,12 @@ export async function GET(request: Request) {
 
     const profiles = await prisma.testProfile.findMany({
       where: activeOnly ? { isActive: true } : {},
-      include: includeItems,
+      include: testProfileIncludeItems,
       orderBy: { name: "asc" },
     });
 
     return NextResponse.json({
-      profiles: profiles.map((p) => mapProfile(p)),
+      profiles: profiles.map((p) => mapTestProfile(p)),
     });
   } catch (error) {
     logger.error("Error fetching test profiles:", error);
@@ -71,10 +50,10 @@ export async function POST(request: Request) {
           })),
         },
       },
-      include: includeItems,
+      include: testProfileIncludeItems,
     });
 
-    return NextResponse.json({ profile: mapProfile(profile) });
+    return NextResponse.json({ profile: mapTestProfile(profile) });
   } catch (error) {
     logger.error("Error creating test profile:", error);
     if (error instanceof Error && error.name === "ZodError") {

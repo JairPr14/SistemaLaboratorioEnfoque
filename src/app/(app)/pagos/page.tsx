@@ -6,28 +6,22 @@ import { redirect } from "next/navigation";
 import { authOptions, hasPermission, PERMISSION_IMPRIMIR_TICKET_PAGO, PERMISSION_REGISTRAR_PAGOS, PERMISSION_VER_PAGOS, PERMISSION_VER_ADMISION } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getPaidTotalsByOrderIds } from "@/lib/payments";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate, formatPatientDisplayName } from "@/lib/format";
+import { PAYMENT_METHOD_LABELS } from "@/lib/constants";
+import { calculateConventionTotal } from "@/lib/order-pricing";
+import { parseLocalDate } from "@/lib/date";
+import { PAYMENT_ROW_HOVER_CLASS } from "@/lib/table-row-styles";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { RegistrarpagoButton } from "@/components/pagos/RegistrarpagoButton";
 import { PagosTabs } from "@/components/pagos/PagosTabs";
-import { Search, CalendarDays, Filter, X, Eye, Printer, Receipt, Building2, DollarSign, FileText, CreditCard, UserPlus, FlaskConical, Wallet } from "lucide-react";
-
-/** Parsea "YYYY-MM-DD" en hora local y devuelve inicio (00:00:00) o fin (23:59:59.999) del día */
-function parseLocalDate(dateStr: string, endOfDay: boolean): Date {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  if (y == null || m == null || d == null || Number.isNaN(y) || Number.isNaN(m) || Number.isNaN(d)) {
-    return new Date(dateStr);
-  }
-  const date = new Date(y, m - 1, d);
-  if (endOfDay) {
-    date.setHours(23, 59, 59, 999);
-  } else {
-    date.setHours(0, 0, 0, 0);
-  }
-  return date;
-}
+import { EmptyTableRow } from "@/components/common/EmptyTableRow";
+import { StatusBadge } from "@/components/common/StatusBadge";
+import { FilterDateRange } from "@/components/common/FilterDateRange";
+import { FilterSubmitReset } from "@/components/common/FilterSubmitReset";
+import { MetricCard } from "@/components/dashboard/MetricCard";
+import { Search, Eye, Printer, Receipt, Building2, DollarSign, FileText, CreditCard, UserPlus, FlaskConical, Wallet } from "lucide-react";
 
 type TabValue = "pendientes" | "parcial" | "cobrados";
 
@@ -94,13 +88,6 @@ export default async function PagosPage({
   const cajaIngresosHoy = Number(cajaIngresos._sum.amount ?? 0);
   const cajaEgresosHoy = Number(cajaEgresos._sum.amount ?? 0);
   const cajaTotalHoy = cajaIngresosHoy - cajaEgresosHoy;
-  const methodLabels: Record<string, string> = {
-    EFECTIVO: "Efectivo",
-    TARJETA: "Tarjeta",
-    TRANSFERENCIA: "Transferencia",
-    CREDITO: "Crédito",
-  };
-
   const orders = await prisma.labOrder.findMany({
     where: {
       status: { not: "ANULADO" },
@@ -183,13 +170,7 @@ export default async function PagosPage({
     }),
   ]);
 
-  const admissionPendingTotal = admissionPendingOrders.reduce((s, order) => {
-    const orderTotal = order.items.reduce(
-      (sum, i) => sum + Number("priceConventionSnapshot" in i && i.priceConventionSnapshot != null ? i.priceConventionSnapshot : i.priceSnapshot),
-      0,
-    );
-    return s + orderTotal;
-  }, 0);
+  const admissionPendingTotal = admissionPendingOrders.reduce((s, order) => s + calculateConventionTotal(order.items), 0);
   const admissionPendingCount = admissionPendingOrders.length;
 
   let totalExternalCost = 0;
@@ -203,16 +184,7 @@ export default async function PagosPage({
 
   const conventionTotalForOrder = (order: (typeof orders)[0]) => {
     if (!order.admissionRequestId) return null;
-    return order.items.reduce(
-      (sum, i) =>
-        sum +
-        Number(
-          "priceConventionSnapshot" in i && i.priceConventionSnapshot != null
-            ? i.priceConventionSnapshot
-            : i.priceSnapshot,
-        ),
-      0,
-    );
+    return calculateConventionTotal(order.items);
   };
 
   const ordersWithPayment = orders.map((order) => {
@@ -327,7 +299,7 @@ export default async function PagosPage({
                 {cajaIngresosByMethod.map((row) => (
                   <span key={row.method} className="inline-flex items-center gap-1.5 rounded-md bg-white px-2.5 py-1.5 text-sm font-medium shadow-sm dark:bg-slate-700">
                     <CreditCard className="h-3.5 w-3.5 text-slate-500" />
-                    {methodLabels[row.method] ?? row.method}: {formatCurrency(Number(row._sum.amount ?? 0))}
+                    {PAYMENT_METHOD_LABELS[row.method as keyof typeof PAYMENT_METHOD_LABELS] ?? row.method}: {formatCurrency(Number(row._sum.amount ?? 0))}
                   </span>
                 ))}
               </div>
@@ -338,39 +310,27 @@ export default async function PagosPage({
 
       {/* Cards de resumen */}
       <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <div className="rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-amber-100/50 p-4 dark:border-amber-800/50 dark:from-amber-900/20 dark:to-amber-800/10">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/50">
-              <CreditCard className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div>
-              <p className="text-xs font-medium text-amber-600/70 dark:text-amber-400/70">Pendientes ({counts.pendientes})</p>
-              <p className="text-lg font-bold text-amber-700 dark:text-amber-300">{formatCurrency(totalPendiente)}</p>
-            </div>
-          </div>
-        </div>
-        <div className="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100/50 p-4 dark:border-blue-800/50 dark:from-blue-900/20 dark:to-blue-800/10">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/50">
-              <DollarSign className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <p className="text-xs font-medium text-blue-600/70 dark:text-blue-400/70">Parcial ({counts.parcial})</p>
-              <p className="text-lg font-bold text-blue-700 dark:text-blue-300">{formatCurrency(totalParcial)}</p>
-            </div>
-          </div>
-        </div>
-        <div className="rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-100/50 p-4 dark:border-emerald-800/50 dark:from-emerald-900/20 dark:to-emerald-800/10">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/50">
-              <FileText className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <div>
-              <p className="text-xs font-medium text-emerald-600/70 dark:text-emerald-400/70">Cobrados ({counts.cobrados})</p>
-              <p className="text-lg font-bold text-emerald-700 dark:text-emerald-300">{formatCurrency(totalCobrado)}</p>
-            </div>
-          </div>
-        </div>
+        <MetricCard
+          title={`Pendientes (${counts.pendientes})`}
+          value={formatCurrency(totalPendiente)}
+          subtitle="por cobrar"
+          icon={<CreditCard className="h-5 w-5" />}
+          accent="amber"
+        />
+        <MetricCard
+          title={`Parcial (${counts.parcial})`}
+          value={formatCurrency(totalParcial)}
+          subtitle="saldo parcial"
+          icon={<DollarSign className="h-5 w-5" />}
+          accent="blue"
+        />
+        <MetricCard
+          title={`Cobrados (${counts.cobrados})`}
+          value={formatCurrency(totalCobrado)}
+          subtitle="pagados"
+          icon={<FileText className="h-5 w-5" />}
+          accent="emerald"
+        />
         {canViewAdmision && admissionPendingCount > 0 && (
           <Link
             href="/cobro-admision"
@@ -427,55 +387,17 @@ export default async function PagosPage({
                 />
               </div>
               
-              {/* Fecha desde */}
-              <div className="space-y-1.5">
-                <label htmlFor="from-date" className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">
-                  <CalendarDays className="h-3.5 w-3.5" />
-                  Desde
-                </label>
-                <input
-                  id="from-date"
-                  type="date"
-                  name="from"
-                  defaultValue={from}
-                  className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm transition-colors focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-slate-500"
-                />
-              </div>
+              <FilterDateRange
+                fromId="from-date"
+                toId="to-date"
+                defaultFrom={from}
+                defaultTo={to}
+              />
               
-              {/* Fecha hasta */}
-              <div className="space-y-1.5">
-                <label htmlFor="to-date" className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">
-                  <CalendarDays className="h-3.5 w-3.5" />
-                  Hasta
-                </label>
-                <input
-                  id="to-date"
-                  type="date"
-                  name="to"
-                  defaultValue={to}
-                  className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm transition-colors focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-slate-500"
-                />
-              </div>
-              
-              {/* Botones */}
-              <div className="flex items-end gap-2">
-                <button
-                  type="submit"
-                  className="flex h-9 items-center gap-1.5 rounded-lg bg-slate-900 px-4 text-sm font-medium text-white transition-colors hover:bg-slate-800 dark:bg-teal-600 dark:hover:bg-teal-700"
-                >
-                  <Filter className="h-4 w-4" />
-                  Filtrar
-                </button>
-                {(search || from || to) && (
-                  <Link
-                    href={`/pagos?tab=${tab}`}
-                    className="flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
-                  >
-                    <X className="h-4 w-4" />
-                    Limpiar
-                  </Link>
-                )}
-              </div>
+              <FilterSubmitReset
+                showReset={Boolean(search || from || to)}
+                resetHref={`/pagos?tab=${tab}`}
+              />
             </div>
           </form>
         </CardContent>
@@ -505,26 +427,14 @@ export default async function PagosPage({
               </TableHeader>
               <TableBody>
                 {visibleOrders.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={10} className="py-12 text-center">
-                      <CreditCard className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-                      <p className="text-slate-500 dark:text-slate-400">No hay órdenes en esta categoría</p>
-                    </TableCell>
-                  </TableRow>
+                  <EmptyTableRow
+                    colSpan={10}
+                    message="No hay órdenes en esta categoría"
+                    className="py-12 text-center"
+                    icon={<CreditCard className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />}
+                  />
                 ) : (
                   visibleOrders.map((order) => {
-                    const statusColors: Record<string, string> = {
-                      PENDIENTE: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-                      EN_PROCESO: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-                      COMPLETADO: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
-                      ENTREGADO: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-                      ANULADO: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-                    };
-                    const paymentRowColors: Record<string, string> = {
-                      PENDIENTE: "hover:bg-amber-50/50 dark:hover:bg-amber-950/20",
-                      PARCIAL: "hover:bg-blue-50/50 dark:hover:bg-blue-950/20",
-                      PAGADO: "hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20",
-                    };
                     const sinDatosCapturados = order.status === "PENDIENTE" || order.status === "EN_PROCESO";
                     const branchName = order.branch?.name ?? order.patientType ?? "Sin sede";
                     const fromAdmission = !!order.admissionRequestId;
@@ -532,7 +442,7 @@ export default async function PagosPage({
                     return (
                       <TableRow
                         key={order.id}
-                        className={`${paymentRowColors[order.paymentStatus]} transition-colors ${sinDatosCapturados ? "bg-amber-50/80 dark:bg-amber-950/40 border-l-4 border-l-amber-400 dark:border-l-amber-500" : ""}`}
+                        className={`${PAYMENT_ROW_HOVER_CLASS[order.paymentStatus]} transition-colors ${sinDatosCapturados ? "bg-amber-50/80 dark:bg-amber-950/40 border-l-4 border-l-amber-400 dark:border-l-amber-500" : ""}`}
                         title={sinDatosCapturados ? "Orden sin datos capturados aún" : undefined}
                       >
                         <TableCell>
@@ -543,8 +453,8 @@ export default async function PagosPage({
                             {order.orderCode}
                           </Link>
                         </TableCell>
-                        <TableCell className="font-medium text-slate-900 dark:text-slate-100">
-                          {order.patient.firstName} {order.patient.lastName}
+                        <TableCell className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                          {formatPatientDisplayName(order.patient.firstName, order.patient.lastName)}
                         </TableCell>
                         <TableCell>
                           <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-300">
@@ -556,9 +466,7 @@ export default async function PagosPage({
                           {formatDate(order.createdAt)}
                         </TableCell>
                         <TableCell>
-                          <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${statusColors[order.status] ?? "bg-slate-100 text-slate-700"}`}>
-                            {order.status}
-                          </span>
+                          <StatusBadge type="order" value={order.status} />
                         </TableCell>
                         <TableCell className="text-right font-semibold text-slate-900 dark:text-slate-200">
                           {formatCurrency(Number(order.totalPrice))}

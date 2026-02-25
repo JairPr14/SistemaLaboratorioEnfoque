@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions, hasPermission, PERMISSION_IMPRIMIR_TICKET_PAGO, PERMISSION_REGISTRAR_PAGOS, PERMISSION_VER_PAGOS } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { formatPatientDisplayName } from "@/lib/format";
 import { getPaidTotalByOrderId } from "@/lib/payments";
 import { PaymentTicketClient } from "@/components/pagos/PaymentTicketClient";
 
@@ -45,7 +46,7 @@ export default async function PaymentTicketPage({ params }: Props) {
     // Tabla Payment puede no existir
   }
 
-  const patientName = `${order.patient.lastName} ${order.patient.firstName}`.trim();
+  const patientName = formatPatientDisplayName(order.patient.firstName, order.patient.lastName);
 
   return (
     <PaymentTicketClient

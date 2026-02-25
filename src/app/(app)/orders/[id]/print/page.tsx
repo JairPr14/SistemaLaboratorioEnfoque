@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatPatientDisplayName } from "@/lib/format";
 import { formatWithThousands } from "@/lib/formatNumber";
 import { getPrintConfig } from "@/lib/print-config";
 import { PrintActions } from "@/components/orders/PrintActions";
@@ -47,12 +47,15 @@ function PatientDataBlock({
   age: number;
   sexLabel: string;
 }) {
+  const patientName = formatPatientDisplayName(order.patient.firstName, order.patient.lastName);
+
   return (
-    <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm mb-6">
-      <div className="flex gap-2">
+    <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm mb-6 min-w-0">
+      {/* PACIENTE ocupa toda la fila para nombres largos; EDAD en la siguiente */}
+      <div className="col-span-2 flex gap-2 min-w-0">
         <span className="text-slate-500 font-medium shrink-0">PACIENTE:</span>
-        <span className="font-semibold text-slate-900 uppercase">
-          {order.patient.lastName} {order.patient.firstName}
+        <span className="font-semibold text-slate-900 uppercase break-words min-w-0 flex-1">
+          {patientName}
         </span>
       </div>
       <div className="flex gap-2">
@@ -63,9 +66,9 @@ function PatientDataBlock({
         <span className="text-slate-500 font-medium shrink-0">DNI:</span>
         <span>{order.patient.dni}</span>
       </div>
-      <div className="flex gap-2">
+      <div className="flex gap-2 min-w-0">
         <span className="text-slate-500 font-medium shrink-0">INDICACIÓN:</span>
-        <span>{order.requestedBy || "Médico tratante"}</span>
+        <span className="break-words min-w-0">{order.requestedBy || "Médico tratante"}</span>
       </div>
       <div className="flex gap-2">
         <span className="text-slate-500 font-medium shrink-0">SEXO:</span>
@@ -237,16 +240,26 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
     {} as Record<string, typeof itemsToPrint>,
   );
 
+  // Máximo 5 análisis por hoja; los análisis se mantienen agrupados por sección
+  const MAX_ITEMS_PER_PAGE = 5;
+  type PageChunk = { section: string; items: typeof itemsToPrint };
+  const pageChunks: PageChunk[] = [];
+  for (const [section, sectionItems] of Object.entries(itemsBySection)) {
+    for (let i = 0; i < sectionItems.length; i += MAX_ITEMS_PER_PAGE) {
+      pageChunks.push({
+        section,
+        items: sectionItems.slice(i, i + MAX_ITEMS_PER_PAGE),
+      });
+    }
+  }
   const age = calculateAge(order.patient.birthDate);
   const sexLabel = order.patient.sex === "M" ? "Masculino" : order.patient.sex === "F" ? "Femenino" : "Otro";
-  const sectionsEntries = Object.entries(itemsBySection);
   const printConfig = await getPrintConfig();
   const showStamp = printConfig.stampEnabled && printConfig.stampImageUrl;
 
-  // Si no hay secciones (sin items o items vacíos), mostramos una hoja con mensaje
-  const hasSections = sectionsEntries.length > 0;
+  const hasPages = pageChunks.length > 0;
 
-  const patientName = `${order.patient.firstName} ${order.patient.lastName}`.trim();
+  const patientName = formatPatientDisplayName(order.patient.firstName, order.patient.lastName);
   const analysesNames = itemsToPrint.map((i) => i.labTest.name).join(", ");
   const analysisCodes = itemsToPrint.map((i) => i.labTest.code).join("-");
   const dateStr = formatDate(order.createdAt);
@@ -289,10 +302,10 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
         </div>
       )}
       <PrintFitToPage />
-      {hasSections ? sectionsEntries.map(([section, items], index) => (
+      {hasPages ? pageChunks.map((chunk, pageIndex) => (
         <div
-          key={section}
-          className={`print-a4 relative mx-auto bg-white text-slate-900 print:mx-0 print:shadow-none overflow-hidden ${index < sectionsEntries.length - 1 ? "print-page" : ""} ${index > 0 ? "mt-8 print:mt-0" : ""}`}
+          key={pageIndex}
+          className={`print-a4 relative mx-auto bg-white text-slate-900 print:mx-0 print:shadow-none overflow-hidden ${pageIndex < pageChunks.length - 1 ? "print-page" : ""} ${pageIndex > 0 ? "mt-8 print:mt-0" : ""}`}
           style={{ width: "210mm", height: "297mm" }}
         >
           {/* Fondo de agua: toda la hoja en pantalla e impresión */}
@@ -329,19 +342,19 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                 sexLabel={sexLabel}
               />
 
-              {/* Barra de sección: fondo semi-transparente, texto en negrita más grande */}
+              {/* Barra de sección: análisis agrupados por sección */}
               <div
                 className="text-white py-2.5 px-4 mb-3 print-section-bar"
                 style={{ backgroundColor: "rgba(15, 23, 42, 0.7)" }}
               >
                 <h2 className="text-center text-base font-bold uppercase tracking-wide">
-                  SECCIÓN {section}
+                  SECCIÓN {chunk.section}
                 </h2>
               </div>
 
               <p className="text-xs text-slate-600 mb-2 font-medium">ANÁLISIS:</p>
 
-              {items.map((item) => {
+              {chunk.items.map((item) => {
                 const hasResults = item.result && (item.result.items?.length ?? 0) > 0;
                 return (
                   <div key={item.id} className="mb-6 break-inside-avoid">
@@ -484,7 +497,7 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
               )}
 
               <FooterBlock
-                items={items}
+                items={chunk.items}
                 order={order}
                 showStamp={!!(showStamp && printConfig.stampImageUrl)}
                 stampImageUrl={printConfig.stampImageUrl}

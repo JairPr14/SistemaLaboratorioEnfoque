@@ -7,10 +7,12 @@ import type { OrderStatus, Prisma } from "@prisma/client";
 import { authOptions, hasPermission, PERMISSION_REPORTES } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getPaidTotalsByOrderIds } from "@/lib/payments";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate, formatPatientDisplayName } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/common/StatusBadge";
+import { MetricCard } from "@/components/dashboard/MetricCard";
 import { PageHeader, pageLayoutClasses } from "@/components/layout/PageHeader";
 import { ReportesFilterForm } from "./ReportesFilterForm";
 import { Building2, TrendingUp, FileText, DollarSign, CalendarDays, Activity, BarChart3, UserPlus, FlaskConical } from "lucide-react";
@@ -346,21 +348,13 @@ export default async function ReportesPage({
           </CardContent>
         </Card>
         
-        <Card className="overflow-hidden">
-          <div className="h-1 bg-blue-500" />
-          <CardContent className="p-6">
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
-                <FileText className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Total Órdenes</p>
-                <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{totalOrdenes}</p>
-                <p className="text-xs text-slate-500">órdenes en el período</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <MetricCard
+          title="Total Órdenes"
+          value={totalOrdenes}
+          subtitle="órdenes en el período"
+          icon={<FileText className="h-6 w-6" />}
+          accent="blue"
+        />
         
         <Card className="overflow-hidden">
           <div className="h-1 bg-emerald-500" />
@@ -380,21 +374,13 @@ export default async function ReportesPage({
           </CardContent>
         </Card>
         
-        <Card className="overflow-hidden">
-          <div className="h-1 bg-purple-500" />
-          <CardContent className="p-6">
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-purple-100 dark:bg-purple-900/30">
-                <TrendingUp className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Análisis Solicitados</p>
-                <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">{totalSolicitudes}</p>
-                <p className="text-xs text-slate-500">pruebas en el período</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <MetricCard
+          title="Análisis Solicitados"
+          value={totalSolicitudes}
+          subtitle="pruebas en el período"
+          icon={<TrendingUp className="h-6 w-6" />}
+          accent="violet"
+        />
         {totalExternalLabCost > 0 && (
           <Card className="overflow-hidden">
             <div className="h-1 bg-amber-500" />
@@ -711,13 +697,6 @@ export default async function ReportesPage({
                 <TableBody>
                   {ordersList.map((order, idx) => {
                     const branchName = order.branch?.name ?? "Sin sede";
-                    const statusColors: Record<string, string> = {
-                      PENDIENTE: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-                      EN_PROCESO: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-                      COMPLETADO: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
-                      ENTREGADO: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-                      ANULADO: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-                    };
                     return (
                       <TableRow key={order.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
                         <TableCell className="text-center text-slate-500">{idx + 1}</TableCell>
@@ -736,8 +715,8 @@ export default async function ReportesPage({
                               : order.createdAt,
                           )}
                         </TableCell>
-                        <TableCell className="font-medium">
-                          {order.patient.lastName} {order.patient.firstName}
+                        <TableCell className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                          {formatPatientDisplayName(order.patient.firstName, order.patient.lastName)}
                         </TableCell>
                         <TableCell>
                           <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-300">
@@ -746,9 +725,7 @@ export default async function ReportesPage({
                           </span>
                         </TableCell>
                         <TableCell>
-                          <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${statusColors[order.status] ?? "bg-slate-100 text-slate-700"}`}>
-                            {statusLabels[order.status] ?? order.status}
-                          </span>
+                          <StatusBadge type="order" value={order.status} label={statusLabels[order.status] ?? order.status} />
                         </TableCell>
                         <TableCell className="text-right font-semibold">
                           {formatCurrency(Number(order.totalPrice))}

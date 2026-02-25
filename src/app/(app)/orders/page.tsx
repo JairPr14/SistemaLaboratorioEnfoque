@@ -3,31 +3,33 @@ import { getServerSession } from "next-auth";
 import type { Prisma } from "@prisma/client";
 
 import { redirect } from "next/navigation";
-import { authOptions, hasPermission, PERMISSION_ELIMINAR_REGISTROS, PERMISSION_REGISTRAR_PAGOS, PERMISSION_VER_ORDENES } from "@/lib/auth";
+import {
+  authOptions,
+  hasAnyPermission,
+  hasPermission,
+  PERMISSION_ELIMINAR_REGISTROS,
+  PERMISSION_GESTIONAR_ADMISION,
+  PERMISSION_QUICK_ACTIONS_ANALISTA,
+  PERMISSION_QUICK_ACTIONS_ENTREGA,
+  PERMISSION_QUICK_ACTIONS_RECEPCION,
+  PERMISSION_REGISTRAR_PAGOS,
+  PERMISSION_VER_ADMISION,
+  PERMISSION_VER_ORDENES,
+} from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getPaidTotalsByOrderIds } from "@/lib/payments";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate, formatPatientDisplayName } from "@/lib/format";
+import { parseLocalDate } from "@/lib/date";
+import { PAYMENT_ROW_HOVER_CLASS } from "@/lib/table-row-styles";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { DeleteButton } from "@/components/common/DeleteButton";
+import { EmptyTableRow } from "@/components/common/EmptyTableRow";
+import { StatusBadge } from "@/components/common/StatusBadge";
+import { FilterDateRange } from "@/components/common/FilterDateRange";
+import { FilterSubmitReset } from "@/components/common/FilterSubmitReset";
 import { RegistrarpagoButton } from "@/components/pagos/RegistrarpagoButton";
-import { Search, CalendarDays, Filter, X, Plus, Printer, Activity, CreditCard, FileText, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
-
-/** Parsea "YYYY-MM-DD" en hora local y devuelve inicio (00:00:00) o fin (23:59:59.999) del día */
-function parseLocalDate(dateStr: string, endOfDay: boolean): Date {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  if (y == null || m == null || d == null || Number.isNaN(y) || Number.isNaN(m) || Number.isNaN(d)) {
-    return new Date(dateStr);
-  }
-  const date = new Date(y, m - 1, d);
-  if (endOfDay) {
-    date.setHours(23, 59, 59, 999);
-  } else {
-    date.setHours(0, 0, 0, 0);
-  }
-  return date;
-}
+import { Search, Plus, Printer, Activity, CreditCard, FileText, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 
 export default async function OrdersPage({
   searchParams,
@@ -53,7 +55,15 @@ export default async function OrdersPage({
   const sortDir: Prisma.SortOrder = params.sortDir === "asc" ? "asc" : "desc";
   const focusSearch = params.focusSearch === "1";
   const session = await getServerSession(authOptions);
-  if (!session?.user || !hasPermission(session, PERMISSION_VER_ORDENES)) {
+  const canAccessOrders = hasAnyPermission(session, [
+    PERMISSION_VER_ORDENES,
+    PERMISSION_QUICK_ACTIONS_RECEPCION,
+    PERMISSION_QUICK_ACTIONS_ANALISTA,
+    PERMISSION_QUICK_ACTIONS_ENTREGA,
+    PERMISSION_GESTIONAR_ADMISION,
+    PERMISSION_VER_ADMISION,
+  ]);
+  if (!session?.user || !canAccessOrders) {
     redirect("/dashboard");
   }
   const canDeleteOrders = hasPermission(session, PERMISSION_ELIMINAR_REGISTROS);
@@ -165,55 +175,17 @@ export default async function OrdersPage({
                 />
               </div>
 
-              {/* Fecha desde */}
-              <div className="space-y-1.5">
-                <label htmlFor="from-orders" className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">
-                  <CalendarDays className="h-3.5 w-3.5" />
-                  Desde
-                </label>
-                <input
-                  id="from-orders"
-                  type="date"
-                  name="from"
-                  defaultValue={from}
-                  className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm transition-colors focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-slate-500"
-                />
-              </div>
+              <FilterDateRange
+                fromId="from-orders"
+                toId="to-orders"
+                defaultFrom={from}
+                defaultTo={to}
+              />
 
-              {/* Fecha hasta */}
-              <div className="space-y-1.5">
-                <label htmlFor="to-orders" className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">
-                  <CalendarDays className="h-3.5 w-3.5" />
-                  Hasta
-                </label>
-                <input
-                  id="to-orders"
-                  type="date"
-                  name="to"
-                  defaultValue={to}
-                  className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm transition-colors focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-slate-500"
-                />
-              </div>
-
-              {/* Botones */}
-              <div className="flex items-end gap-2">
-                <button
-                  type="submit"
-                  className="flex h-9 items-center gap-1.5 rounded-lg bg-slate-900 px-4 text-sm font-medium text-white transition-colors hover:bg-slate-800 dark:bg-teal-600 dark:hover:bg-teal-700"
-                >
-                  <Filter className="h-4 w-4" />
-                  Filtrar
-                </button>
-                {(search || status || paymentStatus || from || to || sortBy !== "createdAt" || sortDir !== "desc") && (
-                  <Link
-                    href="/orders"
-                    className="flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
-                  >
-                    <X className="h-4 w-4" />
-                    Limpiar
-                  </Link>
-                )}
-              </div>
+              <FilterSubmitReset
+                showReset={Boolean(search || status || paymentStatus || from || to || sortBy !== "createdAt" || sortDir !== "desc")}
+                resetHref="/orders"
+              />
             </div>
             {/* Fila extra: Estado, Cobro, Ordenar */}
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -311,36 +283,19 @@ export default async function OrdersPage({
               </TableHeader>
               <TableBody>
                 {visibleOrders.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={11} className="py-12 text-center">
-                      <FileText className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-                      <p className="text-slate-500 dark:text-slate-400">No se encontraron órdenes</p>
-                    </TableCell>
-                  </TableRow>
+                  <EmptyTableRow
+                    colSpan={11}
+                    message="No se encontraron órdenes"
+                    className="py-12 text-center"
+                    icon={<FileText className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />}
+                  />
                 ) : (
                   visibleOrders.map((order, idx) => {
-                    const statusColors: Record<string, string> = {
-                      PENDIENTE: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-                      EN_PROCESO: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-                      COMPLETADO: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
-                      ENTREGADO: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-                      ANULADO: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-                    };
-                    const paymentColors: Record<string, string> = {
-                      PENDIENTE: "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300",
-                      PARCIAL: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-                      PAGADO: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
-                    };
-                    const paymentRowColors: Record<string, string> = {
-                      PENDIENTE: "hover:bg-amber-50/50 dark:hover:bg-amber-950/20",
-                      PARCIAL: "hover:bg-blue-50/50 dark:hover:bg-blue-950/20",
-                      PAGADO: "hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20",
-                    };
                     const sinDatosCapturados = order.status === "PENDIENTE" || order.status === "EN_PROCESO";
                     return (
                       <TableRow
                         key={order.id}
-                        className={`${paymentRowColors[order.paymentStatus]} transition-colors ${sinDatosCapturados ? "bg-amber-50/80 dark:bg-amber-950/40 border-l-4 border-l-amber-400 dark:border-l-amber-500" : ""}`}
+                        className={`${PAYMENT_ROW_HOVER_CLASS[order.paymentStatus]} transition-colors ${sinDatosCapturados ? "bg-amber-50/80 dark:bg-amber-950/40 border-l-4 border-l-amber-400 dark:border-l-amber-500" : ""}`}
                         title={sinDatosCapturados ? "Orden sin datos capturados aún" : undefined}
                       >
                         <TableCell className="text-center text-slate-500 dark:text-slate-400 font-medium">
@@ -354,21 +309,17 @@ export default async function OrdersPage({
                             {order.orderCode}
                           </Link>
                         </TableCell>
-                        <TableCell className="font-medium text-slate-900 dark:text-slate-100">
-                          {order.patient.firstName} {order.patient.lastName}
+                        <TableCell className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                          {formatPatientDisplayName(order.patient.firstName, order.patient.lastName)}
                         </TableCell>
                         <TableCell className="text-slate-600 dark:text-slate-400">
                           {formatDate(order.createdAt)}
                         </TableCell>
                         <TableCell>
-                          <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${statusColors[order.status] ?? "bg-slate-100 text-slate-700"}`}>
-                            {order.status}
-                          </span>
+                          <StatusBadge type="order" value={order.status} />
                         </TableCell>
                         <TableCell>
-                          <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${paymentColors[order.paymentStatus]}`}>
-                            {order.paymentStatus}
-                          </span>
+                          <StatusBadge type="payment" value={order.paymentStatus} />
                         </TableCell>
                         <TableCell>
                           <span className="block truncate text-sm text-slate-600 dark:text-slate-400 max-w-[180px]" title={order.items.map((i) => i.labTest?.name ?? i.labTest?.code ?? "-").join(", ")}>
