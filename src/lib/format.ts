@@ -26,6 +26,13 @@ export function formatDateTime(date?: Date | string | null) {
   });
 }
 
+/** Nombre del paciente en formato estándar: Apellidos Nombres */
+export function formatPatientDisplayName(firstName?: string | null, lastName?: string | null): string {
+  const a = String(lastName ?? "").trim();
+  const b = String(firstName ?? "").trim();
+  return [a, b].filter(Boolean).join(" ") || "—";
+}
+
 /** Formato para input datetime-local: YYYY-MM-DDTHH:mm */
 export function toDateTimeLocal(date?: Date | string | null): string {
   if (!date) return "";
