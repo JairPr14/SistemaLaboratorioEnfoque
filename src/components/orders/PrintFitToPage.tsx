@@ -4,7 +4,7 @@ import { useEffect } from "react";
 
 /**
  * Mide el contenido del informe y aplica una escala unificada a todas las páginas
- * para que se vean igual (mismo tamaño de fuente y layout) en pantalla e impresión.
+ * para que se ajuste automáticamente al espacio disponible (pantalla e impresión).
  * Usa la escala necesaria para la página con más contenido.
  */
 export function PrintFitToPage() {
@@ -14,27 +14,35 @@ export function PrintFitToPage() {
 
     const applyUnifiedScale = () => {
       let maxContentHeight = 0;
+      let maxContentWidth = 0;
       let containerHeight = 0;
+      let containerWidth = 0;
 
       containers.forEach((container) => {
         const content = container.querySelector(".print-a4-content");
         if (!content) return;
         const rect = container.getBoundingClientRect();
         containerHeight = rect.height;
-        const contentH = (content as HTMLElement).scrollHeight;
+        containerWidth = rect.width;
+        const contentEl = content as HTMLElement;
+        const contentH = contentEl.scrollHeight;
+        const contentW = contentEl.scrollWidth;
         maxContentHeight = Math.max(maxContentHeight, contentH);
+        maxContentWidth = Math.max(maxContentWidth, contentW);
       });
 
-      // Escala unificada: la misma para todas las páginas (según la de más contenido)
-      const unifiedScale =
+      // Escala por altura y ancho; usar la menor para que quepa en ambos ejes
+      const scaleH =
         maxContentHeight > 0 && containerHeight > 0 ? Math.min(1, containerHeight / maxContentHeight) : 1;
+      const scaleW =
+        maxContentWidth > 0 && containerWidth > 0 ? Math.min(1, containerWidth / maxContentWidth) : 1;
+      const unifiedScale = Math.min(scaleH, scaleW, 1);
 
       containers.forEach((container) => {
         const scaler = container.querySelector(".print-a4-scaler");
         const content = container.querySelector(".print-a4-content");
         if (!scaler || !content) return;
 
-        const containerRect = container.getBoundingClientRect();
         const contentHeight = (content as HTMLElement).scrollHeight;
         const scalerEl = scaler as HTMLElement;
 
@@ -59,9 +67,13 @@ export function PrintFitToPage() {
 
     const timeout = window.setTimeout(applyUnifiedScale, 400);
 
+    // Recalcular al abrir diálogo de impresión
+    window.addEventListener("beforeprint", applyUnifiedScale);
+
     return () => {
       resizeObserver.disconnect();
       window.clearTimeout(timeout);
+      window.removeEventListener("beforeprint", applyUnifiedScale);
     };
   }, []);
 

@@ -8,8 +8,7 @@ import { authOptions } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import {
   buildOrderCode,
-  orderCodePrefixForDate,
-  parseOrderCodeSequence,
+  getNextOrderSequence,
 } from "@/features/lab/order-utils";
 import { parseDatePeru } from "@/lib/date";
 
@@ -145,19 +144,14 @@ export async function POST(request: Request) {
       : new Date();
     const dayStart = new Date(orderDate);
     dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(dayStart);
-    dayEnd.setDate(dayEnd.getDate() + 1);
-    const prefix = orderCodePrefixForDate(dayStart);
     let order: Awaited<ReturnType<typeof prisma.labOrder.create>>;
     const maxRetries = 3;
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       const existing = await prisma.labOrder.findMany({
-        where: { orderCode: { startsWith: prefix } },
         select: { orderCode: true },
       });
-      const sequences = existing.map((o) => parseOrderCodeSequence(o.orderCode));
-      const maxSeq = sequences.length > 0 ? Math.max(...sequences) : 0;
-      const orderCode = buildOrderCode(maxSeq + 1, dayStart);
+      const nextSeq = getNextOrderSequence(existing);
+      const orderCode = buildOrderCode(nextSeq);
 
       try {
         order = await prisma.labOrder.create({

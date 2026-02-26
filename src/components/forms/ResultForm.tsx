@@ -150,9 +150,25 @@ export function ResultForm({
 
   const groupedItems = itemsToUse.reduce(
     (acc, item) => {
-      const g = item.groupName || "General";
+      const g = item.groupName?.trim() || "General";
       if (!acc[g]) acc[g] = [];
       acc[g].push(item);
+      return acc;
+    },
+    {} as Record<string, Array<TemplateItem & { index: number }>>
+  );
+
+  // Ordenar grupos por el orden de la plantilla (primer ítem de cada grupo)
+  const groupNames = Object.keys(groupedItems).sort((a, b) => {
+    const minOrderA = Math.min(...(groupedItems[a] ?? []).map((i) => i.order));
+    const minOrderB = Math.min(...(groupedItems[b] ?? []).map((i) => i.order));
+    return minOrderA - minOrderB;
+  });
+
+  // Ordenar ítems dentro de cada grupo por orden de plantilla
+  const groupedItemsSorted = groupNames.reduce(
+    (acc, g) => {
+      acc[g] = [...(groupedItems[g] ?? [])].sort((a, b) => a.order - b.order);
       return acc;
     },
     {} as Record<string, Array<TemplateItem & { index: number }>>
@@ -252,7 +268,9 @@ export function ResultForm({
 
       <div className="rounded-xl border border-slate-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <div className="relative z-10 p-4 space-y-4">
-          {Object.entries(groupedItems).map(([groupName, items]) => (
+          {groupNames.map((groupName) => {
+            const items = groupedItemsSorted[groupName] ?? [];
+            return (
             <div key={groupName} className="space-y-2">
               {items.length > 1 && (
                 <div className="bg-slate-700 px-3 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-white dark:bg-slate-600 rounded-t">
@@ -357,7 +375,8 @@ export function ResultForm({
                 </TableBody>
               </Table>
             </div>
-          ))}
+          );
+          })}
         </div>
       </div>
 

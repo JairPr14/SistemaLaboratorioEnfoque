@@ -153,10 +153,7 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteIt
     printableItemIds.every((id) => selectedIds.has(id));
   const someSelected = selectedIds.size > 0;
 
-  const printUrl =
-    selectedIds.size > 0
-      ? `/orders/${order.id}/print?items=${Array.from(selectedIds).join(",")}`
-      : `/orders/${order.id}/print`;
+  const printUrl = `/orders/${order.id}/print?items=${Array.from(selectedIds).join(",")}`;
 
   if (order.items.length === 0) {
     const canAddAnalysis = order.status !== "ANULADO";
@@ -235,8 +232,14 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteIt
               {allSelected ? "Deseleccionar todos" : "Seleccionar todos"}
             </button>
             <span className="text-slate-300">|</span>
-            <Link href={printUrl} target="_blank" rel="noopener noreferrer">
-              <Button size="sm" className="gap-2">
+            <Link
+              href={printUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-disabled={selectedIds.size === 0}
+              className={selectedIds.size === 0 ? "pointer-events-none opacity-50" : ""}
+            >
+              <Button size="sm" className="gap-2" disabled={selectedIds.size === 0}>
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="16"
@@ -264,7 +267,11 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteIt
         )}
       </CardHeader>
       <CardContent>
-        <div className="-mx-1 overflow-x-auto">
+        <div
+          className={`-mx-1 overflow-x-auto ${order.items.length > 10 ? "max-h-[420px] overflow-y-auto" : ""}`}
+          role="region"
+          aria-label="Lista de análisis solicitados"
+        >
         <Table className="min-w-[640px]">
           <TableHeader>
             <TableRow>

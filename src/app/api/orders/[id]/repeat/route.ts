@@ -3,8 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
   buildOrderCode,
-  orderCodePrefixForDate,
-  parseOrderCodeSequence,
+  getNextOrderSequence,
 } from "@/features/lab/order-utils";
 import { getServerSession } from "next-auth";
 import { logger } from "@/lib/logger";
@@ -62,21 +61,15 @@ export async function POST(request: Request, { params }: Params) {
     }
 
     const totalPrice = items.reduce((acc, i) => acc + Number(i.priceSnapshot), 0);
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
 
     async function createWithNextCode(
       orderSource: NonNullable<typeof sourceOrder>,
     ): Promise<{ orderCode: string; orderId: string }> {
-      const prefix = orderCodePrefixForDate(todayStart);
       const existing = await prisma.labOrder.findMany({
-        where: { orderCode: { startsWith: prefix } },
         select: { orderCode: true },
       });
-      const maxSeq = existing.length
-        ? Math.max(...existing.map((o) => parseOrderCodeSequence(o.orderCode)))
-        : 0;
-      const orderCode = buildOrderCode(maxSeq + 1, todayStart);
+      const nextSeq = getNextOrderSequence(existing);
+      const orderCode = buildOrderCode(nextSeq);
 
       const order = await prisma.labOrder.create({
         data: {

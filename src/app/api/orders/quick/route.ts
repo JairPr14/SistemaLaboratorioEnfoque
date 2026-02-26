@@ -5,8 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { quickOrderSchema } from "@/features/lab/schemas";
 import {
   buildOrderCode,
-  orderCodePrefixForDate,
-  parseOrderCodeSequence,
+  getNextOrderSequence,
 } from "@/features/lab/order-utils";
 import { generateNextPatientCode } from "@/lib/patient-code";
 import { parseDatePeru } from "@/lib/date";
@@ -131,9 +130,6 @@ export async function POST(request: Request) {
     }
 
     const totalPrice = orderItemsPayload.reduce((acc, x) => acc + x.priceSnapshot, 0);
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const prefix = orderCodePrefixForDate(todayStart);
     const quickNotes =
       parsed.priority === "URGENTE"
         ? `[URGENTE] ${parsed.indication ?? ""}`.trim()
@@ -144,12 +140,10 @@ export async function POST(request: Request) {
     const maxRetries = 3;
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       const existing = await prisma.labOrder.findMany({
-        where: { orderCode: { startsWith: prefix } },
         select: { orderCode: true },
       });
-      const sequences = existing.map((o) => parseOrderCodeSequence(o.orderCode));
-      const maxSeq = sequences.length > 0 ? Math.max(...sequences) : 0;
-      orderCode = buildOrderCode(maxSeq + 1, todayStart);
+      const nextSeq = getNextOrderSequence(existing);
+      orderCode = buildOrderCode(nextSeq);
 
       try {
         order = await prisma.labOrder.create({

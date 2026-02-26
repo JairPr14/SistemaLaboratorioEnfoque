@@ -1,17 +1,47 @@
-import { Fragment } from "react";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
-import { formatDate, formatPatientDisplayName } from "@/lib/format";
-import { formatWithThousands } from "@/lib/formatNumber";
-import { parseSelectOptions } from "@/lib/json-helpers";
-import { getPrintConfig } from "@/lib/print-config";
-import { PrintActions } from "@/components/orders/PrintActions";
-import { PrintFitToPage } from "@/components/orders/PrintFitToPage";
+import { formatDatePrint, formatPatientDisplayName, formatSexDisplay } from "@/lib/format";
+import { PrintToolbar } from "@/components/orders/PrintToolbar";
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ items?: string; referredLabId?: string }>;
+  searchParams: Promise<{ items?: string }>;
+};
+
+type RefRangeItem = {
+  ageGroup?: string | null;
+  sex?: string | null;
+  refRangeText?: string | null;
+  refMin?: number | null;
+  refMax?: number | null;
+};
+
+type RenderRow =
+  | { kind: "group"; id: string; groupName: string }
+  | {
+      kind: "param";
+      id: string;
+      paramName: string;
+      resultValue: string;
+      unit: string;
+      refValue: string;
+      description?: string | null;
+      isHighlighted?: boolean;
+    };
+
+type AnalysisChunk = {
+  itemId: string;
+  analysisCode: string;
+  analysisName: string;
+  isContinuation: boolean;
+  rows: RenderRow[];
+};
+
+type PrintPage = {
+  section: string;
+  analyses: AnalysisChunk[];
 };
 
 function calculateAge(birthDate: Date): number {
@@ -24,147 +54,348 @@ function calculateAge(birthDate: Date): number {
   return age;
 }
 
-// Forma mínima del order que usan PatientDataBlock y FooterBlock (sin datos de cobro)
-type OrderForPrint = {
-  patient: { lastName: string; firstName: string; dni: string | null; birthDate: Date; sex: string | null };
-  requestedBy: string | null;
-  preAnalyticNote?: string | null;
-  createdAt: Date;
-  orderCode: string;
-  deliveredAt: Date | null;
-  items: Array<{
+function parseTemplateSnapshot(snapshot: unknown): {
+  items?: Array<{
     id: string;
-    result: { reportedBy?: string | null } | null;
+    groupName?: string | null;
+    order?: number;
+    refRanges?: RefRangeItem[];
   }>;
-};
-
-type RefRangeItem = { ageGroup?: string | null; sex?: string | null; refRangeText?: string | null; refMin?: number | null; refMax?: number | null };
-
-function PatientDataBlock({
-  order,
-  age,
-  sexLabel,
-}: {
-  order: OrderForPrint;
-  age: number;
-  sexLabel: string;
-}) {
-  const patientName = formatPatientDisplayName(order.patient.firstName, order.patient.lastName);
-
-  return (
-    <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm mb-6 min-w-0">
-      {/* PACIENTE ocupa toda la fila para nombres largos; EDAD en la siguiente */}
-      <div className="col-span-2 flex gap-2 min-w-0">
-        <span className="text-slate-500 font-medium shrink-0">PACIENTE:</span>
-        <span className="font-semibold text-slate-900 uppercase break-words min-w-0 flex-1">
-          {patientName}
-        </span>
-      </div>
-      <div className="flex gap-2">
-        <span className="text-slate-500 font-medium shrink-0">EDAD:</span>
-        <span>{age} Años</span>
-      </div>
-      <div className="flex gap-2">
-        <span className="text-slate-500 font-medium shrink-0">DNI:</span>
-        <span>{order.patient.dni ?? "—"}</span>
-      </div>
-      <div className="flex gap-2 min-w-0">
-        <span className="text-slate-500 font-medium shrink-0">INDICACIÓN:</span>
-        <span className="break-words min-w-0">{order.requestedBy || "Médico tratante"}</span>
-      </div>
-      <div className="flex gap-2">
-        <span className="text-slate-500 font-medium shrink-0">SEXO:</span>
-        <span>{sexLabel}</span>
-      </div>
-      <div className="flex gap-2">
-        <span className="text-slate-500 font-medium shrink-0">FECHA:</span>
-        <span>{formatDate(order.createdAt)}</span>
-      </div>
-      <div className="flex gap-2">
-        <span className="text-slate-500 font-medium shrink-0">N° REGISTRO:</span>
-        <span className="font-mono">{order.orderCode}</span>
-      </div>
-    </div>
-  );
+} | null {
+  if (!snapshot) return null;
+  if (typeof snapshot === "string") {
+    try {
+      return JSON.parse(snapshot) as {
+        items?: Array<{
+          id: string;
+          groupName?: string | null;
+          order?: number;
+          refRanges?: RefRangeItem[];
+        }>;
+      };
+    } catch {
+      return null;
+    }
+  }
+  return snapshot as {
+    items?: Array<{
+      id: string;
+      groupName?: string | null;
+      order?: number;
+      refRanges?: RefRangeItem[];
+    }>;
+  };
 }
 
-function ReferredHeaderBlock({ referredLab }: { referredLab: { name: string; logoUrl: string | null } }) {
-  return (
-    <div className="flex items-center justify-center gap-2 flex-1 -mt-[50px]	 ml-[65px]">
-      {referredLab.logoUrl ? (
-        /* eslint-disable-next-line @next/next/no-img-element */
-        <img
-          src={referredLab.logoUrl}
-          alt={referredLab.name}
-          className="h-16 w-auto object-contain max-w-[220px]"
-        />
-      ) : (
-        <span className="text-sm font-semibold text-slate-700">{referredLab.name}</span>
-      )}
-    </div>
-  );
+function formatReferenceValue(
+  refTextSnapshot: string | null,
+  refMinSnapshot: number | null,
+  refMaxSnapshot: number | null,
+  refRanges: RefRangeItem[]
+): string {
+  if (refTextSnapshot && refTextSnapshot.trim() !== "") return refTextSnapshot;
+  const parts = refRanges
+    .map((r) => {
+      const rangeStr = (r.refRangeText?.trim()) || (r.refMin != null || r.refMax != null ? `${r.refMin ?? ""} - ${r.refMax ?? ""}`.trim() : "");
+      if (!rangeStr) return "";
+      const sexLabel = r.sex === "M" ? "Hombres" : r.sex === "F" ? "Mujeres" : null;
+      return sexLabel ? `${sexLabel} : ${rangeStr}` : rangeStr;
+    })
+    .filter(Boolean);
+  if (parts.length > 0) return parts.join("\n");
+  if (refMinSnapshot != null || refMaxSnapshot != null) return `${refMinSnapshot ?? ""} - ${refMaxSnapshot ?? ""}`.trim();
+  return "-";
 }
 
-function FooterBlock({
-  items,
-  order,
-  showStamp,
-  stampImageUrl,
-  referredLabStampUrl,
-}: {
-  items: OrderForPrint["items"];
-  order: OrderForPrint;
-  showStamp: boolean;
-  stampImageUrl: string | null;
-  referredLabStampUrl?: string | null;
-}) {
-  return (
-    <div className="mt-10 pt-6 border-t-2 border-slate-300 flex flex-wrap items-end justify-between gap-6">
-      <div className="text-xs text-slate-500">
-        
-      </div>
-      <div className="flex flex-row items-end justify-end gap-8">
-        {referredLabStampUrl && (
-          <div className="text-center flex flex-col items-center gap-2">
-            <div className="w-40 min-h-[3rem] flex flex-col items-center justify-end border-b-2 border-slate-400 pb-0.5">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={referredLabStampUrl}
-                alt="Sello laboratorio referido"
-                className="max-h-14 max-w-full w-auto object-contain opacity-90"
-              />
-            </div>
-            <p className="text-xs font-semibold text-slate-700">Firma</p>
-            <p className="text-xs text-slate-500">Responsable laboratorio referido</p>
-          </div>
-        )}
-        <div className="text-center flex flex-col items-center gap-2">
-          <div className="w-56 min-h-[3rem] flex flex-col items-center justify-end border-b-2 border-slate-400 pb-0.5">
-            {showStamp && stampImageUrl && (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
-                src={stampImageUrl}
-                alt=""
-                className="print-stamp max-h-14 max-w-full w-auto object-contain opacity-90"
-              />
-            )}
-          </div>
-          <p className="text-xs font-semibold text-slate-700">
-            T.M / Responsable técnico
-          </p>
-          <p className="text-xs text-slate-500">CTMP</p>
-        </div>
-      </div>
-    </div>
+function buildRowsForItem(item: {
+  id: string;
+  templateSnapshot: unknown;
+  labTest: {
+    code: string;
+    name: string;
+    template: {
+      items: Array<{
+        id: string;
+        groupName: string | null;
+        order: number;
+        description?: string | null;
+        refRanges: RefRangeItem[];
+      }>;
+    } | null;
+  };
+  result: {
+    items: Array<{
+      id: string;
+      templateItemId: string | null;
+      paramNameSnapshot: string | null;
+      unitSnapshot: string | null;
+      refTextSnapshot: string | null;
+      refMinSnapshot: number | null;
+      refMaxSnapshot: number | null;
+      value: string | null;
+      order: number;
+      isHighlighted?: boolean;
+    }>;
+  } | null;
+}): RenderRow[] {
+  const resultItems = item.result?.items ?? [];
+  const seen = new Set<string>();
+  const uniqueResults = resultItems.filter((r) => {
+    const key = `${(r.paramNameSnapshot ?? "").trim()}|${(r.unitSnapshot ?? "").trim()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  const parsedSnap = parseTemplateSnapshot(item.templateSnapshot);
+  const snapItems = parsedSnap?.items ?? [];
+  const templateItems = item.labTest.template?.items ?? [];
+
+  const getGroupName = (templateItemId: string | null) => {
+    const snapItem = snapItems.find((t) => t.id === templateItemId);
+    const sg = snapItem?.groupName?.trim();
+    if (sg) return sg;
+    const ti = templateItems.find((t) => t.id === templateItemId);
+    const tg = ti?.groupName?.trim();
+    return tg && tg !== "" ? tg : "General";
+  };
+
+  const getOrder = (templateItemId: string | null, fallbackOrder: number) => {
+    const snapItem = snapItems.find((t) => t.id === templateItemId);
+    if (typeof snapItem?.order === "number") return snapItem.order;
+    const ti = templateItems.find((t) => t.id === templateItemId);
+    if (typeof ti?.order === "number") return ti.order;
+    return fallbackOrder;
+  };
+
+  const getRefRanges = (templateItemId: string | null): RefRangeItem[] => {
+    const fromSnap = snapItems.find((t) => t.id === templateItemId)?.refRanges ?? [];
+    if (fromSnap.length > 0) return fromSnap;
+    return templateItems.find((t) => t.id === templateItemId)?.refRanges ?? [];
+  };
+
+  const getDescription = (templateItemId: string | null): string | null => {
+    const ti = templateItems.find((t) => t.id === templateItemId);
+    const d = ti?.description?.trim();
+    return d || null;
+  };
+
+  const grouped = uniqueResults.reduce(
+    (acc, r) => {
+      const group = getGroupName(r.templateItemId);
+      if (!acc[group]) acc[group] = [];
+      acc[group].push(r);
+      return acc;
+    },
+    {} as Record<string, typeof uniqueResults>
   );
+
+  const groupOrder = Object.keys(grouped).sort(
+    (a, b) =>
+      Math.min(...(grouped[a] ?? []).map((r) => getOrder(r.templateItemId, r.order))) -
+      Math.min(...(grouped[b] ?? []).map((r) => getOrder(r.templateItemId, r.order)))
+  );
+
+  const rows: RenderRow[] = [];
+  for (const groupName of groupOrder) {
+    const sorted = (grouped[groupName] ?? []).sort(
+      (a, b) => getOrder(a.templateItemId, a.order) - getOrder(b.templateItemId, b.order)
+    );
+    const showGroupHeader = groupName !== "General" && sorted.length > 1;
+    if (showGroupHeader) {
+      rows.push({
+        kind: "group",
+        id: `${item.id}-${groupName}-header`,
+        groupName,
+      });
+    }
+    for (const r of sorted) {
+      rows.push({
+        kind: "param",
+        id: r.id,
+        paramName: r.paramNameSnapshot ?? "-",
+        resultValue: (r.value ?? "-").trim() || "-",
+        unit: (r.unitSnapshot ?? "-").trim() || "-",
+        refValue: formatReferenceValue(
+          r.refTextSnapshot,
+          r.refMinSnapshot,
+          r.refMaxSnapshot,
+          getRefRanges(r.templateItemId)
+        ),
+        description: getDescription(r.templateItemId),
+        isHighlighted: r.isHighlighted ?? false,
+      });
+    }
+  }
+
+  return rows;
+}
+
+const MIN_ROWS_LAST_CHUNK = 6;
+
+/** Particiona filas en bloques por grupo (cada grupo = header + sus params) */
+function getGroupBlocks(rows: RenderRow[]): RenderRow[][] {
+  const blocks: RenderRow[][] = [];
+  let current: RenderRow[] = [];
+  for (const row of rows) {
+    if (row.kind === "group") {
+      if (current.length > 0) blocks.push(current);
+      current = [row];
+    } else {
+      current.push(row);
+    }
+  }
+  if (current.length > 0) blocks.push(current);
+  return blocks;
+}
+
+/** Divide filas por límite de capacidad, prefiriendo cortes en bordes de grupo */
+function splitRowsForContinuation(rows: RenderRow[], maxRowsPerChunk: number): RenderRow[][] {
+  if (rows.length === 0) return [];
+  if (rows.length <= maxRowsPerChunk) return [rows];
+
+  const blocks = getGroupBlocks(rows);
+  const chunks: RenderRow[][] = [];
+  let chunk: RenderRow[] = [];
+  let used = 0;
+
+  for (const block of blocks) {
+    const blockLen = block.length;
+    if (used + blockLen <= maxRowsPerChunk) {
+      chunk.push(...block);
+      used += blockLen;
+      continue;
+    }
+    if (chunk.length > 0) {
+      chunks.push(chunk);
+      chunk = [];
+      used = 0;
+    }
+    if (blockLen <= maxRowsPerChunk) {
+      chunk.push(...block);
+      used = blockLen;
+    } else {
+      for (const row of block) {
+        if (used >= maxRowsPerChunk) {
+          chunks.push(chunk);
+          chunk = [];
+          used = 0;
+        }
+        chunk.push(row);
+        used += 1;
+      }
+    }
+  }
+  if (chunk.length > 0) chunks.push(chunk);
+
+  const filtered = chunks.filter((c) => c.length > 0);
+  if (filtered.length <= 1) return filtered;
+  const last = filtered[filtered.length - 1];
+  if (last && last.length < MIN_ROWS_LAST_CHUNK && filtered.length >= 2) {
+    const prev = filtered[filtered.length - 2];
+    if (prev && prev.length + last.length <= maxRowsPerChunk) {
+      prev.push(...last);
+      filtered.pop();
+    }
+  }
+  return filtered;
+}
+
+function buildPages(sections: Record<string, Array<{
+  id: string;
+  templateSnapshot: unknown;
+  labTest: {
+    code: string;
+    name: string;
+    template: {
+      items: Array<{
+        id: string;
+        groupName: string | null;
+        order: number;
+        description?: string | null;
+        refRanges: RefRangeItem[];
+      }>;
+    } | null;
+  };
+  result: {
+    items: Array<{
+      id: string;
+      templateItemId: string | null;
+      paramNameSnapshot: string | null;
+      unitSnapshot: string | null;
+      refTextSnapshot: string | null;
+      refMinSnapshot: number | null;
+      refMaxSnapshot: number | null;
+      value: string | null;
+      order: number;
+      isHighlighted?: boolean;
+    }>;
+  } | null;
+}>>): PrintPage[] {
+  const pages: PrintPage[] = [];
+
+  const PAGE_ROW_CAPACITY = 28;
+  const ANALYSIS_HEADER_COST = 6;
+  const MAX_ROWS_PER_CONTINUATION_CHUNK = 25;
+
+  for (const [sectionName, sectionItems] of Object.entries(sections)) {
+    let currentPage: PrintPage = { section: sectionName, analyses: [] };
+    let remaining = PAGE_ROW_CAPACITY;
+
+    const flushCurrent = () => {
+      if (currentPage.analyses.length > 0) pages.push(currentPage);
+      currentPage = { section: sectionName, analyses: [] };
+      remaining = PAGE_ROW_CAPACITY;
+    };
+
+    for (const item of sectionItems) {
+      const rows = buildRowsForItem(item);
+      const chunks = splitRowsForContinuation(rows, MAX_ROWS_PER_CONTINUATION_CHUNK);
+
+      if (chunks.length === 1) {
+        const cost = ANALYSIS_HEADER_COST + chunks[0].length;
+        if (cost > remaining && currentPage.analyses.length > 0) flushCurrent();
+        currentPage.analyses.push({
+          itemId: item.id,
+          analysisCode: item.labTest.code,
+          analysisName: item.labTest.name,
+          isContinuation: false,
+          rows: chunks[0],
+        });
+        remaining -= Math.min(cost, remaining);
+        continue;
+      }
+
+      if (currentPage.analyses.length > 0) flushCurrent();
+      chunks
+        .filter((chunkRows) => chunkRows.length > 0)
+        .forEach((chunkRows, idx) => {
+          pages.push({
+            section: sectionName,
+            analyses: [
+              {
+                itemId: `${item.id}-${idx}`,
+                analysisCode: item.labTest.code,
+                analysisName: item.labTest.name,
+                isContinuation: idx > 0,
+                rows: chunkRows,
+              },
+            ],
+          });
+        });
+      currentPage = { section: sectionName, analyses: [] };
+      remaining = PAGE_ROW_CAPACITY;
+    }
+
+    if (currentPage.analyses.length > 0) pages.push(currentPage);
+  }
+
+  return pages;
 }
 
 export default async function OrderPrintPage({ params, searchParams }: Props) {
   const { id } = await params;
-  const { items: itemsParam, referredLabId } = await searchParams;
-  const selectedItemIds = itemsParam
-    ? new Set(itemsParam.split(",").map((s) => s.trim()).filter(Boolean))
-    : null;
+  const { items: itemsParam } = await searchParams;
 
   const order = await prisma.labOrder.findFirst({
     where: { id },
@@ -175,19 +406,15 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
           labTest: {
             include: {
               section: true,
-              referredLab: true,
-              template: { 
-                include: { 
+              template: {
+                include: {
                   items: {
-                    include: {
-                      refRanges: {
-                        orderBy: { order: "asc" }
-                      }
-                    }
-                  }
-                } 
-              } 
-            } 
+                    include: { refRanges: { orderBy: { order: "asc" } } },
+                    orderBy: { order: "asc" },
+                  },
+                },
+              },
+            },
           },
           result: { include: { items: { orderBy: { order: "asc" } } } },
         },
@@ -196,418 +423,157 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
     },
   });
 
-  if (!order) {
-    notFound();
+  if (!order) notFound();
+
+  if (order.status === "ANULADO") {
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 p-8">
+        <p className="text-center text-slate-600">
+          No se puede generar el PDF: la orden está anulada.
+        </p>
+        <Link
+          href={`/orders/${id}`}
+          className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+        >
+          Volver a la orden
+        </Link>
+      </div>
+    );
   }
 
-  // Filtrar items si se especificaron IDs seleccionados
-  const itemsToPrint =
-    selectedItemIds && selectedItemIds.size > 0
+  const hasItemsParam = typeof itemsParam === "string";
+  const selectedItemIds = hasItemsParam
+    ? new Set(itemsParam.split(",").map((s) => s.trim()).filter(Boolean))
+    : null;
+
+  let itemsToPrint =
+    hasItemsParam && selectedItemIds
       ? order.items.filter((item) => selectedItemIds.has(item.id))
       : order.items;
 
-  // Laboratorios referidos presentes en los análisis seleccionados
-  const referredLabsMap = new Map<
-    string,
-    { id: string; name: string; logoUrl: string | null; stampImageUrl: string | null }
-  >();
-  for (const item of itemsToPrint) {
-    if (item.labTest.isReferred && item.labTest.referredLab) {
-      const lab = item.labTest.referredLab;
-      referredLabsMap.set(lab.id, {
-        id: lab.id,
-        name: lab.name,
-        logoUrl: lab.logoUrl ?? null,
-        stampImageUrl: lab.stampImageUrl ?? null,
-      });
-    }
-  }
-  const referredLabs = Array.from(referredLabsMap.values());
-  const requestedReferredLabId = referredLabId?.trim() || "";
-  const selectedReferredLab =
-    (requestedReferredLabId
-      ? referredLabs.find((lab) => lab.id === requestedReferredLabId)
-      : referredLabs[0]) ?? null;
-
-  // Agrupar items por sección
-  const itemsBySection = itemsToPrint.reduce(
-    (acc, item) => {
-      const sectionKey = item.labTest.section?.name ?? item.labTest.section?.code ?? "OTROS";
-      if (!acc[sectionKey]) {
-        acc[sectionKey] = [];
-      }
-      acc[sectionKey].push(item);
-      return acc;
-    },
-    {} as Record<string, typeof itemsToPrint>,
+  itemsToPrint = itemsToPrint.filter(
+    (item) => item.result && (item.result.items?.length ?? 0) > 0
   );
 
-  // Máximo 5 análisis por hoja; los análisis se mantienen agrupados por sección
-  const MAX_ITEMS_PER_PAGE = 5;
-  type PageChunk = { section: string; items: typeof itemsToPrint };
-  const pageChunks: PageChunk[] = [];
-  for (const [section, sectionItems] of Object.entries(itemsBySection)) {
-    for (let i = 0; i < sectionItems.length; i += MAX_ITEMS_PER_PAGE) {
-      pageChunks.push({
-        section,
-        items: sectionItems.slice(i, i + MAX_ITEMS_PER_PAGE),
-      });
-    }
-  }
-  const age = calculateAge(order.patient.birthDate);
-  const sexLabel = order.patient.sex === "M" ? "Masculino" : order.patient.sex === "F" ? "Femenino" : "Otro";
-  const printConfig = await getPrintConfig();
-  const showStamp = printConfig.stampEnabled && printConfig.stampImageUrl;
+  const itemsBySection = itemsToPrint.reduce(
+    (acc, item) => {
+      const key = item.labTest.section?.name ?? item.labTest.section?.code ?? "OTROS";
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(item);
+      return acc;
+    },
+    {} as Record<string, typeof itemsToPrint>
+  );
 
-  const hasPages = pageChunks.length > 0;
+  const sortedSections = Object.entries(itemsBySection).sort(
+    ([, a], [, b]) => (a[0]?.labTest.section?.order ?? 999) - (b[0]?.labTest.section?.order ?? 999)
+  );
+  const orderedSections = Object.fromEntries(sortedSections);
 
+  const pages = buildPages(orderedSections).filter(
+    (p) => p.analyses.some((a) => a.rows.length > 0)
+  );
   const patientName = formatPatientDisplayName(order.patient.firstName, order.patient.lastName);
-  const analysesNames = itemsToPrint.map((i) => i.labTest.name).join(", ");
-  const analysisCodes = itemsToPrint.map((i) => i.labTest.code).join("-");
-  const dateStr = formatDate(order.createdAt);
+  const age = calculateAge(order.patient.birthDate);
+  const analysesNames = [...new Set(itemsToPrint.map((i) => i.labTest.name))].join(", ");
+  const date = formatDatePrint(order.createdAt);
 
   return (
-    <>
-      <PrintActions
+    <div className="print-module-root bg-slate-100 p-4">
+      <PrintToolbar
         patientName={patientName}
         patientPhone={order.patient.phone}
         analysesNames={analysesNames}
-        analysisCodes={analysisCodes || order.orderCode}
-        date={dateStr}
+        date={date}
       />
-      {referredLabs.length > 1 && (
-        <div className="mx-auto mb-3 flex w-[210mm] justify-end px-4 text-xs text-slate-600 print:hidden">
-          <form method="GET" className="flex items-center gap-2">
-            {itemsParam && <input type="hidden" name="items" value={itemsParam} />}
-            <label htmlFor="referredLabId" className="text-xs">
-              Lab. referido:
-            </label>
-            <select
-              id="referredLabId"
-              name="referredLabId"
-              defaultValue={selectedReferredLab?.id ?? ""}
-              className="h-7 rounded-md border border-slate-300 bg-white px-2 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-            >
-              {referredLabs.map((lab) => (
-                <option key={lab.id} value={lab.id}>
-                  {lab.name}
-                </option>
-              ))}
-            </select>
-            <button
-              type="submit"
-              className="inline-flex h-7 items-center rounded-md bg-slate-900 px-2 text-[11px] font-medium text-white hover:bg-slate-800 dark:bg-teal-600 dark:hover:bg-teal-700"
-            >
-              Aplicar
-            </button>
-          </form>
+
+      {pages.length === 0 ? (
+        <div className="mx-auto w-[210mm] bg-white p-10 text-center text-slate-600">
+          <p className="font-medium">No hay análisis para imprimir.</p>
+          <p className="mt-2 text-sm">
+            Los análisis solicitados deben tener resultados capturados para generar el PDF.
+          </p>
         </div>
-      )}
-      <PrintFitToPage />
-      {hasPages ? pageChunks.map((chunk, pageIndex) => (
-        <div
-          key={pageIndex}
-          className={`print-a4 relative mx-auto bg-white text-slate-900 print:mx-0 print:shadow-none overflow-hidden ${pageIndex < pageChunks.length - 1 ? "print-page" : ""} ${pageIndex > 0 ? "mt-8 print:mt-0" : ""}`}
-          style={{ width: "210mm", height: "297mm" }}
-        >
-          {/* Fondo de agua: toda la hoja en pantalla e impresión */}
-          <div
-            className="print-watermark absolute inset-0 pointer-events-none z-0"
-            style={{
-              backgroundImage: "url(/watermark-clinica.png)",
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              backgroundRepeat: "no-repeat",
-            }}
-            aria-hidden
-          />
-          {/* Wrapper escalable: permite reducir el contenido para que quepa en una hoja */}
-          <div className="print-a4-scaler absolute top-0 left-0 w-full z-10" style={{ width: "210mm" }}>
-            <div
-              className="print-a4-content relative px-12"
-              style={{ paddingTop: "29.7mm", paddingBottom: "29.7mm" }}
-            >
-              {/* Encabezado: logo del laboratorio referido (si aplica) centrado */}
-              <header className="flex items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-300 min-h-[3.5rem]">
-                <div className="min-w-0 flex-1" aria-hidden />
-                {selectedReferredLab ? (
-                  <ReferredHeaderBlock referredLab={selectedReferredLab} />
-                ) : (
-                  <div className="min-w-0 flex-1" aria-hidden />
-                )}
-                <div className="min-w-0 flex-1" aria-hidden />
-              </header>
+      ) : (
+        pages.map((page, pageIndex) => (
+          <div key={`${page.section}-${pageIndex}`} className="print-html-page relative mx-auto mb-4 bg-white shadow">
+            <img
+              src="/watermark-clinica.png"
+              alt="Watermark"
+              className="print-watermark pointer-events-none select-none"
+            />
 
-              <PatientDataBlock
-                order={order}
-                age={age}
-                sexLabel={sexLabel}
-              />
-
-              {/* Barra de sección: análisis agrupados por sección */}
-              <div
-                className="text-white py-2.5 px-4 mb-3 print-section-bar"
-                style={{ backgroundColor: "rgba(15, 23, 42, 0.7)" }}
-              >
-                <h2 className="text-center text-base font-bold uppercase tracking-wide">
-                  SECCIÓN {chunk.section}
-                </h2>
+            <div className="print-html-content relative z-10">
+              <div className="print-patient-grid">
+                <div><span className="label">PACIENTE :</span> {patientName}</div>
+                <div><span className="label">SEXO :</span> {formatSexDisplay(order.patient.sex)}</div>
+                <div><span className="label">EDAD :</span> {age} Años</div>
+                <div><span className="label">DNI :</span> {order.patient.dni ?? "-"}</div>
+                <div><span className="label">FECHA :</span> {formatDatePrint(order.createdAt)}</div>
+                <div><span className="label">INDICACIÓN :</span> {order.requestedBy || "MEDICO TRATANTE"}</div>
+                <div><span className="label">N°REGISTRO :</span> {order.orderCode}</div>
               </div>
 
-              <p className="text-xs text-slate-600 mb-2 font-medium">ANÁLISIS:</p>
+              <div className="print-analisis-label">ANALISIS :</div>
+              <div className="print-section-title"> {page.section.toUpperCase()}</div>
 
-              {chunk.items.map((item) => {
-                const hasResults = item.result && (item.result.items?.length ?? 0) > 0;
-                return (
-                  <div key={item.id} className="mb-6 break-inside-avoid">
-                    <p className="text-sm font-semibold text-slate-900 mb-2">
-                      {item.labTest.name}
-                    </p>
-
-                    {hasResults ? (
-                      <>
-                        <table className="w-full text-xs border border-slate-300">
-                          <thead>
-                            <tr className="bg-slate-100 border-b border-slate-300">
-                              <th className="text-left py-2 px-3 font-semibold text-slate-900">
-                                ANÁLISIS
-                              </th>
-                              <th className="text-left py-2 px-3 font-semibold text-slate-900">
-                                RESULTADOS
-                              </th>
-                              <th className="text-left py-2 px-3 font-semibold text-slate-900">
-                                UNIDAD
-                              </th>
-                              <th className="text-left py-2 px-3 font-semibold text-slate-900 w-[180px]">
-                                VALOR REFERENCIAL
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {(() => {
-                              const parsedSnap = typeof item.templateSnapshot === "string"
-                                ? (() => { try { return JSON.parse(item.templateSnapshot) as { items?: Array<{ id: string; groupName?: string | null; refRanges?: RefRangeItem[] }> }; } catch { return null; } })()
-                                : item.templateSnapshot as { items?: Array<{ id: string; groupName?: string | null; refRanges?: RefRangeItem[] }> } | null;
-                              const getGroupName = (res: { templateItemId: string | null }) => {
-                                if (!res.templateItemId) return "General";
-                                const ti = item.labTest.template?.items.find((t) => t.id === res.templateItemId);
-                                if (ti && "groupName" in ti && ti.groupName) return ti.groupName;
-                                const snap = parsedSnap;
-                                const snapItem = snap?.items?.find((t) => t.id === res.templateItemId);
-                                return snapItem?.groupName ?? "General";
-                              };
-                              const seen = new Set<string>();
-                              const items = item.result!.items.filter((res) => {
-                                const key = `${(res.paramNameSnapshot ?? "").trim()}|${(res.unitSnapshot ?? "").trim()}`;
-                                if (seen.has(key)) return false;
-                                seen.add(key);
-                                return true;
-                              });
-                              const byGroup = items.reduce(
-                                (acc, res) => {
-                                  const g = getGroupName(res);
-                                  if (!acc[g]) acc[g] = [];
-                                  acc[g].push(res);
-                                  return acc;
-                                },
-                                {} as Record<string, typeof items>,
-                              );
-                              const groupOrder = Array.from(new Set(items.map((r) => getGroupName(r))));
-                              return groupOrder.map((groupName) => {
-                                const groupItems = byGroup[groupName] ?? [];
-                                const showGroupHeader = groupName !== "General" && groupItems.length > 1;
-                                return (
-                                <Fragment key={groupName}>
-                                  {showGroupHeader && (
-                                    <tr className="bg-slate-100 border-b border-slate-300">
-                                      <td colSpan={4} className="py-1.5 px-3 font-semibold text-slate-800 text-xs uppercase">
-                                        {groupName}
-                                      </td>
-                                    </tr>
-                                  )}
-                                  {groupItems.map((res) => {
-                              // Buscar el templateItem original para obtener refRanges y valueType
-                              const templateItem = res.templateItemId 
-                                ? item.labTest.template?.items.find((t) => t.id === res.templateItemId)
-                                : null;
-                              let refRanges: RefRangeItem[] = (templateItem && "refRanges" in templateItem ? (templateItem.refRanges as RefRangeItem[]) : []) ?? [];
-                              // Fallback: si no hay refRanges en la plantilla actual, usar templateSnapshot (p. ej. órdenes antiguas o plantilla modificada)
-                              if (refRanges.length === 0 && parsedSnap && typeof parsedSnap === "object" && "items" in parsedSnap) {
-                                const snapshot = parsedSnap as { items: Array<{ id: string; refRanges?: RefRangeItem[] }> };
-                                const snapshotItem = snapshot.items.find((t) => t.id === res.templateItemId);
-                                refRanges = (snapshotItem?.refRanges ?? []) as RefRangeItem[];
-                              }
-                              const valueType = (templateItem as { valueType?: string } | null)?.valueType;
-                              const optionsArr = parseSelectOptions((templateItem as { selectOptions?: string | string[] } | null)?.selectOptions);
-                              const isNumeric = ["NUMBER", "DECIMAL", "PERCENTAGE"].includes(valueType ?? "");
-                              const rawVal = (res.value ?? "").trim();
-                              let displayValue: string;
-                              if (!rawVal) {
-                                displayValue = "-";
-                              } else if (isNumeric) {
-                                const hasRangeDash = rawVal.includes("-") && rawVal.indexOf("-") > 0;
-                                const hasSpaces = /\d\s+\d/.test(rawVal);
-                                if (hasRangeDash || hasSpaces) {
-                                  displayValue = rawVal;
-                                } else {
-                                  const formatted = formatWithThousands(rawVal);
-                                  displayValue = formatted ? formatted + (valueType === "PERCENTAGE" ? " %" : "") : rawVal;
-                                }
-                              } else {
-                                displayValue = rawVal;
-                              }
-                              
-                              return (
-                                <tr key={res.id} className="border-b border-slate-200 last:border-b-0">
-                                  <td className="py-2 px-3 font-medium text-slate-900 align-top">
-                                    {res.paramNameSnapshot}
-                                  </td>
-                                  <td
-                                    className={`py-2 px-3 text-slate-900 align-top ${
-                                      (res as { isHighlighted?: boolean }).isHighlighted ? "font-bold" : ""
-                                    }`}
-                                  >
-                                    {displayValue}
-                                  </td>
-                                  <td className="py-2 px-3 text-slate-700 align-top">
-                                    {res.unitSnapshot || "-"}
-                                  </td>
-                                  <td className="py-2 px-3 text-slate-700 w-[180px] align-top">
-                                    <div className="space-y-1">
-                                      {res.refTextSnapshot && (
-                                        <div className="font-medium">
-                                          {res.refTextSnapshot}
-                                        </div>
-                                      )}
-                                      {refRanges.length > 0 && (
-                                        <div className="space-y-0.5 text-[10px]">
-                                          {refRanges.map((range: RefRangeItem, rangeIdx: number) => {
-                                            const ageGroupLabels: Record<string, string> = {
-                                              NIÑOS: "Niños",
-                                              JOVENES: "Jóvenes",
-                                              ADULTOS: "Adultos",
-                                            };
-                                            const sexLabels: Record<string, string> = {
-                                              M: "Hombres",
-                                              F: "Mujeres",
-                                              O: "Otros",
-                                            };
-                                            const criteria = [
-                                              range.ageGroup ? ageGroupLabels[range.ageGroup] || range.ageGroup : null,
-                                              range.sex ? sexLabels[range.sex] || range.sex : null,
-                                            ].filter(Boolean);
-                                            
-                                            const rangeDisplay = range.refRangeText 
-                                              || (range.refMin !== null && range.refMax !== null 
-                                                ? `${range.refMin} - ${range.refMax}` 
-                                                : "");
-                                            
-                                            return (
-                                              <div key={rangeIdx} className="leading-tight">
-                                                {criteria.length > 0 ? (
-                                                  <span>
-                                                    <span className="font-semibold text-slate-800">
-                                                      {criteria.join(" + ")}:
-                                                    </span>
-                                                    <span className="text-slate-600 ml-1">{rangeDisplay}</span>
-                                                  </span>
-                                                ) : (
-                                                  <span className="text-slate-600">{rangeDisplay}</span>
-                                                )}
-                                              </div>
-                                            );
-                                          })}
-                                        </div>
-                                      )}
-                                      {!res.refTextSnapshot && refRanges.length === 0 && (
-                                        optionsArr.length > 0 ? (
-                                          <span className="text-slate-600">{optionsArr.join(" / ")}</span>
-                                        ) : (
-                                          <span className="font-medium">-</span>
-                                        )
-                                      )}
-                                    </div>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                                </Fragment>
-                              );
-                              });
-                            })()}
-                          </tbody>
-                        </table>
-                        {(item.result?.reportedBy || item.result?.comment) && (
-                          <div className="mt-2 space-y-1 text-xs text-slate-600">
-
-                            {item.result?.comment && (
-                              <p className="italic">{item.result.comment}</p>
-                            )}
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <div className="border border-slate-300 py-4 text-center text-sm text-slate-500">
-                        Sin resultados registrados.
-                      </div>
-                    )}
+              {page.analyses.map((analysis) => (
+                <div key={analysis.itemId} className="print-analysis-block">
+                  <div className="print-analysis-name">
+                    {analysis.analysisName}
+                    {analysis.isContinuation ? " (continuación)" : ""}
                   </div>
-                );
-              })}
 
-              {order.preAnalyticNote && (
-                <div className="mt-3 rounded border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-                  <p className="font-semibold uppercase tracking-wide text-slate-800">
-                    Observaciones preanalíticas
-                  </p>
-                  <p className="mt-1 whitespace-pre-wrap">{order.preAnalyticNote}</p>
+                  <table className="print-report-table mt-2">
+                    <colgroup>
+                      <col className="col-analisis" />
+                      <col className="col-resultados" />
+                      <col className="col-unidad" />
+                      <col className="col-valor-ref" />
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th>ANÁLISIS</th>
+                        <th>RESULTADO</th>
+                        <th>UNIDAD</th>
+                        <th>VALOR REFERENCIAL</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {analysis.rows.length === 0 ? (
+                        <tr>
+                          <td colSpan={4}>Sin resultados registrados.</td>
+                        </tr>
+                      ) : (
+                        analysis.rows.map((row) =>
+                          row.kind === "group" ? (
+                            <tr key={row.id} className="print-group-row">
+                              <td colSpan={4}>{row.groupName}</td>
+                            </tr>
+                          ) : (
+                            <tr key={row.id}>
+                              <td>{row.paramName}</td>
+                              <td className={`text-center ${row.isHighlighted ? "font-bold" : ""}`}>{row.resultValue}</td>
+                              <td className="text-center">{row.unit}</td>
+                              <td className="print-valor-ref">
+                                {row.refValue}
+                                {row.description && (
+                                  <div className="print-param-description">{row.description}</div>
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        )
+                      )}
+                    </tbody>
+                  </table>
                 </div>
-              )}
+              ))}
 
-              <FooterBlock
-                items={chunk.items}
-                order={order}
-                showStamp={!!(showStamp && printConfig.stampImageUrl)}
-                stampImageUrl={printConfig.stampImageUrl}
-                referredLabStampUrl={selectedReferredLab?.stampImageUrl ?? null}
-              />
-
-              <div className="mt-6 pt-3 text-center text-xs min-h-[1.5rem]" aria-hidden />
             </div>
           </div>
-        </div>
-      )) : (
-        <div
-          className="print-a4 relative mx-auto bg-white text-slate-900 print:mx-0 print:shadow-none overflow-hidden"
-          style={{ width: "210mm", height: "297mm" }}
-        >
-          <div
-            className="print-watermark absolute inset-0 pointer-events-none z-0"
-            style={{
-              backgroundImage: "url(/watermark-clinica.png)",
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              backgroundRepeat: "no-repeat",
-            }}
-            aria-hidden
-          />
-          <div className="print-a4-scaler absolute top-0 left-0 w-full z-10" style={{ width: "210mm" }}>
-            <div
-              className="print-a4-content relative px-12"
-              style={{ paddingTop: "29.7mm", paddingBottom: "29.7mm" }}
-            >
-              <header className="flex items-start justify-between gap-4 mb-6 pb-4 border-b border-slate-300 min-h-[3.5rem]" />
-              <PatientDataBlock
-                order={order}
-                age={age}
-                sexLabel={sexLabel}
-              />
-              <p className="text-center text-slate-500 py-12">No hay análisis seleccionados para imprimir.</p>
-              <FooterBlock items={[]} order={order} showStamp={!!(showStamp && printConfig.stampImageUrl)} stampImageUrl={printConfig.stampImageUrl} />
-            </div>
-          </div>
-        </div>
+        ))
       )}
-    </>
+    </div>
   );
 }

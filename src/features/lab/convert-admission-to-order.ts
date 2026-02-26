@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { buildOrderCode, orderCodePrefixForDate, parseOrderCodeSequence } from "@/features/lab/order-utils";
+import { buildOrderCode, getNextOrderSequence } from "@/features/lab/order-utils";
 
 export type ConvertAdmissionResult = { orderId: string; orderCode: string };
 
@@ -50,17 +50,12 @@ export async function convertAdmissionToOrder(admissionId: string): Promise<Conv
     return { item, test };
   });
 
-  const dayStart = new Date();
-  dayStart.setHours(0, 0, 0, 0);
-  const prefix = orderCodePrefixForDate(dayStart);
-
   const created = await prisma.$transaction(async (tx) => {
     const existing = await tx.labOrder.findMany({
-      where: { orderCode: { startsWith: prefix } },
       select: { orderCode: true },
     });
-    const maxSeq = Math.max(0, ...existing.map((row) => parseOrderCodeSequence(row.orderCode)));
-    const orderCode = buildOrderCode(maxSeq + 1, dayStart);
+    const nextSeq = getNextOrderSequence(existing);
+    const orderCode = buildOrderCode(nextSeq);
 
     const order = await tx.labOrder.create({
       data: {

@@ -15,6 +15,18 @@ export function formatDate(date?: Date | string | null) {
   return d.toLocaleDateString("es-PE", { timeZone: PERU_TIMEZONE });
 }
 
+/** Fecha corta para impresión: D/M/YYYY (ej. 26/2/2026) */
+export function formatDatePrint(date?: Date | string | null): string {
+  if (!date) return "-";
+  const d = typeof date === "string" ? new Date(date) : date;
+  return d.toLocaleDateString("es-PE", {
+    timeZone: PERU_TIMEZONE,
+    day: "numeric",
+    month: "numeric",
+    year: "numeric",
+  });
+}
+
 export function formatDateTime(date?: Date | string | null) {
   if (!date) return "-";
   const d = typeof date === "string" ? new Date(date) : date;
@@ -27,6 +39,17 @@ export function formatDateTime(date?: Date | string | null) {
     minute: "2-digit",
     second: "2-digit",
   });
+}
+
+/** Sexo en español para impresión: M→Masculino, F→Femenino, O→Otro */
+export function formatSexDisplay(sex?: string | null): string {
+  if (!sex) return "-";
+  switch (sex.toUpperCase()) {
+    case "M": return "Masculino";
+    case "F": return "Femenino";
+    case "O": return "Otro";
+    default: return sex;
+  }
 }
 
 /** Nombre del paciente en formato estándar: Apellidos Nombres */
