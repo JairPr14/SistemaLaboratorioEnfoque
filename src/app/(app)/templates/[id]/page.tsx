@@ -63,6 +63,7 @@ export default async function TemplateDetailPage({ params }: Props) {
         </CardHeader>
         <CardContent>
           <TemplateForm
+            key={template.id}
             templateId={template.id}
             labTests={tests.map((test) => ({
               id: test.id,
@@ -80,7 +81,7 @@ export default async function TemplateDetailPage({ params }: Props) {
                 refRangeText: item.refRangeText ?? "",
                 refMin: item.refMin ? Number(item.refMin) : undefined,
                 refMax: item.refMax ? Number(item.refMax) : undefined,
-                valueType: item.valueType,
+                valueType: item.valueType as "TEXT" | "NUMBER" | "SELECT" | "DECIMAL" | "PERCENTAGE",
                 selectOptions: parseSelectOptions(item.selectOptions),
                 order: item.order,
                 refRanges: (item.refRanges ?? []).map((r) => ({

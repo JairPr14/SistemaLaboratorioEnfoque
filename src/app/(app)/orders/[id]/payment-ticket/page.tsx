@@ -52,7 +52,7 @@ export default async function PaymentTicketPage({ params }: Props) {
     <PaymentTicketClient
       orderCode={order.orderCode}
       patientName={patientName}
-      patientDni={order.patient.dni}
+      patientDni={order.patient.dni ?? null}
       createdAt={order.createdAt}
       total={total}
       paidTotal={paidTotal}

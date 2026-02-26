@@ -79,7 +79,7 @@ export default async function ResultsPage({
     return {
       key,
       patientName: `${patient.lastName} ${patient.firstName}`,
-      patientDni: patient.dni,
+      patientDni: patient.dni ?? "—",
       displayDate,
       dateKey,
       orders: sorted,

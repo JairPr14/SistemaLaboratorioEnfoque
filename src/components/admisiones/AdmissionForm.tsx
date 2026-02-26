@@ -23,7 +23,7 @@ import { Label } from "@/components/ui/label";
 type PatientOption = {
   id: string;
   label: string;
-  dni: string;
+  dni: string | null;
   firstName: string;
   lastName: string;
 };
@@ -134,7 +134,7 @@ export function AdmissionForm({
     return patients
       .filter(
         (p) =>
-          p.dni.toLowerCase().includes(term) ||
+          (p.dni ?? "").toLowerCase().includes(term) ||
           p.firstName.toLowerCase().includes(term) ||
           p.lastName.toLowerCase().includes(term) ||
           p.label.toLowerCase().includes(term),
@@ -231,8 +231,8 @@ export function AdmissionForm({
       return;
     }
     if (patientMode === "new") {
-      if (!draftPatient.firstName || !draftPatient.lastName || !draftPatient.dni || !draftPatient.birthDate) {
-        toast.error("Completa los datos obligatorios del paciente nuevo.");
+      if (!draftPatient.firstName || !draftPatient.lastName || !draftPatient.birthDate) {
+        toast.error("Completa los datos obligatorios del paciente nuevo (nombres, apellidos y fecha de nacimiento).");
         return;
       }
     }
@@ -258,7 +258,7 @@ export function AdmissionForm({
             ? {
                 firstName: draftPatient.firstName.trim(),
                 lastName: draftPatient.lastName.trim(),
-                dni: draftPatient.dni.trim(),
+                dni: draftPatient.dni && String(draftPatient.dni).trim() ? String(draftPatient.dni).trim() : null,
                 birthDate: draftPatient.birthDate,
                 sex: draftPatient.sex,
               }

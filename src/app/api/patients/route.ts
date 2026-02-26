@@ -63,9 +63,10 @@ export async function POST(request: Request) {
     let item: Awaited<ReturnType<typeof prisma.patient.create>> | null = null;
     for (let attempt = 0; attempt < 3; attempt++) {
       const code = await generateNextPatientCode();
+      const dniVal = parsed.dni && String(parsed.dni).trim() ? String(parsed.dni).trim() : undefined;
       const createData: Parameters<typeof prisma.patient.create>[0]["data"] = {
         code,
-        dni: parsed.dni.trim(),
+        ...(dniVal != null ? { dni: dniVal } : {}),
         firstName,
         lastName,
         birthDate: parseDatePeru(parsed.birthDate),

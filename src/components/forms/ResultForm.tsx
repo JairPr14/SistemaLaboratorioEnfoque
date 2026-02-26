@@ -222,7 +222,9 @@ export function ResultForm({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent, currentIdx: number) => {
-      if (e.key !== "Tab") return;
+      const isTab = e.key === "Tab";
+      const isEnter = e.key === "Enter";
+      if (!isTab && !isEnter) return;
       const idx = flatIndices.indexOf(currentIdx);
       if (idx < 0) return;
       e.preventDefault();
@@ -243,7 +245,8 @@ export function ResultForm({
       </div>
 
       <p className="text-xs text-slate-500 dark:text-slate-400">
-        Usa <kbd className="rounded border border-slate-300 px-1.5 py-0.5 text-[10px]">Tab</kbd> para
+        Usa <kbd className="rounded border border-slate-300 px-1.5 py-0.5 text-[10px]">Tab</kbd> o{" "}
+        <kbd className="rounded border border-slate-300 px-1.5 py-0.5 text-[10px]">Enter</kbd> para
         desplazarte entre parámetros. Guardado automático.
       </p>
 
@@ -251,10 +254,12 @@ export function ResultForm({
         <div className="relative z-10 p-4 space-y-4">
           {Object.entries(groupedItems).map(([groupName, items]) => (
             <div key={groupName} className="space-y-2">
-              <div className="bg-slate-700 px-3 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-white dark:bg-slate-600 rounded-t">
-                {groupName}
-              </div>
-              <Table>
+              {items.length > 1 && (
+                <div className="bg-slate-700 px-3 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-white dark:bg-slate-600 rounded-t">
+                  {groupName}
+                </div>
+              )}
+              <Table className={items.length <= 1 ? "" : "rounded-b"}>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[28%] text-[11px] font-semibold uppercase">Análisis</TableHead>

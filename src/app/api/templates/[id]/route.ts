@@ -53,10 +53,11 @@ export async function PUT(request: Request, { params }: Params) {
     const payload = await request.json();
     const parsed = templateSchema.parse(payload);
 
-    const item = await prisma.$transaction(async (tx) => {
-      await tx.labTemplateItem.deleteMany({ where: { templateId: id } });
+    const item = await prisma.$transaction(
+      async (tx) => {
+        await tx.labTemplateItem.deleteMany({ where: { templateId: id } });
 
-      return tx.labTemplate.update({
+        return tx.labTemplate.update({
         where: { id },
         data: {
           labTestId: parsed.labTestId,
@@ -94,7 +95,9 @@ export async function PUT(request: Request, { params }: Params) {
           } 
         },
       });
-    });
+      },
+      { timeout: 15000 }
+    );
 
     return NextResponse.json({ item });
   } catch (error) {
@@ -123,10 +126,13 @@ export async function DELETE(_request: Request, { params }: Params) {
 
   try {
     const { id } = await params;
-    await prisma.$transaction(async (tx) => {
-      await tx.labTemplateItem.deleteMany({ where: { templateId: id } });
-      await tx.labTemplate.delete({ where: { id } });
-    });
+    await prisma.$transaction(
+      async (tx) => {
+        await tx.labTemplateItem.deleteMany({ where: { templateId: id } });
+        await tx.labTemplate.delete({ where: { id } });
+      },
+      { timeout: 15000 }
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {

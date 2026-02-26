@@ -20,7 +20,7 @@ type OrderFormValues = z.infer<typeof orderCreateSchema>;
 type PatientOption = {
   id: string;
   label: string;
-  dni: string;
+  dni: string | null;
   firstName: string;
   lastName: string;
 };
@@ -81,7 +81,7 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [],
     if (!term) return [];
     return patients.filter(
       (p) =>
-        p.dni.toLowerCase().includes(term) ||
+        (p.dni ?? "").toLowerCase().includes(term) ||
         p.firstName.toLowerCase().includes(term) ||
         p.lastName.toLowerCase().includes(term) ||
         p.label.toLowerCase().includes(term),
@@ -266,7 +266,7 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [],
                           className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-sm shadow-sm hover:bg-slate-50 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400 min-w-0 max-w-full sm:max-w-none"
                         >
                           <span className="font-medium text-slate-900 block truncate">{p.label}</span>
-                          <span className="text-slate-500 text-xs">DNI {p.dni}</span>
+                          <span className="text-slate-500 text-xs">DNI {p.dni ?? "—"}</span>
                         </button>
                       ))}
                     </div>
@@ -300,7 +300,7 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [],
                               {patient.label}
                             </span>
                             <span className="ml-2 text-slate-500">
-                              DNI {patient.dni}
+                              DNI {patient.dni ?? "—"}
                             </span>
                           </button>
                         </li>

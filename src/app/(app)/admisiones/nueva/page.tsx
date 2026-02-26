@@ -60,7 +60,7 @@ export default async function NuevaAdmisionPage() {
           branches={branches.map((branch) => ({ id: branch.id, name: branch.name }))}
           patients={patients.map((patient) => ({
               id: patient.id,
-              label: `${formatPatientDisplayName(patient.firstName, patient.lastName)} (${patient.dni})`,
+              label: `${formatPatientDisplayName(patient.firstName, patient.lastName)} (${patient.dni ?? "—"})`,
               dni: patient.dni,
               firstName: patient.firstName,
               lastName: patient.lastName,

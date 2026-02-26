@@ -43,7 +43,11 @@ export const orderPatientTypeValues = ["CLINICA", "EXTERNO", "IZAGA"] as const;
 
 export const patientSchema = z.object({
   code: z.string().min(3).optional(),
-  dni: z.string().min(6),
+  /** Opcional: se guarda null si está vacío. Si se ingresa valor, mínimo 6 caracteres */
+  dni: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? null : String(v)),
+    z.union([z.string().min(6), z.literal(null)]).optional().nullable(),
+  ),
   firstName: z.string().min(2),
   lastName: z.string().min(2),
   birthDate: z.string().min(1),
@@ -207,7 +211,10 @@ export const orderAddItemsSchema = z.object({
 export const patientDraftSchema = z.object({
   firstName: z.string().min(2),
   lastName: z.string().min(2),
-  dni: z.string().min(6),
+  dni: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? null : String(v)),
+    z.union([z.string().min(6), z.literal(null)]).optional().nullable(),
+  ),
   sex: z.enum(sexValues),
   birthDate: z.string().min(1),
 });

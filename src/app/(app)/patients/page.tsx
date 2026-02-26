@@ -175,7 +175,7 @@ export default async function PatientsPage({ searchParams }: Props) {
                             {formatPatientDisplayName(patient.firstName, patient.lastName)}
                           </Link>
                         </TableCell>
-                        <TableCell className="text-sm font-semibold text-slate-700 dark:text-slate-300">{patient.dni}</TableCell>
+                        <TableCell className="text-sm font-semibold text-slate-700 dark:text-slate-300">{patient.dni ?? "—"}</TableCell>
                         <TableCell className="text-slate-700 dark:text-slate-300">{formatDate(patient.birthDate)}</TableCell>
                         <TableCell className="text-right">
                           <Link

@@ -110,8 +110,9 @@ export function getTemplateItemsForPatient(
   patientSex?: "M" | "F" | "O",
 ): TemplateItem[] {
   // Si hay templateSnapshot guardado, usarlo (copia de la plantilla para este paciente)
-  if (templateSnapshot && typeof templateSnapshot === "object" && "items" in templateSnapshot) {
-    const snapshot = templateSnapshot as { items: TemplateSnapshotItem[] };
+  const parsed = typeof templateSnapshot === "string" ? (() => { try { return JSON.parse(templateSnapshot); } catch { return null; } })() : templateSnapshot;
+  if (parsed && typeof parsed === "object" && "items" in parsed) {
+    const snapshot = parsed as { items: TemplateSnapshotItem[] };
     // Edad: siempre calcular desde fecha de nacimiento; si falta, asumir adulto (18) para rangos por sexo
     const age = patientBirthDate ? calculateAge(patientBirthDate) : 18;
     const sex = patientSex ?? null;

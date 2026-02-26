@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import {
@@ -92,7 +91,7 @@ export async function POST(request: Request, { params }: Params) {
               data: items.map((i) => ({
                 labTestId: i.labTestId,
                 priceSnapshot: i.priceSnapshot,
-                templateSnapshot: (i.templateSnapshot ?? undefined) as Prisma.InputJsonValue | undefined,
+                templateSnapshot: i.templateSnapshot ?? undefined,
               })),
             },
           },

@@ -177,7 +177,7 @@ export async function POST(request: Request) {
                   promotionId: promotionId ?? undefined,
                   promotionName: promotionName ?? undefined,
                   templateSnapshot: test.template
-                    ? ({
+                    ? JSON.stringify({
                         title: test.template.title,
                         notes: test.template.notes,
                         items: test.template.items.map((item) => ({
@@ -200,7 +200,7 @@ export async function POST(request: Request) {
                             order: r.order ?? 0,
                           })),
                         })),
-                      } as const)
+                      })
                     : undefined,
                 })),
               },

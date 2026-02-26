@@ -56,7 +56,7 @@ export default async function PatientDetailPage({ params }: Props) {
             createdAt={patient.createdAt}
             defaultValues={{
               code: patient.code,
-              dni: patient.dni,
+              dni: patient.dni ?? "",
               firstName: patient.firstName,
               lastName: patient.lastName,
               birthDate,

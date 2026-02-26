@@ -79,7 +79,7 @@ export async function convertAdmissionToOrder(admissionId: string): Promise<Conv
               priceSnapshot: item.priceApplied,
               priceConventionSnapshot: test.priceToAdmission != null ? Number(test.priceToAdmission) : Number(test.price),
               templateSnapshot: test.template
-                ? ({
+                ? JSON.stringify({
                     title: test.template.title,
                     notes: test.template.notes,
                     items: test.template.items.map((templateItem) => ({
@@ -102,7 +102,7 @@ export async function convertAdmissionToOrder(admissionId: string): Promise<Conv
                         order: range.order ?? 0,
                       })),
                     })),
-                  } as const)
+                  })
                 : undefined,
             })),
           },

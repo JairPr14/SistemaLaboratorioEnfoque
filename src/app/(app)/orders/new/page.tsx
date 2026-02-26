@@ -67,14 +67,14 @@ export default async function NewOrderPage({ searchParams }: Props) {
             defaultPatientId={defaultPatientId ?? undefined}
             patients={patients.map((p) => ({
               id: p.id,
-              label: `${p.lastName} ${p.firstName} (${p.dni})`,
+              label: `${p.lastName} ${p.firstName} (${p.dni ?? "—"})`,
               dni: p.dni,
               firstName: p.firstName,
               lastName: p.lastName,
             }))}
             recentPatients={recentPatients.map((p) => ({
               id: p.id,
-              label: `${p.lastName} ${p.firstName} (${p.dni})`,
+              label: `${p.lastName} ${p.firstName} (${p.dni ?? "—"})`,
               dni: p.dni,
               firstName: p.firstName,
               lastName: p.lastName,

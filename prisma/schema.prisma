@@ -12,31 +12,31 @@ model Role {
   code        String   @unique
   name        String
   description String?
-  /** JSON array de códigos de permiso: ["REPORTES", "EDITAR_PACIENTES", "ELIMINAR_REGISTROS"] */
-  permissions String?
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  /// * JSON array de códigos de permiso: ["REPORTES", "EDITAR_PACIENTES", "ELIMINAR_REGISTROS"]
+  permissions String?
   users       User[]
 
   @@index([code])
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  name         String?
-  isActive     Boolean  @default(true)
-  roleId       String?
-  role         Role?    @relation(fields: [roleId], references: [id], onDelete: SetNull)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  favoriteTests UserFavoriteTest[]
-  payments      Payment[]
-  referredLabPayments ReferredLabPayment[]
+  id                       String               @id @default(cuid())
+  email                    String               @unique
+  passwordHash             String
+  name                     String?
+  isActive                 Boolean              @default(true)
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
+  roleId                   String?
   admissionRequestsCreated AdmissionRequest[]
-  notificationReads NotificationRead[]
+  notificationReads        NotificationRead[]
+  payments                 Payment[]
+  referredLabPayments      ReferredLabPayment[]
+  role                     Role?                @relation(fields: [roleId], references: [id])
+  favoriteTests            UserFavoriteTest[]
 
   @@index([email])
   @@index([roleId])
@@ -47,37 +47,419 @@ model UserFavoriteTest {
   userId    String
   labTestId String
   createdAt DateTime @default(now())
-
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  labTest LabTest @relation(fields: [labTestId], references: [id], onDelete: Cascade)
+  labTest   LabTest  @relation(fields: [labTestId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, labTestId])
   @@index([userId])
 }
 
 model TestProfile {
-  id           String   @id @default(cuid())
+  id           String            @id @default(cuid())
   name         String
-  packagePrice Float?   // Precio promocional del paquete (si null = suma de análisis)
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  items TestProfileItem[]
+  isActive     Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  packagePrice Float?
+  items        TestProfileItem[]
 }
 
 model TestProfileItem {
-  id         String   @id @default(cuid())
-  profileId  String
-  labTestId  String
-  order      Int
-  createdAt  DateTime @default(now())
-
-  profile TestProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  labTest LabTest     @relation(fields: [labTestId], references: [id], onDelete: Cascade)
+  id        String      @id @default(cuid())
+  profileId String
+  labTestId String
+  order     Int
+  createdAt DateTime    @default(now())
+  labTest   LabTest     @relation(fields: [labTestId], references: [id], onDelete: Cascade)
+  profile   TestProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   @@unique([profileId, labTestId])
   @@index([profileId])
+}
+
+model LabSection {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  name      String
+  order     Int       @default(0)
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  labTests  LabTest[]
+
+  @@index([code])
+}
+
+model Patient {
+  id                String             @id @default(cuid())
+  code              String             @unique
+  dni               String?            @unique
+  firstName         String
+  lastName          String
+  birthDate         DateTime
+  sex               Sex
+  phone             String?
+  address           String?
+  email             String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  deletedAt         DateTime?
+  admissionRequests AdmissionRequest[]
+  orders            LabOrder[]
+
+  @@index([dni])
+  @@index([code])
+}
+
+model ReferredLab {
+  id            String               @id @default(cuid())
+  name          String
+  logoUrl       String?
+  stampImageUrl String?
+  isActive      Boolean              @default(true)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  orderItems    LabOrderItem[]
+  labTests      LabTest[]
+  testOptions   LabTestReferredLab[]
+  payments      ReferredLabPayment[]
+
+  @@index([isActive])
+}
+
+model LabTestReferredLab {
+  id               String      @id @default(dbgenerated("gen_random_uuid()"))
+  labTestId        String
+  referredLabId    String
+  priceToAdmission Float?
+  externalLabCost  Float?
+  isDefault        Boolean     @default(false)
+  createdAt        DateTime    @default(now()) @db.Timestamp(6)
+  updatedAt        DateTime    @default(now()) @updatedAt @db.Timestamp(6)
+  labTest          LabTest     @relation(fields: [labTestId], references: [id], onDelete: Cascade)
+  referredLab      ReferredLab @relation(fields: [referredLabId], references: [id])
+
+  @@unique([labTestId, referredLabId])
+  @@index([referredLabId])
+}
+
+model LabTest {
+  id                   String                 @id @default(cuid())
+  code                 String                 @unique
+  name                 String
+  price                Float
+  estimatedTimeMinutes Int?
+  isActive             Boolean                @default(true)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  deletedAt            DateTime?
+  sectionId            String
+  isReferred           Boolean                @default(false)
+  referredLabId        String?
+  priceToAdmission     Float?
+  externalLabCost      Float?
+  admissionItems       AdmissionRequestItem[]
+  items                LabOrderItem[]
+  template             LabTemplate?
+  referredLab          ReferredLab?           @relation(fields: [referredLabId], references: [id])
+  section              LabSection             @relation(fields: [sectionId], references: [id])
+  referredLabOptions   LabTestReferredLab[]
+  profileItems         TestProfileItem[]
+  favoriteUsers        UserFavoriteTest[]
+
+  @@index([sectionId])
+  @@index([isActive])
+  @@index([referredLabId])
+}
+
+model LabTemplate {
+  id        String            @id @default(cuid())
+  labTestId String            @unique
+  title     String
+  notes     String?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  labTest   LabTest           @relation(fields: [labTestId], references: [id])
+  items     LabTemplateItem[]
+}
+
+model LabTemplateItem {
+  id            String                    @id @default(cuid())
+  templateId    String
+  groupName     String?
+  paramName     String
+  unit          String?
+  refRangeText  String?
+  refMin        Float?
+  refMax        Float?
+  valueType     String
+  selectOptions String                    @default("[]")
+  order         Int
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+  description   String?
+  resultItems   LabResultItem[]
+  template      LabTemplate               @relation(fields: [templateId], references: [id])
+  refRanges     LabTemplateItemRefRange[]
+}
+
+model LabTemplateItemRefRange {
+  id             String          @id @default(cuid())
+  templateItemId String
+  ageGroup       String?
+  sex            Sex?
+  refRangeText   String?
+  refMin         Float?
+  refMax         Float?
+  order          Int             @default(0)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  templateItem   LabTemplateItem @relation(fields: [templateItemId], references: [id], onDelete: Cascade)
+
+  @@index([templateItemId])
+}
+
+model LabOrder {
+  id                            String               @id @default(cuid())
+  orderCode                     String               @unique
+  patientId                     String
+  requestedBy                   String?
+  notes                         String?
+  status                        OrderStatus          @default(PENDIENTE)
+  totalPrice                    Float
+  createdAt                     DateTime             @default(now())
+  updatedAt                     DateTime             @updatedAt
+  deliveredAt                   DateTime?
+  patientType                   String?
+  branchId                      String?
+  preAnalyticNote               String?
+  admissionRequestId            String?              @unique
+  /// * Fecha en que admisión canceló/saldó esta orden (pagó al laboratorio)
+  admissionSettledAt            DateTime?
+  convertedFromAdmissionRequest AdmissionRequest?    @relation("AdmissionConvertedOrder")
+  admissionRequest              AdmissionRequest?    @relation("LabOrderFromAdmissionRequest", fields: [admissionRequestId], references: [id])
+  branch                        Branch?              @relation(fields: [branchId], references: [id])
+  patient                       Patient              @relation(fields: [patientId], references: [id])
+  items                         LabOrderItem[]
+  payments                      Payment[]
+  referredLabPayments           ReferredLabPayment[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([patientType])
+  @@index([branchId])
+  @@index([admissionRequestId])
+}
+
+model Payment {
+  id           String        @id @default(cuid())
+  orderId      String
+  amount       Float
+  method       PaymentMethod
+  notes        String?
+  paidAt       DateTime      @default(now())
+  recordedById String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  order        LabOrder      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user         User?         @relation(fields: [recordedById], references: [id])
+
+  @@index([orderId])
+  @@index([paidAt])
+  @@index([method])
+}
+
+model ReferredLabPayment {
+  id            String      @id @default(cuid())
+  orderId       String
+  referredLabId String
+  amount        Float
+  paidAt        DateTime    @default(now())
+  notes         String?
+  recordedById  String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  order         LabOrder    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user          User?       @relation(fields: [recordedById], references: [id])
+  referredLab   ReferredLab @relation(fields: [referredLabId], references: [id])
+
+  @@index([orderId])
+  @@index([referredLabId])
+  @@index([paidAt])
+}
+
+model LabOrderItem {
+  id                      String          @id @default(cuid())
+  orderId                 String
+  labTestId               String
+  status                  OrderItemStatus @default(PENDIENTE)
+  priceSnapshot           Float
+  templateSnapshot        String?
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+  promotionId             String?
+  promotionName           String?
+  priceConventionSnapshot Float?
+  referredLabId           String?
+  externalLabCostSnapshot Float?
+  labTest                 LabTest         @relation(fields: [labTestId], references: [id])
+  order                   LabOrder        @relation(fields: [orderId], references: [id])
+  referredLab             ReferredLab?    @relation(fields: [referredLabId], references: [id])
+  result                  LabResult?
+
+  @@index([referredLabId])
+}
+
+model LabResult {
+  id          String          @id @default(cuid())
+  orderItemId String          @unique
+  reportedAt  DateTime?
+  reportedBy  String?
+  comment     String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  isDraft     Boolean         @default(true)
+  orderItem   LabOrderItem    @relation(fields: [orderItemId], references: [id])
+  items       LabResultItem[]
+}
+
+model AppConfig {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+}
+
+/// * Imágenes almacenadas en BD (sellos, logos de laboratorios referidos, etc.)
+model StoredImage {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  mimeType  String
+  data      Bytes
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([key])
+}
+
+model Branch {
+  id                String             @id @default(cuid())
+  code              String             @unique
+  name              String
+  address           String?
+  phone             String?
+  order             Int                @default(0)
+  isActive          Boolean            @default(true)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  admissionRequests AdmissionRequest[]
+  orders            LabOrder[]
+
+  @@index([code])
+  @@index([order])
+}
+
+model AdmissionRequest {
+  id               String                 @id @default(cuid())
+  requestCode      String                 @unique
+  patientId        String
+  requestedBy      String?
+  notes            String?
+  patientType      OrderPatientType?
+  branchId         String?
+  createdById      String?
+  status           AdmissionStatus        @default(PENDIENTE)
+  totalPrice       Float
+  convertedOrderId String?                @unique
+  convertedAt      DateTime?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  branch           Branch?                @relation(fields: [branchId], references: [id])
+  convertedOrder   LabOrder?              @relation("AdmissionConvertedOrder", fields: [convertedOrderId], references: [id])
+  createdBy        User?                  @relation(fields: [createdById], references: [id])
+  patient          Patient                @relation(fields: [patientId], references: [id])
+  items            AdmissionRequestItem[]
+  labOrder         LabOrder?              @relation("LabOrderFromAdmissionRequest")
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([patientId])
+  @@index([branchId])
+}
+
+model AdmissionRequestItem {
+  id                 String           @id @default(cuid())
+  admissionRequestId String
+  labTestId          String
+  order              Int              @default(0)
+  priceBase          Float
+  priceApplied       Float
+  adjustmentReason   String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  admissionRequest   AdmissionRequest @relation(fields: [admissionRequestId], references: [id], onDelete: Cascade)
+  labTest            LabTest          @relation(fields: [labTestId], references: [id])
+
+  @@index([admissionRequestId])
+  @@index([labTestId])
+}
+
+model PreAnalyticNoteTemplate {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  title     String
+  text      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([code])
+  @@index([isActive])
+}
+
+model LabResultItem {
+  id                String           @id @default(cuid())
+  resultId          String
+  templateItemId    String?
+  paramNameSnapshot String
+  unitSnapshot      String?
+  refTextSnapshot   String?
+  refMinSnapshot    Float?
+  refMaxSnapshot    Float?
+  value             String
+  isOutOfRange      Boolean          @default(false)
+  order             Int
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  /// * Si true, el resultado se muestra en negrita (resaltado) en captura e impresión
+  isHighlighted     Boolean          @default(false)
+  result            LabResult        @relation(fields: [resultId], references: [id])
+  templateItem      LabTemplateItem? @relation(fields: [templateItemId], references: [id])
+}
+
+model Notification {
+  id             String             @id @default(cuid())
+  type           String
+  title          String
+  message        String?
+  linkTo         String?
+  relatedOrderId String?
+  createdAt      DateTime           @default(now())
+  reads          NotificationRead[]
+
+  @@index([type])
+  @@index([createdAt])
+}
+
+model NotificationRead {
+  id             String       @id @default(cuid())
+  notificationId String
+  userId         String
+  readAt         DateTime     @default(now())
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, userId])
+  @@index([userId])
 }
 
 enum Sex {
@@ -86,26 +468,12 @@ enum Sex {
   O
 }
 
-model LabSection {
-  id        String   @id @default(cuid())
-  code      String   @unique
-  name      String
-  order     Int      @default(0)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  labTests LabTest[]
-
-  @@index([code])
-}
-
 enum ValueType {
   NUMBER
-  DECIMAL
-  PERCENTAGE
   TEXT
   SELECT
+  DECIMAL
+  PERCENTAGE
 }
 
 enum OrderStatus {
@@ -139,394 +507,4 @@ enum AdmissionStatus {
   PENDIENTE
   CONVERTIDA
   CANCELADA
-}
-
-model Patient {
-  id        String   @id @default(cuid())
-  code      String   @unique
-  dni       String   @unique
-  firstName String
-  lastName  String
-  birthDate DateTime
-  sex       Sex
-  phone     String?
-  address   String?
-  email     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime?
-
-  orders             LabOrder[]
-  admissionRequests  AdmissionRequest[]
-
-  @@index([dni])
-  @@index([code])
-}
-
-model ReferredLab {
-  id            String   @id @default(cuid())
-  name          String
-  logoUrl       String?
-  stampImageUrl String?
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  labTests      LabTest[]
-  testOptions   LabTestReferredLab[]
-  payments      ReferredLabPayment[]
-  orderItems    LabOrderItem[]
-
-  @@index([isActive])
-}
-
-model LabTestReferredLab {
-  id              String   @id @default(cuid())
-  labTestId       String
-  referredLabId   String
-  priceToAdmission Float?
-  externalLabCost  Float?
-  isDefault       Boolean  @default(false)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  labTest     LabTest     @relation(fields: [labTestId], references: [id], onDelete: Cascade)
-  referredLab ReferredLab @relation(fields: [referredLabId], references: [id], onDelete: Restrict)
-
-  @@unique([labTestId, referredLabId])
-  @@index([referredLabId])
-}
-
-model LabTest {
-  id                    String       @id @default(cuid())
-  code                  String       @unique
-  name                  String
-  sectionId             String
-  section               LabSection   @relation(fields: [sectionId], references: [id], onDelete: Restrict)
-  price                 Float
-  estimatedTimeMinutes  Int?
-  isActive              Boolean      @default(true)
-  isReferred            Boolean      @default(false)
-  referredLabId         String?
-  referredLab           ReferredLab? @relation(fields: [referredLabId], references: [id], onDelete: SetNull)
-  priceToAdmission      Float?       // Lo que cobramos a admisión
-  externalLabCost       Float?       // Lo que pagamos al laboratorio referido
-  createdAt             DateTime     @default(now())
-  updatedAt             DateTime     @updatedAt
-  deletedAt             DateTime?
-
-  template       LabTemplate?
-  items          LabOrderItem[]
-  admissionItems AdmissionRequestItem[]
-  favoriteUsers  UserFavoriteTest[]
-  profileItems   TestProfileItem[]
-  referredLabOptions LabTestReferredLab[]
-
-  @@index([sectionId])
-  @@index([isActive])
-  @@index([referredLabId])
-}
-
-model LabTemplate {
-  id        String   @id @default(cuid())
-  labTestId String   @unique
-  title     String
-  notes     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  labTest LabTest           @relation(fields: [labTestId], references: [id])
-  items   LabTemplateItem[]
-}
-
-model LabTemplateItem {
-  id           String   @id @default(cuid())
-  templateId   String
-  groupName    String?
-  paramName    String
-  unit         String?
-  refRangeText String?  // Mantener para compatibilidad con valores simples
-  refMin       Float?   // Mantener para compatibilidad con valores simples
-  refMax       Float?   // Mantener para compatibilidad con valores simples
-  description  String?  // texto descriptivo del parámetro (desde JSON)
-  valueType    ValueType
-  selectOptions String   @default("[]")
-  order        Int
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  template LabTemplate              @relation(fields: [templateId], references: [id])
-  resultItems LabResultItem[]
-  refRanges   LabTemplateItemRefRange[]
-}
-
-model LabTemplateItemRefRange {
-  id              String   @id @default(cuid())
-  templateItemId  String
-  ageGroup        String?  // "NIÑOS", "JOVENES", "ADULTOS", null = todos
-  sex             Sex?     // M, F, O, null = todos
-  refRangeText    String?  // Texto descriptivo del rango
-  refMin          Float?
-  refMax          Float?
-  order           Int      @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  templateItem LabTemplateItem @relation(fields: [templateItemId], references: [id], onDelete: Cascade)
-
-  @@index([templateItemId])
-}
-
-model LabOrder {
-  id          String            @id @default(cuid())
-  orderCode   String            @unique
-  patientId   String
-  requestedBy String?
-  notes       String?
-  preAnalyticNote String?
-  patientType OrderPatientType?
-  branchId    String?
-  admissionRequestId String?           @unique
-  status      OrderStatus       @default(PENDIENTE)
-  totalPrice  Float
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  deliveredAt DateTime?
-  /** Fecha en que admisión canceló/saldó esta orden (pagó al laboratorio) */
-  admissionSettledAt DateTime?
-
-  patient Patient        @relation(fields: [patientId], references: [id])
-  branch  Branch?        @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  admissionRequest AdmissionRequest? @relation("LabOrderFromAdmissionRequest", fields: [admissionRequestId], references: [id], onDelete: SetNull)
-  convertedFromAdmissionRequest AdmissionRequest? @relation("AdmissionConvertedOrder")
-  items   LabOrderItem[]
-  payments Payment[]
-  referredLabPayments ReferredLabPayment[]
-
-  @@index([status])
-  @@index([createdAt])
-  @@index([patientType])
-  @@index([branchId])
-  @@index([admissionRequestId])
-}
-
-model Payment {
-  id          String        @id @default(cuid())
-  orderId      String
-  amount       Float
-  method       PaymentMethod
-  notes        String?
-  paidAt       DateTime      @default(now())
-  recordedById String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-
-  order LabOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  user  User?    @relation(fields: [recordedById], references: [id], onDelete: SetNull)
-
-  @@index([orderId])
-  @@index([paidAt])
-  @@index([method])
-}
-
-model ReferredLabPayment {
-  id            String      @id @default(cuid())
-  orderId       String
-  referredLabId String
-  amount        Float
-  paidAt        DateTime    @default(now())
-  notes         String?
-  recordedById  String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-
-  order       LabOrder    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  referredLab ReferredLab @relation(fields: [referredLabId], references: [id], onDelete: Restrict)
-  user        User?       @relation(fields: [recordedById], references: [id], onDelete: SetNull)
-
-  @@index([orderId])
-  @@index([referredLabId])
-  @@index([paidAt])
-}
-
-model LabOrderItem {
-  id                       String          @id @default(cuid())
-  orderId                  String
-  labTestId                String
-  status                   OrderItemStatus @default(PENDIENTE)
-  priceSnapshot            Float           // Precio público (lo que paga el paciente / cobra admisión)
-  priceConventionSnapshot  Float?          // Precio convenio (lo que cobra el lab a admisión); solo en órdenes desde admisión
-  templateSnapshot         Json?
-  promotionId              String?         // Si viene de una promoción, id del TestProfile
-  promotionName            String?         // Nombre de la promoción (para mostrar en detalle)
-  referredLabId            String?
-  externalLabCostSnapshot  Float?
-  createdAt                DateTime        @default(now())
-  updatedAt                DateTime        @updatedAt
-
-  order       LabOrder   @relation(fields: [orderId], references: [id])
-  labTest     LabTest    @relation(fields: [labTestId], references: [id])
-  referredLab ReferredLab? @relation(fields: [referredLabId], references: [id], onDelete: SetNull)
-  result      LabResult?
-
-  @@index([referredLabId])
-}
-
-model LabResult {
-  id          String   @id @default(cuid())
-  orderItemId String   @unique
-  reportedAt  DateTime?
-  reportedBy  String?
-  comment     String?
-  isDraft     Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  orderItem LabOrderItem    @relation(fields: [orderItemId], references: [id])
-  items     LabResultItem[]
-}
-
-model AppConfig {
-  id    String   @id @default(cuid())
-  key   String   @unique
-  value String
-}
-
-/** Imágenes almacenadas en BD (sellos, logos de laboratorios referidos, etc.) */
-model StoredImage {
-  id       String   @id @default(cuid())
-  key      String   @unique
-  mimeType String
-  data     Bytes
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([key])
-}
-
-model Branch {
-  id        String   @id @default(cuid())
-  code      String   @unique
-  name      String
-  address   String?
-  phone     String?
-  order     Int      @default(0)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  orders            LabOrder[]
-  admissionRequests AdmissionRequest[]
-
-  @@index([code])
-  @@index([order])
-}
-
-model AdmissionRequest {
-  id             String          @id @default(cuid())
-  requestCode    String          @unique
-  patientId      String
-  requestedBy    String?
-  notes          String?
-  patientType    OrderPatientType?
-  branchId       String?
-  createdById    String?
-  status         AdmissionStatus @default(PENDIENTE)
-  totalPrice     Float
-  convertedOrderId String?       @unique
-  convertedAt    DateTime?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-
-  patient        Patient         @relation(fields: [patientId], references: [id])
-  branch         Branch?         @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  createdBy      User?           @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  convertedOrder LabOrder?       @relation("AdmissionConvertedOrder", fields: [convertedOrderId], references: [id], onDelete: SetNull)
-  items          AdmissionRequestItem[]
-  labOrder       LabOrder?       @relation("LabOrderFromAdmissionRequest")
-
-  @@index([status])
-  @@index([createdAt])
-  @@index([patientId])
-  @@index([branchId])
-}
-
-model AdmissionRequestItem {
-  id                String   @id @default(cuid())
-  admissionRequestId String
-  labTestId         String
-  order             Int      @default(0)
-  priceBase         Float
-  priceApplied      Float
-  adjustmentReason  String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  admissionRequest AdmissionRequest @relation(fields: [admissionRequestId], references: [id], onDelete: Cascade)
-  labTest          LabTest          @relation(fields: [labTestId], references: [id], onDelete: Restrict)
-
-  @@index([admissionRequestId])
-  @@index([labTestId])
-}
-
-model PreAnalyticNoteTemplate {
-  id        String   @id @default(cuid())
-  code      String   @unique
-  title     String
-  text      String
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([code])
-  @@index([isActive])
-}
-
-model LabResultItem {
-  id               String   @id @default(cuid())
-  resultId         String
-  templateItemId   String?
-  paramNameSnapshot String
-  unitSnapshot     String?
-  refTextSnapshot  String?
-  refMinSnapshot   Float?
-  refMaxSnapshot   Float?
-  value            String
-  isOutOfRange     Boolean  @default(false)
-  /** Si true, el resultado se muestra en negrita (resaltado) en captura e impresión */
-  isHighlighted    Boolean  @default(false)
-  order            Int
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  result       LabResult       @relation(fields: [resultId], references: [id])
-  templateItem LabTemplateItem? @relation(fields: [templateItemId], references: [id])
-}
-
-model Notification {
-  id             String   @id @default(cuid())
-  type           String   // ADMISSION_CONVERTED, etc.
-  title          String
-  message        String?
-  linkTo         String?  // /orders/xxx
-  relatedOrderId String?
-  createdAt      DateTime @default(now())
-
-  reads NotificationRead[]
-
-  @@index([type])
-  @@index([createdAt])
-}
-
-model NotificationRead {
-  id             String   @id @default(cuid())
-  notificationId String
-  userId         String
-  readAt         DateTime @default(now())
-
-  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([notificationId, userId])
-  @@index([userId])
 }

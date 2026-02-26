@@ -57,7 +57,7 @@ export default async function TemplatesPage() {
           Nueva plantilla
         </h2>
         <div className="rounded-2xl border border-slate-200/80 bg-white/80 shadow-sm backdrop-blur-sm dark:border-slate-700/80 dark:bg-slate-900/60">
-          <TemplateForm labTests={labTestsForForm} />
+          <TemplateForm key="new" labTests={labTestsForForm} />
         </div>
       </section>
     </div>

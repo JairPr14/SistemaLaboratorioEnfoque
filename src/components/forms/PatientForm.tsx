@@ -154,8 +154,8 @@ export function PatientForm({ patientId, defaultValues, canEdit = true, createdA
           )}
         </div>
         <div>
-          <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">DNI</Label>
-          <Input className="mt-1 rounded-xl" {...form.register("dni")} disabled={!canEdit} readOnly={!canEdit} />
+          <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">DNI (opcional)</Label>
+          <Input className="mt-1 rounded-xl" {...form.register("dni")} disabled={!canEdit} readOnly={!canEdit} placeholder="Opcional" />
         </div>
         <div>
           <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">Fecha de creación</Label>

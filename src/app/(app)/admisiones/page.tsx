@@ -401,7 +401,7 @@ export default async function AdmisionesPage({ searchParams }: { searchParams: S
                       </TableCell>
                       <TableCell>
                         <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{formatPatientDisplayName(item.patient.firstName, item.patient.lastName)}</p>
-                        <p className="text-sm font-semibold text-slate-600 dark:text-slate-400">DNI {item.patient.dni}</p>
+                        <p className="text-sm font-semibold text-slate-600 dark:text-slate-400">DNI {item.patient.dni ?? "—"}</p>
                       </TableCell>
                       <TableCell className="text-slate-600 dark:text-slate-400">
                         {ageFromBirthDate(item.patient.birthDate)} años

@@ -116,7 +116,7 @@ export function RepeatOrderButton({ orderId, patientName }: Props) {
 
     if (selectedPatient) {
       patientId = selectedPatient.id;
-    } else if (showNewPatientForm && patientDraft.firstName && patientDraft.lastName && patientDraft.dni && patientDraft.birthDate) {
+    } else if (showNewPatientForm && patientDraft.firstName && patientDraft.lastName && patientDraft.birthDate) {
       try {
         const createRes = await fetch("/api/patients", {
           method: "POST",
@@ -124,7 +124,7 @@ export function RepeatOrderButton({ orderId, patientName }: Props) {
           body: JSON.stringify({
             firstName: patientDraft.firstName,
             lastName: patientDraft.lastName,
-            dni: patientDraft.dni,
+            dni: patientDraft.dni && String(patientDraft.dni).trim() ? String(patientDraft.dni).trim() : null,
             birthDate: patientDraft.birthDate,
             sex: patientDraft.sex,
           }),
@@ -152,7 +152,6 @@ export function RepeatOrderButton({ orderId, patientName }: Props) {
     (showNewPatientForm &&
       patientDraft.firstName.trim().length >= 2 &&
       patientDraft.lastName.trim().length >= 2 &&
-      patientDraft.dni.trim().length >= 6 &&
       patientDraft.birthDate);
 
   return (

@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { notFound } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
@@ -25,7 +26,7 @@ function calculateAge(birthDate: Date): number {
 
 // Forma mínima del order que usan PatientDataBlock y FooterBlock (sin datos de cobro)
 type OrderForPrint = {
-  patient: { lastName: string; firstName: string; dni: string; birthDate: Date; sex: string | null };
+  patient: { lastName: string; firstName: string; dni: string | null; birthDate: Date; sex: string | null };
   requestedBy: string | null;
   preAnalyticNote?: string | null;
   createdAt: Date;
@@ -65,7 +66,7 @@ function PatientDataBlock({
       </div>
       <div className="flex gap-2">
         <span className="text-slate-500 font-medium shrink-0">DNI:</span>
-        <span>{order.patient.dni}</span>
+        <span>{order.patient.dni ?? "—"}</span>
       </div>
       <div className="flex gap-2 min-w-0">
         <span className="text-slate-500 font-medium shrink-0">INDICACIÓN:</span>
@@ -384,7 +385,17 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                           </thead>
                           <tbody>
                             {(() => {
-                              // Deduplicar por (paramName, unit) - la plantilla tiene cada parámetro una vez
+                              const parsedSnap = typeof item.templateSnapshot === "string"
+                                ? (() => { try { return JSON.parse(item.templateSnapshot) as { items?: Array<{ id: string; groupName?: string | null; refRanges?: RefRangeItem[] }> }; } catch { return null; } })()
+                                : item.templateSnapshot as { items?: Array<{ id: string; groupName?: string | null; refRanges?: RefRangeItem[] }> } | null;
+                              const getGroupName = (res: { templateItemId: string | null }) => {
+                                if (!res.templateItemId) return "General";
+                                const ti = item.labTest.template?.items.find((t) => t.id === res.templateItemId);
+                                if (ti && "groupName" in ti && ti.groupName) return ti.groupName;
+                                const snap = parsedSnap;
+                                const snapItem = snap?.items?.find((t) => t.id === res.templateItemId);
+                                return snapItem?.groupName ?? "General";
+                              };
                               const seen = new Set<string>();
                               const items = item.result!.items.filter((res) => {
                                 const key = `${(res.paramNameSnapshot ?? "").trim()}|${(res.unitSnapshot ?? "").trim()}`;
@@ -392,15 +403,37 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                                 seen.add(key);
                                 return true;
                               });
-                              return items.map((res) => {
+                              const byGroup = items.reduce(
+                                (acc, res) => {
+                                  const g = getGroupName(res);
+                                  if (!acc[g]) acc[g] = [];
+                                  acc[g].push(res);
+                                  return acc;
+                                },
+                                {} as Record<string, typeof items>,
+                              );
+                              const groupOrder = Array.from(new Set(items.map((r) => getGroupName(r))));
+                              return groupOrder.map((groupName) => {
+                                const groupItems = byGroup[groupName] ?? [];
+                                const showGroupHeader = groupName !== "General" && groupItems.length > 1;
+                                return (
+                                <Fragment key={groupName}>
+                                  {showGroupHeader && (
+                                    <tr className="bg-slate-100 border-b border-slate-300">
+                                      <td colSpan={4} className="py-1.5 px-3 font-semibold text-slate-800 text-xs uppercase">
+                                        {groupName}
+                                      </td>
+                                    </tr>
+                                  )}
+                                  {groupItems.map((res) => {
                               // Buscar el templateItem original para obtener refRanges y valueType
                               const templateItem = res.templateItemId 
                                 ? item.labTest.template?.items.find((t) => t.id === res.templateItemId)
                                 : null;
                               let refRanges: RefRangeItem[] = (templateItem && "refRanges" in templateItem ? (templateItem.refRanges as RefRangeItem[]) : []) ?? [];
                               // Fallback: si no hay refRanges en la plantilla actual, usar templateSnapshot (p. ej. órdenes antiguas o plantilla modificada)
-                              if (refRanges.length === 0 && item.templateSnapshot && typeof item.templateSnapshot === "object" && "items" in item.templateSnapshot) {
-                                const snapshot = item.templateSnapshot as { items: Array<{ id: string; refRanges?: RefRangeItem[] }> };
+                              if (refRanges.length === 0 && parsedSnap && typeof parsedSnap === "object" && "items" in parsedSnap) {
+                                const snapshot = parsedSnap as { items: Array<{ id: string; refRanges?: RefRangeItem[] }> };
                                 const snapshotItem = snapshot.items.find((t) => t.id === res.templateItemId);
                                 refRanges = (snapshotItem?.refRanges ?? []) as RefRangeItem[];
                               }
@@ -408,9 +441,21 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                               const optionsArr = parseSelectOptions((templateItem as { selectOptions?: string | string[] } | null)?.selectOptions);
                               const isNumeric = ["NUMBER", "DECIMAL", "PERCENTAGE"].includes(valueType ?? "");
                               const rawVal = (res.value ?? "").trim();
-                              const displayValue = rawVal
-                                ? (isNumeric ? formatWithThousands(rawVal) + (valueType === "PERCENTAGE" ? " %" : "") : rawVal)
-                                : "-";
+                              let displayValue: string;
+                              if (!rawVal) {
+                                displayValue = "-";
+                              } else if (isNumeric) {
+                                const hasRangeDash = rawVal.includes("-") && rawVal.indexOf("-") > 0;
+                                const hasSpaces = /\d\s+\d/.test(rawVal);
+                                if (hasRangeDash || hasSpaces) {
+                                  displayValue = rawVal;
+                                } else {
+                                  const formatted = formatWithThousands(rawVal);
+                                  displayValue = formatted ? formatted + (valueType === "PERCENTAGE" ? " %" : "") : rawVal;
+                                }
+                              } else {
+                                displayValue = rawVal;
+                              }
                               
                               return (
                                 <tr key={res.id} className="border-b border-slate-200 last:border-b-0">
@@ -485,15 +530,16 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                                   </td>
                                 </tr>
                               );
-                            });
+                            })}
+                                </Fragment>
+                              );
+                              });
                             })()}
                           </tbody>
                         </table>
                         {(item.result?.reportedBy || item.result?.comment) && (
                           <div className="mt-2 space-y-1 text-xs text-slate-600">
-                            {item.result?.reportedBy && (
-                              <p><span className="font-medium">Reportado por:</span> {item.result.reportedBy}</p>
-                            )}
+
                             {item.result?.comment && (
                               <p className="italic">{item.result.comment}</p>
                             )}

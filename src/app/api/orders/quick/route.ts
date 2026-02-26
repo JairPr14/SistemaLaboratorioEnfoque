@@ -43,10 +43,11 @@ export async function POST(request: Request) {
       const firstName = draft.firstName.trim().toUpperCase();
       const lastName = draft.lastName.trim().toUpperCase();
 
+      const dniVal = draft.dni && String(draft.dni).trim() ? String(draft.dni).trim() : undefined;
       const patient = await prisma.patient.create({
         data: {
           code,
-          dni: draft.dni.trim(),
+          ...(dniVal != null ? { dni: dniVal } : {}),
           firstName,
           lastName,
           birthDate: parseDatePeru(draft.birthDate),
@@ -167,7 +168,7 @@ export async function POST(request: Request) {
               promotionId: promotionId ?? undefined,
               promotionName: promotionName ?? undefined,
               templateSnapshot: test.template
-                    ? ({
+                    ? JSON.stringify({
                         title: test.template.title,
                         notes: test.template.notes,
                         items: test.template.items.map((item) => ({
@@ -190,7 +191,7 @@ export async function POST(request: Request) {
                             order: r.order ?? 0,
                           })),
                         })),
-                      } as const)
+                      })
                     : undefined,
                 })),
               },

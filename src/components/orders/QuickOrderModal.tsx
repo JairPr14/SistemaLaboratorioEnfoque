@@ -202,14 +202,17 @@ export function QuickOrderModal({ open, onOpenChange }: Props) {
     }
 
     let patientId: string | undefined;
-    let patientDraftPayload: typeof patientDraft | undefined;
+    let patientDraftPayload:
+      | { firstName: string; lastName: string; dni: string | null; sex: "M" | "F" | "O"; birthDate: string }
+      | undefined;
 
     if (selectedPatient) {
       patientId = selectedPatient.id;
-    } else if (showNewPatient && patientDraft.firstName && patientDraft.lastName && patientDraft.dni && patientDraft.birthDate) {
+    } else if (showNewPatient && patientDraft.firstName && patientDraft.lastName && patientDraft.birthDate) {
       patientDraftPayload = {
         ...patientDraft,
         birthDate: patientDraft.birthDate,
+        dni: patientDraft.dni && String(patientDraft.dni).trim() ? String(patientDraft.dni).trim() : null,
       };
     } else {
       toast.error("Selecciona o crea un paciente");

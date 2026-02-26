@@ -52,7 +52,7 @@ export default async function DeliveredPage() {
     return {
       key,
       patientName: `${patient.lastName} ${patient.firstName}`,
-      patientDni: patient.dni,
+      patientDni: patient.dni ?? "—",
       displayDate,
       dateKey,
       orders: ordersInGroup,

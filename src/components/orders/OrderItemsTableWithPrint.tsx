@@ -124,10 +124,7 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteIt
   }, [order.items]);
 
   const printableItemIds = useMemo(
-    () =>
-      order.items
-        .filter((item) => item.result && item.result.items.length > 0)
-        .map((item) => item.id),
+    () => order.items.map((item) => item.id),
     [order.items],
   );
 

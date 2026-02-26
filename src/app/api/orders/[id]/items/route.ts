@@ -118,8 +118,8 @@ export async function POST(request: Request, { params }: Params) {
           orderId,
           labTestId: test.id,
           priceSnapshot: test.price,
-          templateSnapshot: test.template
-            ? ({
+          templateSnapshot: (test.template
+            ? JSON.stringify({
                 title: test.template.title,
                 notes: test.template.notes,
                 items: test.template.items.map((item) => ({
@@ -142,8 +142,8 @@ export async function POST(request: Request, { params }: Params) {
                     order: r.order ?? 0,
                   })),
                 })),
-              } as const)
-            : undefined,
+              })
+            : undefined) as string | undefined,
         })),
       });
 

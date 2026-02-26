@@ -56,6 +56,7 @@ export async function PUT(request: Request, { params }: Params) {
       firstName,
       lastName,
       birthDate: parseDatePeru(rest.birthDate),
+      dni: rest.dni && String(rest.dni).trim() ? String(rest.dni).trim() : null,
       phone: rest.phone || null,
       address: rest.address || null,
       email: rest.email || null,
