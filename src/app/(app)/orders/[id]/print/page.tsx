@@ -7,7 +7,7 @@ import { PrintToolbar } from "@/components/orders/PrintToolbar";
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ items?: string }>;
+  searchParams: Promise<{ items?: string; showReferredLogo?: string }>;
 };
 
 type RefRangeItem = {
@@ -37,11 +37,13 @@ type AnalysisChunk = {
   analysisName: string;
   isContinuation: boolean;
   rows: RenderRow[];
+  isReferred?: boolean;
 };
 
 type PrintPage = {
   section: string;
   analyses: AnalysisChunk[];
+  hasReferredAnalyses?: boolean;
 };
 
 function calculateAge(birthDate: Date): number {
@@ -301,12 +303,34 @@ function splitRowsForContinuation(rows: RenderRow[], maxRowsPerChunk: number): R
   return filtered;
 }
 
+function isItemReferredWithLogo(item: {
+  referredLab?: { logoUrl: string | null } | null;
+  labTest?: {
+    referredLab?: { logoUrl: string | null } | null;
+    referredLabOptions?: Array<{
+      isDefault?: boolean;
+      referredLab?: { logoUrl: string | null } | null;
+    }>;
+  };
+}): boolean {
+  if (item.referredLab?.logoUrl) return true;
+  if (item.labTest?.referredLab?.logoUrl) return true;
+  const opts = item.labTest?.referredLabOptions ?? [];
+  const def = opts.find((o) => o.isDefault) ?? opts[0];
+  return !!def?.referredLab?.logoUrl;
+}
+
 function buildPages(sections: Record<string, Array<{
   id: string;
   templateSnapshot: unknown;
   labTest: {
     code: string;
     name: string;
+    referredLab?: { logoUrl: string | null } | null;
+    referredLabOptions?: Array<{
+      isDefault?: boolean;
+      referredLab?: { logoUrl: string | null } | null;
+    }>;
     template: {
       items: Array<{
         id: string;
@@ -317,6 +341,7 @@ function buildPages(sections: Record<string, Array<{
       }>;
     } | null;
   };
+  referredLab?: { logoUrl: string | null } | null;
   result: {
     items: Array<{
       id: string;
@@ -343,7 +368,10 @@ function buildPages(sections: Record<string, Array<{
     let remaining = PAGE_ROW_CAPACITY;
 
     const flushCurrent = () => {
-      if (currentPage.analyses.length > 0) pages.push(currentPage);
+      if (currentPage.analyses.length > 0) {
+        currentPage.hasReferredAnalyses = currentPage.analyses.some((a) => a.isReferred);
+        pages.push(currentPage);
+      }
       currentPage = { section: sectionName, analyses: [] };
       remaining = PAGE_ROW_CAPACITY;
     };
@@ -351,6 +379,8 @@ function buildPages(sections: Record<string, Array<{
     for (const item of sectionItems) {
       const rows = buildRowsForItem(item);
       const chunks = splitRowsForContinuation(rows, MAX_ROWS_PER_CONTINUATION_CHUNK);
+
+      const itemIsReferred = isItemReferredWithLogo(item);
 
       if (chunks.length === 1) {
         const cost = ANALYSIS_HEADER_COST + chunks[0].length;
@@ -361,6 +391,7 @@ function buildPages(sections: Record<string, Array<{
           analysisName: item.labTest.name,
           isContinuation: false,
           rows: chunks[0],
+          isReferred: itemIsReferred,
         });
         remaining -= Math.min(cost, remaining);
         continue;
@@ -379,15 +410,20 @@ function buildPages(sections: Record<string, Array<{
                 analysisName: item.labTest.name,
                 isContinuation: idx > 0,
                 rows: chunkRows,
+                isReferred: itemIsReferred,
               },
             ],
+            hasReferredAnalyses: itemIsReferred,
           });
         });
       currentPage = { section: sectionName, analyses: [] };
       remaining = PAGE_ROW_CAPACITY;
     }
 
-    if (currentPage.analyses.length > 0) pages.push(currentPage);
+    if (currentPage.analyses.length > 0) {
+      currentPage.hasReferredAnalyses = currentPage.analyses.some((a) => a.isReferred);
+      pages.push(currentPage);
+    }
   }
 
   return pages;
@@ -395,7 +431,8 @@ function buildPages(sections: Record<string, Array<{
 
 export default async function OrderPrintPage({ params, searchParams }: Props) {
   const { id } = await params;
-  const { items: itemsParam } = await searchParams;
+  const { items: itemsParam, showReferredLogo: showReferredLogoParam } = await searchParams;
+  const showReferredLogo = showReferredLogoParam === "0" ? false : true;
 
   const order = await prisma.labOrder.findFirst({
     where: { id },
@@ -406,6 +443,11 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
           labTest: {
             include: {
               section: true,
+              referredLab: { select: { id: true, name: true, logoUrl: true } },
+              referredLabOptions: {
+                include: { referredLab: { select: { id: true, name: true, logoUrl: true } } },
+                take: 5,
+              },
               template: {
                 include: {
                   items: {
@@ -416,6 +458,7 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
               },
             },
           },
+          referredLab: { select: { id: true, name: true, logoUrl: true } },
           result: { include: { items: { orderBy: { order: "asc" } } } },
         },
         orderBy: { createdAt: "asc" },
@@ -478,6 +521,29 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
   const analysesNames = [...new Set(itemsToPrint.map((i) => i.labTest.name))].join(", ");
   const date = formatDatePrint(order.createdAt);
 
+  const getEffectiveReferredLab = (
+    item: (typeof itemsToPrint)[number]
+  ): { id: string; name: string; logoUrl: string | null } | null => {
+    if (item.referredLab) return item.referredLab;
+    if (item.labTest.referredLab) return item.labTest.referredLab;
+    const opts = item.labTest.referredLabOptions ?? [];
+    const defaultOpt =
+      opts.find((o) => (o as { isDefault?: boolean }).isDefault) ?? opts[0];
+    return defaultOpt?.referredLab ?? null;
+  };
+
+  const referredLabWithLogo = itemsToPrint
+    .map(getEffectiveReferredLab)
+    .find((lab) => lab?.logoUrl);
+
+  const buildPrintUrl = (logoVisible: boolean) => {
+    const params = new URLSearchParams();
+    if (typeof itemsParam === "string") params.set("items", itemsParam);
+    if (!logoVisible) params.set("showReferredLogo", "0");
+    const qs = params.toString();
+    return qs ? `/orders/${id}/print?${qs}` : `/orders/${id}/print`;
+  };
+
   return (
     <div className="print-module-root bg-slate-100 p-4">
       <PrintToolbar
@@ -485,6 +551,10 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
         patientPhone={order.patient.phone}
         analysesNames={analysesNames}
         date={date}
+        backHref={`/orders/${id}`}
+        toggleLogoUrl={buildPrintUrl(!showReferredLogo)}
+        showLogoButton={!!referredLabWithLogo}
+        logoVisible={showReferredLogo}
       />
 
       {pages.length === 0 ? (
@@ -502,7 +572,17 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
               alt="Watermark"
               className="print-watermark pointer-events-none select-none"
             />
-
+            {showReferredLogo && referredLabWithLogo && page.hasReferredAnalyses && (
+              <div className="print-referred-lab-header">
+                <span className="print-referred-lab-label">Con el respaldo de</span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={referredLabWithLogo.logoUrl!}
+                  alt={referredLabWithLogo.name}
+                  className="print-referred-lab-logo"
+                />
+              </div>
+            )}
             <div className="print-html-content relative z-10">
               <div className="print-patient-grid">
                 <div><span className="label">PACIENTE :</span> {patientName}</div>

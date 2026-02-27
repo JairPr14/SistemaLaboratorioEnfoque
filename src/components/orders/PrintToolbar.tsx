@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { FileDown, ArrowLeft } from "lucide-react";
+import { FileDown, ArrowLeft, ImagePlus, ImageMinus } from "lucide-react";
 
 const WHATSAPP_SVG = (
   <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden>
@@ -15,12 +16,37 @@ type PrintToolbarProps = {
   patientPhone?: string | null;
   analysesNames: string;
   date: string;
+  /** URL de destino al retroceder (ej. /orders/{id}). Si no se pasa, usa router.back() */
+  backHref?: string;
+  /** URL para alternar visibilidad del logo del lab referido (mostrar/ocultar) */
+  toggleLogoUrl?: string;
+  /** Mostrar botón solo cuando hay logo de lab referido disponible */
+  showLogoButton?: boolean;
+  /** Si el logo está actualmente visible */
+  logoVisible?: boolean;
 };
 
-export function PrintToolbar({ patientName, patientPhone, analysesNames, date }: PrintToolbarProps) {
+export function PrintToolbar({
+  patientName,
+  patientPhone,
+  analysesNames,
+  date,
+  backHref,
+  toggleLogoUrl,
+  showLogoButton,
+  logoVisible = true,
+}: PrintToolbarProps) {
   const router = useRouter();
 
   const handleSavePdf = () => window.print();
+
+  const handleBack = () => {
+    if (backHref) {
+      router.push(backHref);
+    } else {
+      router.back();
+    }
+  };
 
   const handleWhatsApp = () => {
     const message = `Estimado *${patientName}*, somos de Clínica Enfoque Salud, adjuntamos sus resultados:\n*${analysesNames}*, *${date}* adjunto pdf:`;
@@ -36,15 +62,39 @@ export function PrintToolbar({ patientName, patientPhone, analysesNames, date }:
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
-  const handleBack = () => router.back();
-
   return (
     <div className="print-toolbar print-keep mb-4 flex flex-wrap items-center justify-between gap-3">
-      <Button type="button" variant="outline" size="sm" onClick={handleBack}>
-        <ArrowLeft className="h-4 w-4" />
-        Retroceder
-      </Button>
+      {backHref ? (
+        <Button type="button" variant="outline" size="sm" asChild>
+          <Link href={backHref} className="inline-flex items-center gap-1">
+            <ArrowLeft className="h-4 w-4" />
+            Retroceder
+          </Link>
+        </Button>
+      ) : (
+        <Button type="button" variant="outline" size="sm" onClick={handleBack}>
+          <ArrowLeft className="h-4 w-4" />
+          Retroceder
+        </Button>
+      )}
       <div className="flex flex-wrap items-center gap-2">
+        {showLogoButton && toggleLogoUrl && (
+          <Button type="button" variant="outline" size="sm" asChild>
+            <Link href={toggleLogoUrl} className="inline-flex items-center gap-1">
+              {logoVisible ? (
+                <>
+                  <ImageMinus className="h-4 w-4" />
+                  Quitar logo referido
+                </>
+              ) : (
+                <>
+                  <ImagePlus className="h-4 w-4" />
+                  Poner logo referido
+                </>
+              )}
+            </Link>
+          </Button>
+        )}
         <Button type="button" variant="default" size="sm" onClick={handleSavePdf}>
           <FileDown className="h-4 w-4" />
           Guardar PDF
