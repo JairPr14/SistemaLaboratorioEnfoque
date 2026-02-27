@@ -13,6 +13,7 @@ const DEFAULT_USER_PASSWORD = "admin123";
 // ---------------------------------------------------------------------------
 interface SeedTemplateItem {
   name: string;
+  groupName?: string | null;
   unit: string | null;
   ref: string | null;
   description: string | null;
@@ -298,8 +299,10 @@ async function main() {
         where: { templateId: template.id, paramName },
       });
 
+      const groupName = it.groupName != null ? normalizeStr(String(it.groupName)) || null : null;
       const itemPayload = {
         templateId: template.id,
+        groupName: groupName || null,
         paramName,
         unit: unit || null,
         refRangeText: refRangeText || null,

@@ -20,12 +20,20 @@ export async function PUT(request: Request, { params }: Params) {
 
     const orderItem = await prisma.labOrderItem.findFirst({
       where: { id: itemId, orderId },
-      include: { result: true },
+      include: {
+        result: true,
+        labTest: { include: { template: { include: { items: { select: { id: true } } } } } },
+      },
     });
 
     if (!orderItem) {
       return NextResponse.json({ error: "Item no encontrado" }, { status: 404 });
     }
+
+    // Solo los IDs de LabTemplateItem son válidos para la FK; los extra (extra-xxx) no existen en BD
+    const templateIds = new Set(
+      orderItem.labTest.template?.items?.map((i) => i.id) ?? []
+    );
 
     const saved = await prisma.$transaction(async (tx) => {
       let result = orderItem.result;
@@ -42,7 +50,10 @@ export async function PUT(request: Request, { params }: Params) {
       await tx.labResultItem.createMany({
         data: parsed.items.map((item) => ({
           resultId: result!.id,
-          templateItemId: item.templateItemId ?? null,
+          templateItemId:
+            item.templateItemId && templateIds.has(item.templateItemId)
+              ? item.templateItemId
+              : null,
           paramNameSnapshot: item.paramNameSnapshot,
           unitSnapshot: item.unitSnapshot ?? null,
           refTextSnapshot: item.refTextSnapshot ?? null,

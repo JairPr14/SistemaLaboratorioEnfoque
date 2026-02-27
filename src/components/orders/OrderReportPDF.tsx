@@ -430,22 +430,39 @@ export function OrderReportPDF(props: OrderReportPDFProps) {
                 typeof item.templateSnapshot === "string"
                   ? (() => {
                       try {
-                        return JSON.parse(item.templateSnapshot) as { items?: Array<{ id: string; groupName?: string | null; order?: number; refRanges?: RefRangeItem[] }> };
+                        return JSON.parse(item.templateSnapshot) as { items?: Array<{ id: string; groupName?: string | null; paramName?: string; order?: number; refRanges?: RefRangeItem[] }> };
                       } catch {
                         return null;
                       }
                     })()
-                  : (item.templateSnapshot as { items?: Array<{ id: string; groupName?: string | null; order?: number; refRanges?: RefRangeItem[] }> } | null);
+                  : (item.templateSnapshot as { items?: Array<{ id: string; groupName?: string | null; paramName?: string; order?: number; refRanges?: RefRangeItem[] }> } | null);
               const snapItems = parsedSnap?.items ?? [];
               const templateItems = item.labTest.template?.items ?? [];
 
-              const getGroupName = (res: { templateItemId: string | null }) => {
-                const snapItem = snapItems.find((t) => t.id === res.templateItemId);
-                const g = snapItem?.groupName?.trim();
-                if (g) return g;
-                const ti = templateItems.find((t) => t.id === res.templateItemId);
-                const tg = ti && "groupName" in ti ? String((ti as { groupName?: string }).groupName ?? "").trim() : "";
-                return tg || "General";
+              const getGroupName = (res: { templateItemId: string | null; paramNameSnapshot?: string | null }) => {
+                const templateItemId = res.templateItemId;
+                const paramName = (res.paramNameSnapshot ?? "").trim();
+                if (templateItemId) {
+                  const snapItem = snapItems.find((t) => t.id === templateItemId);
+                  const g = snapItem?.groupName?.trim();
+                  if (g) return g;
+                  const ti = templateItems.find((t) => t.id === templateItemId);
+                  const tg = ti && "groupName" in ti ? String((ti as { groupName?: string }).groupName ?? "").trim() : "";
+                  if (tg) return tg;
+                }
+                if (paramName) {
+                  const snapByParam = snapItems.find(
+                    (t) => (t as { paramName?: string }).paramName?.trim().toLowerCase() === paramName.toLowerCase()
+                  );
+                  const g = snapByParam?.groupName?.trim();
+                  if (g) return g;
+                  const tiByParam = templateItems.find(
+                    (t) => (t as { paramName?: string }).paramName?.trim().toLowerCase() === paramName.toLowerCase()
+                  );
+                  const tg = tiByParam && "groupName" in tiByParam ? String((tiByParam as { groupName?: string }).groupName ?? "").trim() : "";
+                  if (tg) return tg;
+                }
+                return "General";
               };
               const getItemOrder = (templateItemId: string | null) => {
                 const snapItem = snapItems.find((t) => t.id === templateItemId);
@@ -456,13 +473,8 @@ export function OrderReportPDF(props: OrderReportPDFProps) {
                   : 9999;
               };
 
-              const seen = new Set<string>();
-              const allItems = (item.result?.items ?? []).filter((res) => {
-                const key = `${(res.paramNameSnapshot ?? "").trim()}|${(res.unitSnapshot ?? "").trim()}`;
-                if (seen.has(key)) return false;
-                seen.add(key);
-                return true;
-              });
+              // No deduplicar: permitir parámetros con mismo nombre (ej. Leucocitos en distintos grupos)
+              const allItems = item.result?.items ?? [];
 
               const byGroup = allItems.reduce(
                 (acc, res) => {

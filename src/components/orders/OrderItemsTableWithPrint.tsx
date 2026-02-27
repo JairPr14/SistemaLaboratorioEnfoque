@@ -308,109 +308,6 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteIt
               const canSelect = printableItemIds.includes(item.id);
               const isSelected = selectedIds.has(item.id);
 
-              const templateItems = item.result
-                ? (() => {
-                    const patientBirthDate = order.patient?.birthDate 
-                      ? (typeof order.patient.birthDate === "string" 
-                          ? new Date(order.patient.birthDate) 
-                          : order.patient.birthDate)
-                      : undefined;
-                    const patientSex = order.patient?.sex;
-
-                    const templateItemsFromSnapshot = getTemplateItemsForPatient(
-                      item.templateSnapshot,
-                      item.labTest.template
-                        ? {
-                            items: item.labTest.template.items.map((t) => ({
-                              id: t.id,
-                              groupName: t.groupName,
-                              paramName: t.paramName,
-                              unit: t.unit,
-                              refRangeText: t.refRangeText,
-                              refMin: t.refMin ? Number(t.refMin) : null,
-                              refMax: t.refMax ? Number(t.refMax) : null,
-                              valueType: t.valueType as "NUMBER" | "DECIMAL" | "PERCENTAGE" | "TEXT" | "SELECT",
-                              selectOptions: parseSelectOptions(t.selectOptions),
-                              order: t.order,
-                              refRanges: ((t as { refRanges?: import("@/lib/template-helpers").RefRange[] }).refRanges ?? []) as import("@/lib/template-helpers").RefRange[],
-                            })),
-                          }
-                        : null,
-                      patientBirthDate,
-                      patientSex,
-                    );
-
-                    return item.result!.items.map((r, idx) => {
-                      const originalItem = templateItemsFromSnapshot.find(
-                        (t) => t.id === r.templateItemId,
-                      );
-                      // Buscar el item original en la plantilla para obtener refRanges
-                      const originalTemplateItem = item.labTest.template?.items.find(
-                        (t) => t.id === r.templateItemId,
-                      );
-                      return {
-                        id: r.templateItemId || `snapshot-${idx}`,
-                        groupName: originalItem?.groupName || null,
-                        paramName: r.paramNameSnapshot,
-                        unit: r.unitSnapshot,
-                        refRangeText: r.refTextSnapshot,
-                        refMin: r.refMinSnapshot ? Number(r.refMinSnapshot) : null,
-                        refMax: r.refMaxSnapshot ? Number(r.refMaxSnapshot) : null,
-                        valueType: (originalItem?.valueType || "NUMBER") as
-                          | "NUMBER"
-                          | "DECIMAL"
-                          | "PERCENTAGE"
-                          | "TEXT"
-                          | "SELECT",
-                        selectOptions: originalItem?.selectOptions || [],
-                        order: r.order,
-                        refRanges: ((originalTemplateItem as { refRanges?: import("@/lib/template-helpers").RefRange[] } | undefined)?.refRanges ?? []) as import("@/lib/template-helpers").RefRange[],
-                      };
-                    });
-                  })()
-                : (() => {
-                    const patientBirthDate = order.patient?.birthDate 
-                      ? (typeof order.patient.birthDate === "string" 
-                          ? new Date(order.patient.birthDate) 
-                          : order.patient.birthDate)
-                      : undefined;
-                    const patientSex = order.patient?.sex;
-
-                    const itemsWithRefRanges = item.labTest.template
-                      ? {
-                          items: item.labTest.template.items.map((t) => ({
-                            id: t.id,
-                            groupName: t.groupName,
-                            paramName: t.paramName,
-                            unit: t.unit,
-                            refRangeText: t.refRangeText,
-                            refMin: t.refMin ? Number(t.refMin) : null,
-                            refMax: t.refMax ? Number(t.refMax) : null,
-                            valueType: t.valueType as "NUMBER" | "DECIMAL" | "PERCENTAGE" | "TEXT" | "SELECT",
-                            selectOptions: parseSelectOptions(t.selectOptions),
-                            order: t.order,
-                            refRanges: ((t as { refRanges?: import("@/lib/template-helpers").RefRange[] }).refRanges ?? []) as import("@/lib/template-helpers").RefRange[],
-                          })),
-                        }
-                      : null;
-                    
-                    const processedItems = getTemplateItemsForPatient(
-                      item.templateSnapshot,
-                      itemsWithRefRanges,
-                      patientBirthDate,
-                      patientSex,
-                    );
-                    
-                    // Restaurar los refRanges originales para mostrar todos
-                    return processedItems.map((processedItem) => {
-                      const originalItem = itemsWithRefRanges?.items.find((t) => t.id === processedItem.id);
-                      return {
-                        ...processedItem,
-                        refRanges: originalItem?.refRanges || [],
-                      };
-                    });
-                  })();
-
               const patientBirthDate = order.patient?.birthDate 
                 ? (typeof order.patient.birthDate === "string" 
                     ? new Date(order.patient.birthDate) 
@@ -418,9 +315,9 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteIt
                 : undefined;
               const patientSex = order.patient?.sex;
 
-              const originalTemplateItems = item.labTest.template
-                ? (() => {
-                    const itemsWithRefRanges = item.labTest.template.items.map((t) => ({
+              const itemsWithRefRanges = item.labTest.template
+                ? {
+                    items: item.labTest.template.items.map((t) => ({
                       id: t.id,
                       groupName: t.groupName,
                       paramName: t.paramName,
@@ -432,28 +329,54 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteIt
                       selectOptions: parseSelectOptions(t.selectOptions),
                       order: t.order,
                       refRanges: ((t as { refRanges?: import("@/lib/template-helpers").RefRange[] }).refRanges ?? []) as import("@/lib/template-helpers").RefRange[],
-                    }));
-                    
-                    const processedItems = getTemplateItemsForPatient(
-                      null,
-                      { items: itemsWithRefRanges },
-                      patientBirthDate,
-                      patientSex,
-                    );
-                    
-                    // Restaurar los refRanges originales (no filtrados) para mostrar todos
-                    return processedItems.map((processedItem) => {
-                      const originalItem = itemsWithRefRanges.find((t) => t.id === processedItem.id);
-                      return {
-                        ...processedItem,
-                        refRanges: originalItem?.refRanges || [],
-                      };
-                    });
-                  })()
-                : [];
+                    })),
+                  }
+                : null;
 
-              const finalTemplateItems =
-                templateItems.length > 0 ? templateItems : originalTemplateItems;
+              const baseTemplateItems = getTemplateItemsForPatient(
+                item.templateSnapshot,
+                itemsWithRefRanges,
+                patientBirthDate,
+                patientSex,
+              );
+
+              const validTemplateIds = new Set(
+                item.labTest.template?.items?.map((t) => t.id) ?? []
+              );
+
+              // Solo agregar como huérfanos los ítems cuyo templateItemId existe pero no está
+              // en la plantilla actual (ej. ítem eliminado). Los templateItemId=null suelen
+              // corresponder a ítems de la plantilla y duplicarían la visualización.
+              const orphanResultItems = (item.result?.items ?? []).filter((r) => {
+                const tid = r.templateItemId;
+                return tid != null && tid !== "" && !validTemplateIds.has(tid);
+              });
+
+              const orphanTemplateItems = orphanResultItems.map((r, idx) => {
+                const rid = (r as { id?: string }).id;
+                const id = rid ? `orphan-${rid}` : `orphan-fallback-${idx}`;
+                return {
+                  id,
+                  groupName: null as string | null,
+                  paramName: r.paramNameSnapshot,
+                  unit: r.unitSnapshot,
+                  refRangeText: r.refTextSnapshot,
+                  refMin: r.refMinSnapshot ? Number(r.refMinSnapshot) : null,
+                  refMax: r.refMaxSnapshot ? Number(r.refMaxSnapshot) : null,
+                  valueType: "TEXT" as const,
+                  selectOptions: [] as string[],
+                  order: 9999 + idx,
+                  refRanges: [] as import("@/lib/template-helpers").RefRange[],
+                };
+              });
+
+              const finalTemplateItems = [
+                ...baseTemplateItems.map((p) => {
+                  const orig = itemsWithRefRanges?.items.find((t) => t.id === p.id);
+                  return { ...p, refRanges: orig?.refRanges ?? p.refRanges ?? [] };
+                }),
+                ...orphanTemplateItems,
+              ];
 
               const referredOptions = item.labTest.referredLabOptions ?? [];
 
@@ -561,14 +484,8 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteIt
                           if (templateCount != null && templateCount > 0) {
                             return `${templateCount} parámetro${templateCount !== 1 ? "s" : ""}`;
                           }
-                          // Fallback: deduplicar por (paramName, unit) por si result tiene duplicados
-                          const items = item.result!.items;
-                          const seen = new Set<string>();
-                          items.forEach((r) => {
-                            const key = `${(r.paramNameSnapshot ?? "").trim()}|${(r.unitSnapshot ?? "").trim()}`;
-                            seen.add(key);
-                          });
-                          const count = seen.size;
+                          // Fallback: contar todos los ítems del resultado (incluye params con mismo nombre)
+                          const count = item.result!.items.length;
                           return `${count} parámetro${count !== 1 ? "s" : ""}`;
                         })()}
                       </Badge>
@@ -601,6 +518,7 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteIt
                                   reportedBy: item.result.reportedBy,
                                   comment: item.result.comment,
                                   items: item.result.items.map((r) => ({
+                                    id: (r as { id?: string }).id,
                                     templateItemId: r.templateItemId,
                                     paramNameSnapshot: r.paramNameSnapshot,
                                     unitSnapshot: r.unitSnapshot,

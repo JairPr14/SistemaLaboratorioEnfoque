@@ -61,6 +61,7 @@ function parseTemplateSnapshot(snapshot: unknown): {
   items?: Array<{
     id: string;
     groupName?: string | null;
+    paramName?: string;
     order?: number;
     refRanges?: RefRangeItem[];
   }>;
@@ -72,6 +73,7 @@ function parseTemplateSnapshot(snapshot: unknown): {
         items?: Array<{
           id: string;
           groupName?: string | null;
+          paramName?: string;
           order?: number;
           refRanges?: RefRangeItem[];
         }>;
@@ -84,6 +86,7 @@ function parseTemplateSnapshot(snapshot: unknown): {
     items?: Array<{
       id: string;
       groupName?: string | null;
+      paramName?: string;
       order?: number;
       refRanges?: RefRangeItem[];
     }>;
@@ -142,25 +145,38 @@ function buildRowsForItem(item: {
   } | null;
 }): RenderRow[] {
   const resultItems = item.result?.items ?? [];
-  const seen = new Set<string>();
-  const uniqueResults = resultItems.filter((r) => {
-    const key = `${(r.paramNameSnapshot ?? "").trim()}|${(r.unitSnapshot ?? "").trim()}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  // No deduplicar: permitir parámetros con mismo nombre en plantilla (ej. Leucocitos en distintos grupos)
 
   const parsedSnap = parseTemplateSnapshot(item.templateSnapshot);
   const snapItems = parsedSnap?.items ?? [];
   const templateItems = item.labTest.template?.items ?? [];
 
-  const getGroupName = (templateItemId: string | null) => {
-    const snapItem = snapItems.find((t) => t.id === templateItemId);
-    const sg = snapItem?.groupName?.trim();
-    if (sg) return sg;
-    const ti = templateItems.find((t) => t.id === templateItemId);
-    const tg = ti?.groupName?.trim();
-    return tg && tg !== "" ? tg : "General";
+  const getGroupName = (r: { templateItemId: string | null; paramNameSnapshot: string | null }) => {
+    const templateItemId = r.templateItemId;
+    const paramName = (r.paramNameSnapshot ?? "").trim();
+    // 1) Por templateItemId: snapshot y plantilla
+    if (templateItemId) {
+      const snapItem = snapItems.find((t) => t.id === templateItemId);
+      const sg = snapItem?.groupName?.trim();
+      if (sg) return sg;
+      const ti = templateItems.find((t) => t.id === templateItemId);
+      const tg = ti?.groupName?.trim();
+      if (tg) return tg;
+    }
+    // 2) Fallback: coincidir por nombre (parámetros extra, IDs obsoletos, etc.)
+    if (paramName) {
+      const snapByParam = snapItems.find(
+        (t) => t.paramName?.trim().toLowerCase() === paramName.toLowerCase()
+      );
+      const sg = snapByParam?.groupName?.trim();
+      if (sg) return sg;
+      const tiByParam = templateItems.find(
+        (t) => (t as { paramName?: string }).paramName?.trim().toLowerCase() === paramName.toLowerCase()
+      );
+      const tg = tiByParam?.groupName?.trim();
+      if (tg) return tg;
+    }
+    return "General";
   };
 
   const getOrder = (templateItemId: string | null, fallbackOrder: number) => {
@@ -183,14 +199,14 @@ function buildRowsForItem(item: {
     return d || null;
   };
 
-  const grouped = uniqueResults.reduce(
+  const grouped = resultItems.reduce(
     (acc, r) => {
-      const group = getGroupName(r.templateItemId);
+      const group = getGroupName(r);
       if (!acc[group]) acc[group] = [];
       acc[group].push(r);
       return acc;
     },
-    {} as Record<string, typeof uniqueResults>
+    {} as Record<string, typeof resultItems>
   );
 
   const groupOrder = Object.keys(grouped).sort(

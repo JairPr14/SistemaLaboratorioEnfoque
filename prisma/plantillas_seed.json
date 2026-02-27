@@ -1,5 +1,35 @@
 [
   {
+    "templateKey": "ORINA",
+    "analysisName": "Orina completa",
+    "section": "SECCIÓN ORINA",
+    "items": [
+      { "name": "Color", "groupName": "Físico", "unit": null, "ref": "Amarillo claro", "description": null, "valueType": "TEXT", "selectOptions": [] },
+      { "name": "Aspecto", "groupName": "Físico", "unit": null, "ref": "Límpido", "description": null, "valueType": "SELECT", "selectOptions": ["Límpido", "Turbio", "Opaco"] },
+      { "name": "pH", "groupName": "Químico", "unit": null, "ref": "5.0-8.0", "description": null, "valueType": "NUMBER", "selectOptions": [] },
+      { "name": "Densidad", "groupName": "Químico", "unit": null, "ref": "1.005-1.030", "description": null, "valueType": "NUMBER", "selectOptions": [] },
+      { "name": "Proteínas", "groupName": "Químico", "unit": "mg/dL", "ref": "Negativo", "description": null, "valueType": "SELECT", "selectOptions": ["Negativo", "Traza", "+", "++", "+++"] },
+      { "name": "Glucosa", "groupName": "Químico", "unit": "mg/dL", "ref": "Negativo", "description": null, "valueType": "SELECT", "selectOptions": ["Negativo", "Traza", "+", "++", "+++"] },
+      { "name": "Leucocitos", "groupName": "Microscópico", "unit": "/campo", "ref": "0-5", "description": null, "valueType": "NUMBER", "selectOptions": [] },
+      { "name": "Eritrocitos", "groupName": "Microscópico", "unit": "/campo", "ref": "0-3", "description": null, "valueType": "NUMBER", "selectOptions": [] }
+    ]
+  },
+  {
+    "templateKey": "HEM",
+    "analysisName": "Hemograma completo",
+    "section": "SECCIÓN HEMATOLOGIA",
+    "items": [
+      { "name": "Hemoglobina", "groupName": "Serie Roja", "unit": "g/dL", "ref": "12-16", "description": null, "valueType": "NUMBER", "selectOptions": [] },
+      { "name": "Hematocrito", "groupName": "Serie Roja", "unit": "%", "ref": "36-48", "description": null, "valueType": "NUMBER", "selectOptions": [] },
+      { "name": "Eritrocitos", "groupName": "Serie Roja", "unit": "millones/μL", "ref": "4.2-5.4", "description": null, "valueType": "NUMBER", "selectOptions": [] },
+      { "name": "Leucocitos", "groupName": "Serie Blanca", "unit": "/μL", "ref": "4000-11000", "description": null, "valueType": "NUMBER", "selectOptions": [] },
+      { "name": "Neutrófilos", "groupName": "Serie Blanca", "unit": "%", "ref": "50-70", "description": null, "valueType": "NUMBER", "selectOptions": [] },
+      { "name": "Linfocitos", "groupName": "Serie Blanca", "unit": "%", "ref": "20-40", "description": null, "valueType": "NUMBER", "selectOptions": [] },
+      { "name": "Monocitos", "groupName": "Serie Blanca", "unit": "%", "ref": "2-8", "description": null, "valueType": "NUMBER", "selectOptions": [] },
+      { "name": "Plaquetas", "groupName": "Plaquetas", "unit": "/μL", "ref": "150000-450000", "description": null, "valueType": "NUMBER", "selectOptions": [] }
+    ]
+  },
+  {
     "templateKey": "REACCION INFLAMATORIA",
     "analysisName": "REACCION INFLAMATORIA",
     "section": "SECCIÓN MICROBIOLOGIA",

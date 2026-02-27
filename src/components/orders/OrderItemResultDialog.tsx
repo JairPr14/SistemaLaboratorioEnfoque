@@ -21,6 +21,7 @@ type TemplateItem = {
 };
 
 type ResultItem = {
+  id?: string;
   templateItemId: string | null;
   paramNameSnapshot: string;
   unitSnapshot: string | null;
@@ -78,6 +79,7 @@ export function OrderItemResultDialog({
       const savePromise = resultFormRef.current?.saveDraft();
       if (savePromise) {
         savePromise.finally(() => {
+          router.refresh();
           if (isControlled) onOpenChange?.(false);
           else setInternalOpen(false);
         });
@@ -114,28 +116,70 @@ export function OrderItemResultDialog({
         </DialogHeader>
         <div className="p-6">
           <ResultForm
+            key={`${itemId}-${open}-${existing?.items?.length ?? 0}`}
             orderId={orderId}
             itemId={itemId}
             templateItems={templateItems}
             resultFormRef={resultFormRef}
             onSaved={handleSaved}
+            onParamAdded={() => router.refresh()}
             defaultValues={
               existing
                 ? {
                     reportedBy: existing.reportedBy ?? "",
                     comment: existing.comment ?? "",
-                    items: existing.items.map((item) => ({
-                      templateItemId: item.templateItemId ?? undefined,
-                      paramNameSnapshot: item.paramNameSnapshot,
-                      unitSnapshot: item.unitSnapshot ?? undefined,
-                      refTextSnapshot: item.refTextSnapshot ?? undefined,
-                      refMinSnapshot: item.refMinSnapshot ?? undefined,
-                      refMaxSnapshot: item.refMaxSnapshot ?? undefined,
-                      value: item.value,
-                      isOutOfRange: item.isOutOfRange,
-                      isHighlighted: (item as { isHighlighted?: boolean }).isHighlighted ?? false,
-                      order: item.order,
-                    })),
+                    items: (() => {
+                      const usedNullMatches = new Set<number>();
+                      return templateItems.map((t) => {
+                        let match =
+                          t.id.startsWith("orphan-")
+                            ? existing.items.find(
+                                (ex) => ex.id === t.id.replace(/^orphan-/, "")
+                              )
+                            : existing.items.find(
+                                (ex) => ex.templateItemId === t.id
+                              );
+                        if (!match && !t.id.startsWith("orphan-")) {
+                          const paramKey = `${(t.paramName ?? "").trim()}|${(t.unit ?? "").trim()}`;
+                          const idx = existing.items.findIndex(
+                            (ex, i) =>
+                              !usedNullMatches.has(i) &&
+                              ex.templateItemId == null &&
+                              `${(ex.paramNameSnapshot ?? "").trim()}|${(ex.unitSnapshot ?? "").trim()}` === paramKey
+                          );
+                          if (idx >= 0) {
+                            match = existing.items[idx];
+                            usedNullMatches.add(idx);
+                          }
+                        }
+                        if (match) {
+                        return {
+                          templateItemId: match.templateItemId ?? t.id,
+                          paramNameSnapshot: match.paramNameSnapshot,
+                          unitSnapshot: match.unitSnapshot ?? undefined,
+                          refTextSnapshot: match.refTextSnapshot ?? undefined,
+                          refMinSnapshot: match.refMinSnapshot ?? undefined,
+                          refMaxSnapshot: match.refMaxSnapshot ?? undefined,
+                          value: match.value,
+                          isOutOfRange: match.isOutOfRange,
+                          isHighlighted: (match as { isHighlighted?: boolean }).isHighlighted ?? false,
+                          order: match.order,
+                        };
+                      }
+                      return {
+                        templateItemId: t.id,
+                        paramNameSnapshot: t.paramName,
+                        unitSnapshot: t.unit ?? undefined,
+                        refTextSnapshot: t.refRangeText ?? undefined,
+                        refMinSnapshot: t.refMin ?? undefined,
+                        refMaxSnapshot: t.refMax ?? undefined,
+                        value: "",
+                        isOutOfRange: false,
+                        isHighlighted: false,
+                        order: t.order,
+                      };
+                    });
+                    })(),
                   }
                 : undefined
             }

@@ -61,24 +61,33 @@ async function upsertResult(request: Request, paramsPromise: Params["params"]) {
 
     const orderItem = await prisma.labOrderItem.findFirst({
       where: { id: params.itemId, orderId: params.id },
-      include: { order: true },
+      include: {
+        order: true,
+        labTest: { include: { template: { include: { items: { select: { id: true } } } } } },
+      },
     });
 
     if (!orderItem) {
       return NextResponse.json({ error: "Item no encontrado" }, { status: 404 });
     }
 
-    const result = await prisma.$transaction(async (tx) => {
-      const existing = await tx.labResult.findUnique({
-        where: { orderItemId: orderItem.id },
-      });
+    // Solo los IDs de LabTemplateItem son válidos para la FK; los extra (extra-xxx) no existen en BD
+    const templateIds = new Set(
+      orderItem.labTest.template?.items?.map((i) => i.id) ?? []
+    );
 
-      const data = {
-        reportedAt: new Date(),
-        reportedBy: parsed.reportedBy ?? null,
-        comment: parsed.comment ?? null,
-        isDraft: false,
-      };
+    const result = await prisma.$transaction(
+      async (tx) => {
+        const existing = await tx.labResult.findUnique({
+          where: { orderItemId: orderItem.id },
+        });
+
+        const data = {
+          reportedAt: new Date(),
+          reportedBy: parsed.reportedBy ?? null,
+          comment: parsed.comment ?? null,
+          isDraft: false,
+        };
 
       const saved = existing
         ? await tx.labResult.update({
@@ -93,7 +102,10 @@ async function upsertResult(request: Request, paramsPromise: Params["params"]) {
       await tx.labResultItem.createMany({
         data: parsed.items.map((item) => ({
           resultId: saved.id,
-          templateItemId: item.templateItemId ?? null,
+          templateItemId:
+            item.templateItemId && templateIds.has(item.templateItemId)
+              ? item.templateItemId
+              : null,
           paramNameSnapshot: item.paramNameSnapshot,
           unitSnapshot: item.unitSnapshot ?? null,
           refTextSnapshot: item.refTextSnapshot ?? null,
@@ -123,7 +135,9 @@ async function upsertResult(request: Request, paramsPromise: Params["params"]) {
       }
 
       return saved;
-    });
+    },
+    { timeout: 15000 }
+    );
 
     return NextResponse.json({ item: result });
   } catch (error) {

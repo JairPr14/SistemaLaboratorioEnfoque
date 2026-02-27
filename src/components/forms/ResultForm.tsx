@@ -12,7 +12,15 @@ import { AutosaveIndicator } from "./AutosaveIndicator";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Plus, Trash2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 type ResultFormValues = z.infer<typeof resultSchema>;
 
@@ -42,12 +50,17 @@ type TemplateItem = {
 
 export type ResultFormHandle = { saveDraft: () => Promise<void> };
 
+function generateExtraId(): string {
+  return `extra-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
+
 type Props = {
   orderId: string;
   itemId: string;
   templateItems: TemplateItem[];
   defaultValues?: ResultFormValues;
   onSaved?: () => void;
+  onParamAdded?: () => void;
   resultFormRef?: React.MutableRefObject<ResultFormHandle | null>;
 };
 
@@ -76,10 +89,17 @@ export function ResultForm({
   templateItems,
   defaultValues,
   onSaved,
+  onParamAdded,
   resultFormRef,
 }: Props) {
   const { data: session } = useSession();
   const [saving, setSaving] = useState(false);
+  const [addingParam, setAddingParam] = useState(false);
+  const [removingParamId, setRemovingParamId] = useState<string | null>(null);
+  const [addParamModalOpen, setAddParamModalOpen] = useState(false);
+  const [addParamGroup, setAddParamGroup] = useState("");
+  const [addParamName, setAddParamName] = useState("Nuevo parámetro");
+  const [additionalItems, setAdditionalItems] = useState<TemplateItem[]>([]);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const form = useForm<ResultFormValues>({
@@ -105,7 +125,7 @@ export function ResultForm({
     },
   });
 
-  const { fields } = useFieldArray({ control: form.control, name: "items" });
+  const { fields, append, remove } = useFieldArray({ control: form.control, name: "items" });
 
   const { status, savedAt, saveOnBlur, retry } = useAutosaveResults({
     orderId,
@@ -133,20 +153,23 @@ export function ResultForm({
     }
   }, [session?.user, defaultValues?.reportedBy, form]);
 
-  const itemsToUse: Array<TemplateItem & { index: number }> =
-    templateItems.length > 0
-      ? (() => {
-          const seen = new Set<string>();
-          const list: Array<TemplateItem & { index: number }> = [];
-          templateItems.forEach((item, idx) => {
-            const key = `${(item.paramName || "").trim()}|${(item.unit ?? "").trim()}`;
-            if (seen.has(key)) return;
-            seen.add(key);
-            list.push({ ...item, index: idx });
-          });
-          return list;
-        })()
-      : [];
+  // Cuando templateItems se actualiza (tras refresh) e incluye nuestros adicionales, quitarlos de la lista local
+  useEffect(() => {
+    const templateIds = new Set(templateItems.map((t) => t.id));
+    setAdditionalItems((prev) =>
+      prev.filter((a) => !templateIds.has(a.id))
+    );
+  }, [templateItems]);
+
+  // Plantilla + parámetros adicionales del paciente (solo en templateSnapshot, no en plantilla de análisis)
+  const allTemplateItems = [
+    ...templateItems.map((item, idx) => ({ ...item, index: idx })),
+    ...additionalItems.map((item, idx) => ({
+      ...item,
+      index: templateItems.length + idx,
+    })),
+  ];
+  const itemsToUse: Array<TemplateItem & { index: number }> = allTemplateItems;
 
   const groupedItems = itemsToUse.reduce(
     (acc, item) => {
@@ -175,6 +198,128 @@ export function ResultForm({
   );
 
   const flatIndices = itemsToUse.map((i) => i.index);
+  const allTemplateItemsForSave = [...templateItems, ...additionalItems];
+
+  const handleAddParam = async () => {
+    const paramName = addParamName.trim() || "Nuevo parámetro";
+    const groupName = addParamGroup.trim() || null;
+    setAddParamModalOpen(false);
+    setAddParamName("Nuevo parámetro");
+    setAddParamGroup("");
+
+    const maxOrder = Math.max(
+      0,
+      ...templateItems.map((i) => i.order),
+      ...additionalItems.map((i) => i.order)
+    );
+    const newId = generateExtraId();
+    const newItem: TemplateItem = {
+      id: newId,
+      groupName,
+      paramName,
+      unit: null,
+      refRangeText: null,
+      refMin: null,
+      refMax: null,
+      valueType: "TEXT",
+      selectOptions: [],
+      order: maxOrder + 1,
+      refRanges: [],
+    };
+    setAdditionalItems((prev) => [...prev, newItem]);
+    append({
+      templateItemId: newId,
+      paramNameSnapshot: paramName,
+      unitSnapshot: undefined,
+      refTextSnapshot: undefined,
+      refMinSnapshot: undefined,
+      refMaxSnapshot: undefined,
+      value: "",
+      isOutOfRange: false,
+      isHighlighted: false,
+      order: newItem.order,
+    });
+    setAddingParam(true);
+    try {
+      const snapshotItems = [...templateItems, ...additionalItems, newItem].map((t) => ({
+        id: t.id,
+        groupName: t.groupName ?? null,
+        paramName: t.paramName,
+        unit: t.unit ?? null,
+        refRangeText: t.refRangeText ?? null,
+        refMin: t.refMin ?? null,
+        refMax: t.refMax ?? null,
+        valueType: t.valueType,
+        selectOptions: Array.isArray(t.selectOptions) ? t.selectOptions : [],
+        order: t.order,
+        refRanges: t.refRanges ?? [],
+      }));
+      const res = await fetch(`/api/orders/${orderId}/items/${itemId}/template-snapshot`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: snapshotItems }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error ?? "Error al añadir parámetro");
+        setAdditionalItems((prev) => prev.filter((i) => i.id !== newId));
+        const currentItems = form.getValues("items") ?? [];
+        form.setValue("items", currentItems.slice(0, -1));
+      } else {
+        toast.success("Parámetro añadido (solo para este paciente)");
+        onParamAdded?.();
+      }
+    } catch {
+      toast.error("Error de conexión");
+      setAdditionalItems((prev) => prev.filter((i) => i.id !== newId));
+      const currentItems = form.getValues("items") ?? [];
+      form.setValue("items", currentItems.slice(0, -1));
+    } finally {
+      setAddingParam(false);
+    }
+  };
+
+  const handleRemoveParam = async (item: TemplateItem & { index: number }) => {
+    const remaining = allTemplateItemsForSave.filter((t) => t.id !== item.id);
+    if (remaining.length === 0) {
+      toast.error("Debe haber al menos un parámetro");
+      return;
+    }
+    setRemovingParamId(item.id);
+    try {
+      const snapshotItems = remaining.map((t) => ({
+        id: t.id,
+        groupName: t.groupName ?? null,
+        paramName: t.paramName,
+        unit: t.unit ?? null,
+        refRangeText: t.refRangeText ?? null,
+        refMin: t.refMin ?? null,
+        refMax: t.refMax ?? null,
+        valueType: t.valueType,
+        selectOptions: Array.isArray(t.selectOptions) ? t.selectOptions : [],
+        order: t.order,
+        refRanges: t.refRanges ?? [],
+      }));
+      const res = await fetch(`/api/orders/${orderId}/items/${itemId}/template-snapshot`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: snapshotItems }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error ?? "Error al quitar parámetro");
+        return;
+      }
+      remove(item.index);
+      setAdditionalItems((prev) => prev.filter((a) => a.id !== item.id));
+      toast.success("Parámetro quitado");
+      onParamAdded?.();
+    } catch {
+      toast.error("Error de conexión");
+    } finally {
+      setRemovingParamId(null);
+    }
+  };
 
   const handleSave = async () => {
     const values = form.getValues();
@@ -184,7 +329,7 @@ export function ResultForm({
       return;
     }
     const validatedItems = items.map((item, idx) => {
-      const t = templateItems[idx];
+      const t = allTemplateItemsForSave[idx];
       return {
         ...item,
         paramNameSnapshot: item.paramNameSnapshot || t?.paramName || "",
@@ -256,8 +401,33 @@ export function ResultForm({
 
   return (
     <form onBlur={() => saveOnBlur()} className="space-y-4">
-      <div className="flex items-center justify-between min-h-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <AutosaveIndicator status={status} savedAt={savedAt} onRetry={retry} />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <label htmlFor="reportedBy" className="text-xs font-medium text-slate-600 dark:text-slate-400">
+            Reportado por
+          </label>
+          <Input
+            id="reportedBy"
+            {...form.register("reportedBy")}
+            placeholder="Nombre del responsable"
+            className="h-9 text-sm"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="comment" className="text-xs font-medium text-slate-600 dark:text-slate-400">
+            Comentario (opcional)
+          </label>
+          <Input
+            id="comment"
+            {...form.register("comment")}
+            placeholder="Observaciones"
+            className="h-9 text-sm"
+          />
+        </div>
       </div>
 
       <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -271,7 +441,7 @@ export function ResultForm({
           {groupNames.map((groupName) => {
             const items = groupedItemsSorted[groupName] ?? [];
             return (
-            <div key={groupName} className="space-y-2">
+            <div key={`${groupName}-${groupNames.indexOf(groupName)}`} className="space-y-2">
               {items.length > 1 && (
                 <div className="bg-slate-700 px-3 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-white dark:bg-slate-600 rounded-t">
                   {groupName}
@@ -321,19 +491,40 @@ export function ResultForm({
                         </TableCell>
                         <TableCell className="py-2">
                           <div className="flex gap-1.5 items-center">
-                            <Input
-                              type="text"
-                              value={value}
-                              onChange={(e) => form.setValue(`items.${formIndex}.value`, e.target.value)}
-                              onKeyDown={(e) => handleKeyDown(e, formIndex)}
-                              ref={(el) => {
-                                inputRefs.current[globalIdx] = el;
-                              }}
-                              placeholder="-"
-                              className={`h-9 flex-1 min-w-0 text-sm ${
-                                isHighlighted ? "font-bold" : ""
-                              } border-slate-300 dark:border-slate-600 dark:bg-slate-800`}
-                            />
+                            {item.valueType === "SELECT" && (item.selectOptions?.length ?? 0) > 0 ? (
+                              <select
+                                value={value}
+                                onChange={(e) => form.setValue(`items.${formIndex}.value`, e.target.value)}
+                                onKeyDown={(e) => handleKeyDown(e, formIndex)}
+                                ref={(el) => {
+                                  inputRefs.current[globalIdx] = el as HTMLInputElement | null;
+                                }}
+                                className={`h-9 flex-1 min-w-0 text-sm rounded-md border border-slate-300 px-3 bg-white dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 ${
+                                  isHighlighted ? "font-bold" : ""
+                                }`}
+                              >
+                                <option value="">Seleccionar</option>
+                                {item.selectOptions.map((opt) => (
+                                  <option key={opt} value={opt}>
+                                    {opt}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <Input
+                                type="text"
+                                value={value}
+                                onChange={(e) => form.setValue(`items.${formIndex}.value`, e.target.value)}
+                                onKeyDown={(e) => handleKeyDown(e, formIndex)}
+                                ref={(el) => {
+                                  inputRefs.current[globalIdx] = el;
+                                }}
+                                placeholder="-"
+                                className={`h-9 flex-1 min-w-0 text-sm ${
+                                  isHighlighted ? "font-bold" : ""
+                                } border-slate-300 dark:border-slate-600 dark:bg-slate-800`}
+                              />
+                            )}
                             <button
                               type="button"
                               aria-label={isHighlighted ? "Quitar negrita" : "Resaltar en negrita"}
@@ -348,6 +539,16 @@ export function ResultForm({
                               }`}
                             >
                               B
+                            </button>
+                            <button
+                              type="button"
+                              aria-label="Quitar parámetro"
+                              title="Quitar parámetro (solo para este paciente)"
+                              onClick={() => handleRemoveParam(item)}
+                              disabled={removingParamId === item.id || itemsToUse.length <= 1}
+                              className="shrink-0 h-9 w-9 rounded border border-slate-300 bg-slate-50 text-slate-500 hover:bg-red-50 hover:text-red-600 hover:border-red-200 disabled:opacity-50 disabled:cursor-not-allowed dark:border-slate-600 dark:bg-slate-800 dark:hover:bg-red-950/30 dark:hover:text-red-400 dark:hover:border-red-900"
+                            >
+                              <Trash2 className="h-4 w-4 mx-auto" />
                             </button>
                           </div>
                         </TableCell>
@@ -380,7 +581,74 @@ export function ResultForm({
         </div>
       </div>
 
-      <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setAddParamModalOpen(true)}
+            disabled={addingParam}
+            className="gap-1.5"
+            title="Añade un parámetro solo para este paciente (no modifica la plantilla del análisis)"
+          >
+            <Plus className="h-4 w-4" />
+            Parámetro adicional
+          </Button>
+          <Dialog
+            open={addParamModalOpen}
+            onOpenChange={(open) => {
+              setAddParamModalOpen(open);
+              if (!open) {
+                setAddParamGroup("");
+                setAddParamName("Nuevo parámetro");
+              }
+            }}
+          >
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Añadir parámetro</DialogTitle>
+                <DialogDescription>
+                  El parámetro se guardará solo para este paciente. En el PDF se mostrará agrupado correctamente.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <div className="space-y-2">
+                  <label htmlFor="addParamGroup" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Grupo (opcional)
+                  </label>
+                  <Input
+                    id="addParamGroup"
+                    value={addParamGroup}
+                    onChange={(e) => setAddParamGroup(e.target.value)}
+                    placeholder="Ej. Microscópico, Químico... (vacío = General)"
+                    className="h-9"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="addParamName" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Nombre del parámetro
+                  </label>
+                  <Input
+                    id="addParamName"
+                    value={addParamName}
+                    onChange={(e) => setAddParamName(e.target.value)}
+                    placeholder="Nuevo parámetro"
+                    className="h-9"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={() => setAddParamModalOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button type="button" onClick={handleAddParam}>
+                  Añadir
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </>
         <Button type="button" onClick={handleSave} disabled={saving} className="min-w-[140px]">
           {saving ? "Guardando…" : "Guardar"}
         </Button>
