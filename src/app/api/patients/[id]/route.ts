@@ -51,11 +51,17 @@ export async function PUT(request: Request, { params }: Params) {
     const lastName = rest.lastName.trim().toUpperCase();
 
     const { createdAt: createdAtStr, ...restWithoutCreatedAt } = rest;
+    const birthDateValue = rest.birthDate && String(rest.birthDate).trim()
+      ? parseDatePeru(rest.birthDate)
+      : rest.ageYears != null && !Number.isNaN(rest.ageYears)
+        ? parseDatePeru(`${new Date().getFullYear() - rest.ageYears}-01-01`)
+        : parseDatePeru("2000-01-01");
+
     const updateData: Record<string, unknown> = {
       ...restWithoutCreatedAt,
       firstName,
       lastName,
-      birthDate: parseDatePeru(rest.birthDate),
+      birthDate: birthDateValue,
       dni: rest.dni && String(rest.dni).trim() ? String(rest.dni).trim() : null,
       phone: rest.phone || null,
       address: rest.address || null,

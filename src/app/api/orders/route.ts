@@ -170,8 +170,22 @@ export async function POST(request: Request) {
     const orderDate = parsed.orderDate
       ? parseDatePeru(parsed.orderDate)
       : new Date();
-    const dayStart = new Date(orderDate);
-    dayStart.setHours(0, 0, 0, 0);
+    // Usar medianoche Perú. parseDatePeru ya da eso. Sin orderDate, "hoy" en zona Perú (evita día atrás en PDF).
+    const dayStart = parsed.orderDate
+      ? orderDate
+      : (() => {
+          const fmt = new Intl.DateTimeFormat("en-CA", {
+            timeZone: "America/Lima",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+          });
+          const parts = fmt.formatToParts(new Date());
+          const y = parts.find((p) => p.type === "year")?.value ?? "";
+          const m = parts.find((p) => p.type === "month")?.value ?? "";
+          const d = parts.find((p) => p.type === "day")?.value ?? "";
+          return new Date(`${y}-${m}-${d}T00:00:00-05:00`);
+        })();
     let order: Awaited<ReturnType<typeof prisma.labOrder.create>>;
     const maxRetries = 3;
     for (let attempt = 0; attempt < maxRetries; attempt++) {

@@ -90,9 +90,9 @@ model LabSection {
 }
 
 model Patient {
-  id        String     @id @default(cuid())
-  code      String     @unique
-  dni       String?    @unique
+  id        String      @id @default(cuid())
+  code      String      @unique
+  dni       String?     @unique
   firstName String
   lastName  String
   birthDate DateTime

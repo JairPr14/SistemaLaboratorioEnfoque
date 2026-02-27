@@ -64,12 +64,18 @@ export async function POST(request: Request) {
     for (let attempt = 0; attempt < 3; attempt++) {
       const code = await generateNextPatientCode();
       const dniVal = parsed.dni && String(parsed.dni).trim() ? String(parsed.dni).trim() : undefined;
+      const birthDateValue = parsed.birthDate && String(parsed.birthDate).trim()
+        ? parseDatePeru(parsed.birthDate)
+        : parsed.ageYears != null && !Number.isNaN(parsed.ageYears)
+          ? parseDatePeru(`${new Date().getFullYear() - parsed.ageYears}-01-01`)
+          : parseDatePeru("2000-01-01");
+
       const createData: Parameters<typeof prisma.patient.create>[0]["data"] = {
         code,
         ...(dniVal != null ? { dni: dniVal } : {}),
         firstName,
         lastName,
-        birthDate: parseDatePeru(parsed.birthDate),
+        birthDate: birthDateValue,
         sex: parsed.sex,
         phone: parsed.phone || null,
         address: parsed.address || null,

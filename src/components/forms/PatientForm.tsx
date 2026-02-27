@@ -42,6 +42,7 @@ export function PatientForm({ patientId, defaultValues, canEdit = true, createdA
       firstName: "",
       lastName: "",
       birthDate: "",
+      ageYears: null,
       sex: "M",
       phone: "",
       address: "",
@@ -83,29 +84,35 @@ export function PatientForm({ patientId, defaultValues, canEdit = true, createdA
   }, [patientId]);
 
   const birthDate = form.watch("birthDate");
+  const hasBirthDate = birthDate && typeof birthDate === "string" && birthDate.trim() !== "";
   const displayedAge = useMemo(() => {
-    if (!birthDate || typeof birthDate !== "string") return null;
+    if (!hasBirthDate) return null;
     try {
-      const date = new Date(birthDate);
+      const date = new Date(birthDate!);
       if (isNaN(date.getTime())) return null;
       return calculateAge(date);
     } catch {
       return null;
     }
-  }, [birthDate]);
+  }, [birthDate, hasBirthDate]);
 
   const onSubmit = async (values: PatientFormValues) => {
     try {
       const method = patientId ? "PUT" : "POST";
       const url = patientId ? `/api/patients/${patientId}` : "/api/patients";
 
-      // Nuevo paciente: usar el momento exacto en que se hace clic en Guardar
-      const payload = patientId ? values : { ...values, createdAt: toDateTimeLocal(new Date()) };
+      const payload: Record<string, unknown> = { ...values };
+      if (patientId) {
+        // Edición: no enviar ageYears si ya tenemos birthDate
+        if (hasBirthDate) delete payload.ageYears;
+      } else {
+        payload.createdAt = toDateTimeLocal(new Date());
+      }
 
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(payload as PatientFormValues),
       });
 
       if (!res.ok) {
@@ -189,17 +196,41 @@ export function PatientForm({ patientId, defaultValues, canEdit = true, createdA
           <Input className="mt-1 rounded-xl" {...form.register("lastName")} disabled={!canEdit} readOnly={!canEdit} placeholder="Ej: García López" />
         </div>
         <div>
-          <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">Fecha de nacimiento</Label>
-          <Input type="date" className="mt-1 rounded-xl" {...form.register("birthDate")} disabled={!canEdit} readOnly={!canEdit} />
+          <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">Fecha de nacimiento (opcional)</Label>
+          <Input
+            type="date"
+            className="mt-1 rounded-xl"
+            {...form.register("birthDate", {
+              onChange: () => {
+                if (hasBirthDate) form.setValue("ageYears", null);
+              },
+            })}
+            disabled={!canEdit}
+            readOnly={!canEdit}
+          />
         </div>
         <div>
-          <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">Edad</Label>
-          <Input
-            className="mt-1 rounded-xl read-only:cursor-default read-only:opacity-100"
-            value={displayedAge !== null ? `${displayedAge} años` : ""}
-            placeholder="Se calcula automáticamente"
-            readOnly
-          />
+          <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">
+            Edad {hasBirthDate ? "(calculada)" : "(años)"}
+          </Label>
+          {hasBirthDate ? (
+            <Input
+              className="mt-1 rounded-xl read-only:cursor-default read-only:opacity-100"
+              value={displayedAge !== null ? `${displayedAge} años` : ""}
+              placeholder="Se calcula automáticamente"
+              readOnly
+            />
+          ) : (
+            <Input
+              type="number"
+              min={0}
+              max={150}
+              className="mt-1 rounded-xl"
+              placeholder="Ej: 28"
+              disabled={!canEdit}
+              {...form.register("ageYears", { valueAsNumber: true })}
+            />
+          )}
         </div>
         <div>
           <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">Sexo</Label>

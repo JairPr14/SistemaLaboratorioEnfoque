@@ -653,18 +653,17 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                   </table>
                 </div>
               ))}
-
-              {showStamp && pageIndex === pages.length - 1 && (
-                <div className="print-stamp-block">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={printConfig.stampImageUrl!}
-                    alt="Sello y firma"
-                    className="print-stamp-img"
-                  />
-                </div>
-              )}
             </div>
+            {showStamp && pageIndex === pages.length - 1 && (
+              <div className="print-stamp-overlay">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={printConfig.stampImageUrl!}
+                  alt="Sello y firma"
+                  className="print-stamp-img"
+                />
+              </div>
+            )}
           </div>
         ))
       )}

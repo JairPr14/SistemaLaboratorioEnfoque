@@ -174,7 +174,8 @@ body {
 
   /* Sello virtual: incluir al imprimir */
   .print-stamp img,
-  .print-stamp-img {
+  .print-stamp-img,
+  .print-stamp-overlay .print-stamp-img {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
@@ -471,25 +472,28 @@ body {
   font-size: 10px;
 }
 
-/* Sello y firma: solo en última hoja, inferior derecha, sin ocultar texto */
-.print-stamp-block {
-  margin-top: 16px;
-  padding-top: 12px;
+/* Sello y firma: solo en última hoja, encima del contenido a la derecha, sin tapar texto */
+.print-stamp-overlay {
+  position: absolute;
+  bottom: 20mm;
+  right: 12mm;
+  z-index: 2;
+  pointer-events: none;
+  user-select: none;
   display: flex;
   justify-content: flex-end;
   align-items: flex-end;
-  min-height: 0;
-  flex-shrink: 0;
 }
 
 .print-stamp-img {
-  max-width: 90px;
-  max-height: 70px;
+  max-width: 250px;
+  max-height: 150px;
   width: auto;
   height: auto;
   object-fit: contain;
   pointer-events: none;
   user-select: none;
+  opacity: 0.82;
 }
 
 @media print {

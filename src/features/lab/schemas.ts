@@ -50,7 +50,20 @@ export const patientSchema = z.object({
   ),
   firstName: z.string().min(2),
   lastName: z.string().min(2),
-  birthDate: z.string().min(1),
+  /** Opcional. Si vacío, se usa ageYears para calcular birthDate sintético. */
+  birthDate: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? null : v),
+    z.string().optional().nullable(),
+  ),
+  /** Edad en años (solo cuando birthDate está vacío). Se convierte en birthDate sintético. */
+  ageYears: z.preprocess(
+    (v) => {
+      if (v === "" || v === null || v === undefined) return null;
+      const n = Number(v);
+      return Number.isNaN(n) ? null : n;
+    },
+    z.number().int().min(0).max(150).optional().nullable(),
+  ),
   sex: z.enum(sexValues),
   /** Opcional: se guarda null si está vacío */
   phone: z.preprocess(
@@ -68,7 +81,14 @@ export const patientSchema = z.object({
     z.union([z.string().email(), z.literal(null)]).optional().nullable(),
   ),
   createdAt: z.string().optional(),
-});
+}).refine(
+  (data) => {
+    const hasBirthDate = data.birthDate && String(data.birthDate).trim() !== "";
+    const hasAge = data.ageYears != null && !Number.isNaN(data.ageYears);
+    return hasBirthDate || hasAge;
+  },
+  { message: "Ingrese fecha de nacimiento o edad", path: ["birthDate"] },
+);
 
 export const referredLabSchema = z.object({
   name: z.string().min(2),

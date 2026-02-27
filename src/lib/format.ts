@@ -15,10 +15,28 @@ export function formatDate(date?: Date | string | null) {
   return d.toLocaleDateString("es-PE", { timeZone: PERU_TIMEZONE });
 }
 
-/** Fecha corta para impresión: D/M/YYYY (ej. 26/2/2026) */
+/** Fecha corta para impresión: D/M/YYYY (ej. 26/2/2026). Usa zona Perú para fecha exacta. */
 export function formatDatePrint(date?: Date | string | null): string {
   if (!date) return "-";
-  const d = typeof date === "string" ? new Date(date) : date;
+  let d: Date;
+  if (typeof date === "string") {
+    const trimmed = date.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      d = new Date(trimmed + "T12:00:00.000Z");
+    } else {
+      d = new Date(date);
+    }
+  } else {
+    d = date;
+  }
+  if (isNaN(d.getTime())) return "-";
+  // Medianoche UTC muestra día anterior en Perú. Añadir 12h corrige órdenes ya guardadas así.
+  const utcH = d.getUTCHours();
+  const utcM = d.getUTCMinutes();
+  const utcS = d.getUTCSeconds();
+  if (utcH === 0 && utcM === 0 && utcS === 0) {
+    d = new Date(d.getTime() + 12 * 60 * 60 * 1000);
+  }
   return d.toLocaleDateString("es-PE", {
     timeZone: PERU_TIMEZONE,
     day: "numeric",
