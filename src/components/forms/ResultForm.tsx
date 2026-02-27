@@ -12,7 +12,7 @@ import { AutosaveIndicator } from "./AutosaveIndicator";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Dialog,
@@ -99,6 +99,11 @@ export function ResultForm({
   const [addParamModalOpen, setAddParamModalOpen] = useState(false);
   const [addParamGroup, setAddParamGroup] = useState("");
   const [addParamName, setAddParamName] = useState("Nuevo parámetro");
+  const [editParamModalOpen, setEditParamModalOpen] = useState(false);
+  const [editingParam, setEditingParam] = useState<(TemplateItem & { index: number }) | null>(null);
+  const [editParamGroup, setEditParamGroup] = useState("");
+  const [editParamName, setEditParamName] = useState("");
+  const [updatingParamId, setUpdatingParamId] = useState<string | null>(null);
   const [additionalItems, setAdditionalItems] = useState<TemplateItem[]>([]);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -321,6 +326,77 @@ export function ResultForm({
     }
   };
 
+  const handleEditParam = (item: TemplateItem & { index: number }) => {
+    setEditingParam(item);
+    setEditParamGroup(item.groupName ?? "");
+    setEditParamName(item.paramName);
+    setEditParamModalOpen(true);
+  };
+
+  const handleSaveEditParam = async () => {
+    if (!editingParam) return;
+    const paramName = editParamName.trim() || "Nuevo parámetro";
+    const groupName = editParamGroup.trim() || null;
+    setEditParamModalOpen(false);
+    setEditingParam(null);
+
+    const updatedItem: TemplateItem = {
+      ...editingParam,
+      paramName,
+      groupName,
+    };
+    setAdditionalItems((prev) =>
+      prev.map((t) => (t.id === editingParam.id ? updatedItem : t))
+    );
+    form.setValue(`items.${editingParam.index}.paramNameSnapshot`, paramName);
+
+    setUpdatingParamId(editingParam.id);
+    try {
+      const snapshotItems = allTemplateItemsForSave.map((t) =>
+        t.id === editingParam.id ? updatedItem : t
+      ).map((t) => ({
+        id: t.id,
+        groupName: t.groupName ?? null,
+        paramName: t.paramName,
+        unit: t.unit ?? null,
+        refRangeText: t.refRangeText ?? null,
+        refMin: t.refMin ?? null,
+        refMax: t.refMax ?? null,
+        valueType: t.valueType,
+        selectOptions: Array.isArray(t.selectOptions) ? t.selectOptions : [],
+        order: t.order,
+        refRanges: t.refRanges ?? [],
+      }));
+      const res = await fetch(`/api/orders/${orderId}/items/${itemId}/template-snapshot`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: snapshotItems }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error ?? "Error al actualizar parámetro");
+        setAdditionalItems((prev) =>
+          prev.map((t) => (t.id === editingParam.id ? editingParam : t))
+        );
+        form.setValue(`items.${editingParam.index}.paramNameSnapshot`, editingParam.paramName);
+      } else {
+        toast.success("Parámetro actualizado");
+        onParamAdded?.();
+      }
+    } catch {
+      toast.error("Error de conexión");
+      setAdditionalItems((prev) =>
+        prev.map((t) => (t.id === editingParam.id ? editingParam : t))
+      );
+      form.setValue(`items.${editingParam.index}.paramNameSnapshot`, editingParam.paramName);
+    } finally {
+      setUpdatingParamId(null);
+    }
+  };
+
+  const isAdditionalParam = (item: TemplateItem & { index: number }) =>
+    additionalItems.some((a) => a.id === item.id);
+
   const handleSave = async () => {
     const values = form.getValues();
     const items = values.items ?? [];
@@ -540,6 +616,18 @@ export function ResultForm({
                             >
                               B
                             </button>
+                            {isAdditionalParam(item) && (
+                              <button
+                                type="button"
+                                aria-label="Editar parámetro"
+                                title="Editar nombre y grupo"
+                                onClick={() => handleEditParam(item)}
+                                disabled={updatingParamId === item.id}
+                                className="shrink-0 h-9 w-9 rounded border border-slate-300 bg-slate-50 text-slate-500 hover:bg-teal-50 hover:text-teal-600 hover:border-teal-200 disabled:opacity-50 disabled:cursor-not-allowed dark:border-slate-600 dark:bg-slate-800 dark:hover:bg-teal-950/30 dark:hover:text-teal-400 dark:hover:border-teal-900"
+                              >
+                                <Pencil className="h-4 w-4 mx-auto" />
+                              </button>
+                            )}
                             <button
                               type="button"
                               aria-label="Quitar parámetro"
@@ -644,6 +732,67 @@ export function ResultForm({
                 </Button>
                 <Button type="button" onClick={handleAddParam}>
                   Añadir
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+          <Dialog
+            open={editParamModalOpen}
+            onOpenChange={(open) => {
+              setEditParamModalOpen(open);
+              if (!open) {
+                setEditingParam(null);
+                setEditParamGroup("");
+                setEditParamName("");
+              }
+            }}
+          >
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Editar parámetro</DialogTitle>
+                <DialogDescription>
+                  Modifica el nombre y grupo del parámetro adicional.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <div className="space-y-2">
+                  <label htmlFor="editParamGroup" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Grupo (opcional)
+                  </label>
+                  <Input
+                    id="editParamGroup"
+                    value={editParamGroup}
+                    onChange={(e) => setEditParamGroup(e.target.value)}
+                    placeholder="Ej. Microscópico, Químico... (vacío = General)"
+                    className="h-9"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="editParamName" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Nombre del parámetro
+                  </label>
+                  <Input
+                    id="editParamName"
+                    value={editParamName}
+                    onChange={(e) => setEditParamName(e.target.value)}
+                    placeholder="Nuevo parámetro"
+                    className="h-9"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setEditParamModalOpen(false);
+                    setEditingParam(null);
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button type="button" onClick={handleSaveEditParam}>
+                  Guardar
                 </Button>
               </div>
             </DialogContent>
