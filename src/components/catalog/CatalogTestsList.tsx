@@ -20,9 +20,13 @@ type Test = {
 
 type Props = {
   tests: Test[];
+  /** Si el usuario puede editar análisis (GESTIONAR_CATALOGO o EDITAR_PRECIO_CATALOGO) */
+  canEdit?: boolean;
+  /** Si el usuario puede eliminar análisis (GESTIONAR_CATALOGO) */
+  canDelete?: boolean;
 };
 
-export function CatalogTestsList({ tests }: Props) {
+export function CatalogTestsList({ tests, canEdit = false, canDelete = false }: Props) {
   const [search, setSearch] = useState("");
 
   const filtered = useMemo(() => {
@@ -49,17 +53,17 @@ export function CatalogTestsList({ tests }: Props) {
               <Table className="min-w-[520px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Código</TableHead>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>Sección</TableHead>
-                    <TableHead>Precio</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
+                <TableHead>Código</TableHead>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Sección</TableHead>
+                <TableHead>Precio</TableHead>
+                {(canEdit || canDelete) && <TableHead className="text-right">Acciones</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtered.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-slate-500 dark:text-slate-400 py-8">
+                      <TableCell colSpan={canEdit || canDelete ? 5 : 4} className="text-center text-slate-500 dark:text-slate-400 py-8">
                         {search.trim()
                           ? "Ningún análisis coincide con la búsqueda."
                           : "No hay análisis en el catálogo."}
@@ -70,26 +74,34 @@ export function CatalogTestsList({ tests }: Props) {
                       <TableRow key={test.id}>
                         <TableCell className="font-mono text-sm text-slate-900 dark:text-slate-100">{test.code}</TableCell>
                         <TableCell>
-                          <Link
-                            className="font-medium text-slate-900 dark:text-slate-100 hover:underline"
-                            href={`/catalog/tests/${test.id}`}
-                          >
-                            {test.name}
-                          </Link>
+                          {canEdit ? (
+                            <Link
+                              className="font-medium text-slate-900 dark:text-slate-100 hover:underline"
+                              href={`/catalog/tests/${test.id}`}
+                            >
+                              {test.name}
+                            </Link>
+                          ) : (
+                            <span className="font-medium text-slate-900 dark:text-slate-100">{test.name}</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <span className="text-sm text-slate-600 dark:text-slate-300">{test.sectionName ?? test.section}</span>
                         </TableCell>
                         <TableCell className="text-slate-900 dark:text-slate-200">{formatCurrency(test.price)}</TableCell>
+                        {(canEdit || canDelete) && (
                         <TableCell className="text-right">
-                          <Link
-                            href={`/catalog/tests/${test.id}`}
-                            className="text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:underline mr-2"
-                          >
-                            Editar
-                          </Link>
-                          <DeleteButton url={`/api/tests/${test.id}`} label="Eliminar" />
+                          {canEdit && (
+                            <Link
+                              href={`/catalog/tests/${test.id}`}
+                              className="text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:underline mr-2"
+                            >
+                              Editar
+                            </Link>
+                          )}
+                          {canDelete && <DeleteButton url={`/api/tests/${test.id}`} label="Eliminar" />}
                         </TableCell>
+                        )}
                       </TableRow>
                     ))
                   )}

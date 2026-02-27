@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { updatePrintConfig } from "@/lib/print-config";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission, PERMISSION_GESTIONAR_SELLO } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 
 const STORED_IMAGE_KEY = "print_stamp";
@@ -45,7 +45,7 @@ function validateImageContent(buffer: Buffer, expectedType: string): boolean {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAdmin();
+  const auth = await requirePermission(PERMISSION_GESTIONAR_SELLO);
   if (auth.response) return auth.response;
 
   try {

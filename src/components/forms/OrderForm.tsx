@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Search, UserRound, FlaskConical, Tag, Stethoscope, FileText } from "lucide-react";
+import { Search, UserRound, FlaskConical, Tag, Stethoscope, FileText, Building2, CreditCard } from "lucide-react";
 
-import { orderCreateSchema } from "@/features/lab/schemas";
+import { orderCreateSchema, paymentMethodValues } from "@/features/lab/schemas";
+import { formatDniDisplay } from "@/lib/format";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,8 @@ type ProfileOption = {
   tests: { id: string; code: string; name: string; section: string; price: number }[];
 };
 
+type BranchOption = { id: string; name: string };
+
 type Props = {
   patients: PatientOption[];
   recentPatients?: PatientOption[];
@@ -51,12 +54,25 @@ type Props = {
   profiles?: ProfileOption[];
   /** ID del paciente a preseleccionar (ej. desde perfil de paciente) */
   defaultPatientId?: string;
+  /** Modo admisión: cobro directo al público, sede, pago en el acto */
+  admissionMode?: boolean;
+  /** Sedes para admisión */
+  branches?: BranchOption[];
 };
 
-export function OrderForm({ patients, recentPatients = [], tests, profiles = [], defaultPatientId }: Props) {
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  EFECTIVO: "Efectivo",
+  TARJETA: "Tarjeta",
+  TRANSFERENCIA: "Transferencia",
+  CREDITO: "Crédito",
+};
+
+export function OrderForm({ patients, recentPatients = [], tests, profiles = [], defaultPatientId, admissionMode, branches = [] }: Props) {
   const router = useRouter();
   const [patientSearch, setPatientSearch] = useState("");
   const [testSearch, setTestSearch] = useState("");
+  const [payNow, setPayNow] = useState(true);
+  const [paymentMethod, setPaymentMethod] = useState<"EFECTIVO" | "TARJETA" | "TRANSFERENCIA" | "CREDITO">("EFECTIVO");
 
   const form = useForm<OrderFormValues>({
     resolver: zodResolver(orderCreateSchema) as Resolver<OrderFormValues>,
@@ -68,6 +84,8 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [],
       patientType: null,
       labTestIds: [],
       profileIds: [],
+      orderSource: admissionMode ? "ADMISION" : "LABORATORIO",
+      branchId: branches[0]?.id ?? null,
     },
   });
 
@@ -195,13 +213,19 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [],
       const labTestIdsOnlyExternal = (values.labTestIds ?? []).filter(
         (id) => !testIdsInSelectedPromos.has(id)
       );
+      const payload: Record<string, unknown> = {
+        ...values,
+        labTestIds: labTestIdsOnlyExternal,
+        orderSource: admissionMode ? "ADMISION" : "LABORATORIO",
+      };
+      if (admissionMode && values.branchId) payload.branchId = values.branchId;
+      if (admissionMode && payNow && total > 0) {
+        payload.initialPayment = { amount: total, method: paymentMethod };
+      }
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...values,
-          labTestIds: labTestIdsOnlyExternal,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -210,8 +234,13 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [],
         return;
       }
 
-      toast.success("Orden creada correctamente.");
-      router.push("/orders");
+      const data = await res.json().catch(() => ({}));
+      toast.success(payNow && total > 0 ? "Orden creada y cobro registrado." : "Orden creada correctamente.");
+      if (admissionMode && data.item?.id) {
+        router.push(`/orders/${data.item.id}`);
+      } else {
+        router.push("/orders");
+      }
       router.refresh();
     } catch (error) {
       console.error("Error submitting order form:", error);
@@ -266,7 +295,7 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [],
                           className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-sm shadow-sm hover:bg-slate-50 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400 min-w-0 max-w-full sm:max-w-none"
                         >
                           <span className="font-medium text-slate-900 block truncate">{p.label}</span>
-                          <span className="text-slate-500 text-xs">DNI {p.dni ?? "—"}</span>
+                          <span className="text-slate-500 text-xs">DNI {formatDniDisplay(p.dni)}</span>
                         </button>
                       ))}
                     </div>
@@ -300,7 +329,7 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [],
                               {patient.label}
                             </span>
                             <span className="ml-2 text-slate-500">
-                              DNI {patient.dni ?? "—"}
+                              DNI {formatDniDisplay(patient.dni)}
                             </span>
                           </button>
                         </li>
@@ -333,6 +362,23 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [],
             </select>
             <p className="text-xs text-slate-500">Solo para reportes; no se muestra en PDF.</p>
           </div>
+          {admissionMode && branches.length > 0 && (
+            <div className="space-y-2 sm:col-span-2">
+              <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                <Building2 className="mr-1 inline-block h-3.5 w-3.5" />
+                Sede
+              </Label>
+              <select
+                {...form.register("branchId")}
+                className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              >
+                <option value="">Sin sede</option>
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="space-y-2">
             <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">
               <Stethoscope className="mr-1 inline-block h-3.5 w-3.5" />
@@ -563,6 +609,37 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [],
         </div>
       </FormSection>
 
+      {admissionMode && total > 0 && (
+        <FormSection title="Cobro al paciente" icon={CreditCard} iconBg="emerald">
+          <div className="space-y-4">
+
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={payNow}
+                onChange={(e) => setPayNow(e.target.checked)}
+                className="rounded border-slate-300"
+              />
+              <span className="text-sm font-medium">Cobrar ahora (S/ {total.toFixed(2)})</span>
+            </label>
+            {payNow && (
+              <div className="space-y-2">
+                <Label className="text-xs font-medium text-slate-500">Medio de pago</Label>
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value as typeof paymentMethod)}
+                  className="h-10 w-full max-w-xs rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                >
+                  {paymentMethodValues.map((m) => (
+                    <option key={m} value={m}>{PAYMENT_METHOD_LABELS[m] ?? m}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+        </FormSection>
+      )}
+
       <FormFooter
         total={
           (selectedProfileIds.length > 0 || selectedIds.size > 0) && (
@@ -578,7 +655,7 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [],
           className="min-w-[140px] bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-500 hover:to-cyan-500"
           disabled={selectedProfileIds.length === 0 && selectedIds.size === 0}
         >
-          Crear orden
+          {admissionMode ? (payNow ? "Crear y cobrar" : "Crear orden") : "Crear orden"}
         </Button>
       </FormFooter>
     </form>

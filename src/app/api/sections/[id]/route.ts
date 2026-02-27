@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { labSectionSchema } from "@/features/lab/schemas";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission, PERMISSION_GESTIONAR_SECCIONES } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 
 type Params = { params: Promise<{ id: string }> };
@@ -28,7 +28,7 @@ export async function GET(_request: Request, { params }: Params) {
 }
 
 export async function PUT(request: Request, { params }: Params) {
-  const auth = await requireAdmin();
+  const auth = await requirePermission(PERMISSION_GESTIONAR_SECCIONES);
   if (auth.response) return auth.response;
 
   try {
@@ -75,7 +75,7 @@ export async function PUT(request: Request, { params }: Params) {
 }
 
 export async function DELETE(_request: Request, { params }: Params) {
-  const auth = await requireAdmin();
+  const auth = await requirePermission(PERMISSION_GESTIONAR_SECCIONES);
   if (auth.response) return auth.response;
 
   try {

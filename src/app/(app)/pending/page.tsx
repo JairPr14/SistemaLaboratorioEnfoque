@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
 
-import { authOptions, hasAnyPermission, PERMISSION_CAPTURAR_RESULTADOS, PERMISSION_QUICK_ACTIONS_ANALISTA, PERMISSION_VER_ORDENES } from "@/lib/auth";
+
+import { getServerSession, hasAnyPermission, PERMISSION_CAPTURAR_RESULTADOS, PERMISSION_QUICK_ACTIONS_ANALISTA, PERMISSION_VER_ORDENES } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +13,7 @@ import { pageLayoutClasses } from "@/components/layout/PageHeader";
 import { EmptyTableRow } from "@/components/common/EmptyTableRow";
 
 export default async function PendingPage() {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   const canView = session?.user && hasAnyPermission(session, [
     PERMISSION_VER_ORDENES,
     PERMISSION_QUICK_ACTIONS_ANALISTA,

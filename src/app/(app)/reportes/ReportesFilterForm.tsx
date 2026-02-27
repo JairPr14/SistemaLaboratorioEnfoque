@@ -36,6 +36,8 @@ type Props = {
   defaultStatus?: string;
   defaultPaymentStatus?: string;
   defaultBranchId?: string;
+  /** Ruta base para navegación (ej. /reportes/finanzas, /reportes/estadisticas) */
+  basePath?: string;
 };
 
 export function ReportesFilterForm({
@@ -44,6 +46,7 @@ export function ReportesFilterForm({
   defaultStatus = "",
   defaultPaymentStatus = "",
   defaultBranchId = "",
+  basePath = "/reportes",
 }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -75,7 +78,7 @@ export function ReportesFilterForm({
     if (branchId) params.set("branchId", branchId);
     const query = params.toString();
     startTransition(() => {
-      router.push(query ? `/reportes?${query}` : "/reportes");
+      router.push(query ? `${basePath}?${query}` : basePath);
     });
   }
 
@@ -88,7 +91,7 @@ export function ReportesFilterForm({
 
   function resetFilters() {
     startTransition(() => {
-      router.push("/reportes");
+      router.push(basePath);
     });
   }
 
@@ -106,7 +109,7 @@ export function ReportesFilterForm({
     if (paymentStatus) params.set("paymentStatus", paymentStatus);
     if (branchId) params.set("branchId", branchId);
     startTransition(() => {
-      router.push(`/reportes?${params.toString()}`);
+      router.push(`${basePath}?${params.toString()}`);
     });
   }
 

@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { getServerSession } from "next-auth";
+
 
 import { redirect } from "next/navigation";
-import { authOptions, hasPermission, PERMISSION_IMPRIMIR_TICKET_PAGO, PERMISSION_REGISTRAR_PAGOS, PERMISSION_VER_PAGOS, PERMISSION_VER_ADMISION } from "@/lib/auth";
+import { getServerSession, hasPermission, PERMISSION_IMPRIMIR_TICKET_PAGO, PERMISSION_REGISTRAR_PAGOS, PERMISSION_VER_PAGOS, PERMISSION_VER_ADMISION } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getPaidTotalsByOrderIds } from "@/lib/payments";
 import { formatCurrency, formatDate, formatPatientDisplayName } from "@/lib/format";
@@ -44,7 +44,7 @@ export default async function PagosPage({
   const from = params.from?.trim();
   const to = params.to?.trim();
    const cajaDateParam = params.cajaDate?.trim();
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   const canAccessPagos = hasPermission(session, PERMISSION_VER_PAGOS) || hasPermission(session, PERMISSION_REGISTRAR_PAGOS);
   if (!canAccessPagos) redirect("/dashboard");
   const canRegisterPayment = hasPermission(session, PERMISSION_REGISTRAR_PAGOS);
@@ -141,7 +141,7 @@ export default async function PagosPage({
     canViewAdmision
       ? prisma.labOrder.findMany({
           where: {
-            admissionRequestId: { not: null },
+            orderSource: "ADMISION",
             admissionSettledAt: null,
             status: { not: "ANULADO" },
             ...(dateFrom ?? dateTo
@@ -183,7 +183,7 @@ export default async function PagosPage({
   const referredBalance = Math.max(0, totalExternalCost - paidToLabs);
 
   const conventionTotalForOrder = (order: (typeof orders)[0]) => {
-    if (!order.admissionRequestId) return null;
+    if (order.orderSource !== "ADMISION") return null;
     return calculateConventionTotal(order.items);
   };
 
@@ -232,7 +232,13 @@ export default async function PagosPage({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Pagos / Cobros</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Gestión de cobros y pagos de órdenes</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Cobra órdenes directas (paciente paga al laboratorio). Para órdenes desde admisión, usa{" "}
+            <Link href="/cobro-admision" className="font-medium text-teal-600 hover:underline dark:text-teal-400">
+              Cobro admisión
+            </Link>
+            .
+          </p>
         </div>
         {canRegisterPayment && <RegistrarpagoButton />}
       </div>
@@ -437,7 +443,7 @@ export default async function PagosPage({
                   visibleOrders.map((order) => {
                     const sinDatosCapturados = order.status === "PENDIENTE" || order.status === "EN_PROCESO";
                     const branchName = order.branch?.name ?? order.patientType ?? "Sin sede";
-                    const fromAdmission = !!order.admissionRequestId;
+                    const fromAdmission = order.orderSource === "ADMISION";
                     const hasReferred = order.items.some((i) => i.labTest.isReferred && i.labTest.externalLabCost);
                     return (
                       <TableRow

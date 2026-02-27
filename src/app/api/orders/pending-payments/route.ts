@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 
-import { authOptions, hasPermission, PERMISSION_REGISTRAR_PAGOS, PERMISSION_VER_PAGOS } from "@/lib/auth";
+
+import { getServerSession, hasPermission, PERMISSION_REGISTRAR_PAGOS, PERMISSION_VER_PAGOS } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getPaidTotalsByOrderIds } from "@/lib/payments";
 
@@ -9,7 +9,7 @@ const MAX_PENDING = 50;
 
 /** Devuelve órdenes con cobro pendiente o parcial (excluye ya pagadas) */
 export async function GET() {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   if (!session?.user) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }

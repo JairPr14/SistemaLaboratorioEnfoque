@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
-import { formatDatePrint, formatPatientDisplayName, formatSexDisplay } from "@/lib/format";
+import { getPrintConfig } from "@/lib/print-config";
+import { formatDatePrint, formatDniDisplay, formatPatientDisplayName, formatSexDisplay } from "@/lib/format";
 import { PrintToolbar } from "@/components/orders/PrintToolbar";
 
 type Props = {
@@ -536,6 +537,9 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
     .map(getEffectiveReferredLab)
     .find((lab) => lab?.logoUrl);
 
+  const printConfig = await getPrintConfig();
+  const showStamp = printConfig.stampEnabled && printConfig.stampImageUrl;
+
   const buildPrintUrl = (logoVisible: boolean) => {
     const params = new URLSearchParams();
     if (typeof itemsParam === "string") params.set("items", itemsParam);
@@ -588,7 +592,7 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                 <div><span className="label">PACIENTE :</span> {patientName}</div>
                 <div><span className="label">SEXO :</span> {formatSexDisplay(order.patient.sex)}</div>
                 <div><span className="label">EDAD :</span> {age} Años</div>
-                <div><span className="label">DNI :</span> {order.patient.dni ?? "-"}</div>
+                <div><span className="label">DNI :</span> {formatDniDisplay(order.patient.dni)}</div>
                 <div><span className="label">FECHA :</span> {formatDatePrint(order.createdAt)}</div>
                 <div><span className="label">INDICACIÓN :</span> {order.requestedBy || "MEDICO TRATANTE"}</div>
                 <div><span className="label">N°REGISTRO :</span> {order.orderCode}</div>
@@ -650,6 +654,16 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                 </div>
               ))}
 
+              {showStamp && pageIndex === pages.length - 1 && (
+                <div className="print-stamp-block">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={printConfig.stampImageUrl!}
+                    alt="Sello y firma"
+                    className="print-stamp-img"
+                  />
+                </div>
+              )}
             </div>
           </div>
         ))

@@ -1,18 +1,11 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
+
 import type { OrderStatus, Prisma } from "@prisma/client";
 
-import { authOptions, hasPermission, PERMISSION_REPORTES } from "@/lib/auth";
+import { getServerSession, hasPermission, PERMISSION_REPORTES } from "@/lib/auth";
+import { parseLocalDate } from "@/lib/date";
 import { prisma } from "@/lib/prisma";
 import { getPaidTotalsByOrderIds } from "@/lib/payments";
-
-function parseLocalDate(dateStr: string): Date {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  if (y == null || m == null || d == null || Number.isNaN(y) || Number.isNaN(m) || Number.isNaN(d)) {
-    return new Date(dateStr);
-  }
-  return new Date(y, m - 1, d);
-}
 
 function parseDateRange(params: URLSearchParams) {
   const today = new Date();
@@ -23,18 +16,14 @@ function parseDateRange(params: URLSearchParams) {
   let dateFrom: Date;
   let dateTo: Date;
   if (fromParam && toParam) {
-    dateFrom = parseLocalDate(fromParam);
-    dateFrom.setHours(0, 0, 0, 0);
-    dateTo = parseLocalDate(toParam);
-    dateTo.setHours(23, 59, 59, 999);
+    dateFrom = parseLocalDate(fromParam, false);
+    dateTo = parseLocalDate(toParam, true);
     if (dateFrom.getTime() > dateTo.getTime()) [dateFrom, dateTo] = [dateTo, dateFrom];
   } else if (fromParam) {
-    dateFrom = parseLocalDate(fromParam);
-    dateFrom.setHours(0, 0, 0, 0);
+    dateFrom = parseLocalDate(fromParam, false);
     dateTo = new Date(today);
   } else if (toParam) {
-    dateTo = parseLocalDate(toParam);
-    dateTo.setHours(23, 59, 59, 999);
+    dateTo = parseLocalDate(toParam, true);
     dateFrom = new Date(dateTo);
     dateFrom.setDate(dateFrom.getDate() - 30);
     dateFrom.setHours(0, 0, 0, 0);
@@ -48,7 +37,7 @@ function parseDateRange(params: URLSearchParams) {
 }
 
 export async function GET(request: Request) {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   if (!hasPermission(session, PERMISSION_REPORTES)) {
     return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
   }

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { authOptions, hasAnyPermission, PERMISSION_CAPTURAR_RESULTADOS, PERMISSION_VALIDAR_RESULTADOS, PERMISSION_IMPRIMIR_RESULTADOS } from "@/lib/auth";
+
+import { getServerSession, hasAnyPermission, PERMISSION_CAPTURAR_RESULTADOS, PERMISSION_VALIDAR_RESULTADOS, PERMISSION_IMPRIMIR_RESULTADOS } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,7 +19,7 @@ export default async function ResultsPage({
 }: {
   searchParams: Promise<{ search?: string }>;
 }) {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   const canView =
     session?.user &&
     hasAnyPermission(session, [PERMISSION_CAPTURAR_RESULTADOS, PERMISSION_VALIDAR_RESULTADOS, PERMISSION_IMPRIMIR_RESULTADOS]);

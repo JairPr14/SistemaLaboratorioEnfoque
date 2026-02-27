@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { testProfileSchema } from "@/features/lab/schemas";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission, PERMISSION_GESTIONAR_CATALOGO } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import { mapTestProfile, testProfileIncludeItems } from "@/lib/test-profiles";
 
@@ -34,7 +34,7 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireAdmin();
+  const auth = await requirePermission(PERMISSION_GESTIONAR_CATALOGO);
   if (auth.response) return auth.response;
 
   try {
@@ -86,7 +86,7 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireAdmin();
+  const auth = await requirePermission(PERMISSION_GESTIONAR_CATALOGO);
   if (auth.response) return auth.response;
 
   try {

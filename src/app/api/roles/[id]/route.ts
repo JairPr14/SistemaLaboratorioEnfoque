@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission, PERMISSION_GESTIONAR_ROLES } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 
 export async function PATCH(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireAdmin();
+  const auth = await requirePermission(PERMISSION_GESTIONAR_ROLES);
   if (auth.response) return auth.response;
 
   try {
@@ -58,7 +58,7 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireAdmin();
+  const auth = await requirePermission(PERMISSION_GESTIONAR_ROLES);
   if (auth.response) return auth.response;
 
   try {

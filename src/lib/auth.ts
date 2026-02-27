@@ -102,9 +102,7 @@ export const PERMISSION_GESTIONAR_SELLO = "GESTIONAR_SELLO";
 export const PERMISSION_GESTIONAR_LAB_REFERIDOS = "GESTIONAR_LAB_REFERIDOS";
 export const PERMISSION_VER_ADMISION = "VER_ADMISION";
 export const PERMISSION_GESTIONAR_ADMISION = "GESTIONAR_ADMISION";
-export const PERMISSION_CONVERTIR_ADMISION_A_ORDEN = "CONVERTIR_ADMISION_A_ORDEN";
-export const PERMISSION_AJUSTAR_PRECIO_ADMISION = "AJUSTAR_PRECIO_ADMISION";
-export const PERMISSION_PURGE_ADMISION = "PURGE_ADMISION";
+export const PERMISSION_COBRO_ADMISION = "COBRO_ADMISION";
 
 /** Permisos agrupados por módulo para la configuración de roles. */
 export const PERMISSION_GROUPS = [
@@ -124,20 +122,27 @@ export const PERMISSION_GROUPS = [
   {
     label: "Catálogo y Plantillas",
     permissions: [
-      { code: PERMISSION_VER_CATALOGO, label: "Ver catálogo y promociones" },
+      { code: PERMISSION_VER_CATALOGO, label: "Ver catálogo y promociones (admisión usa el catálogo)" },
       { code: PERMISSION_GESTIONAR_CATALOGO, label: "Gestionar catálogo de análisis" },
-      { code: PERMISSION_EDITAR_PRECIO_CATALOGO, label: "Editar precio global del catálogo" },
+      { code: PERMISSION_EDITAR_PRECIO_CATALOGO, label: "Editar precio público y convenio del catálogo" },
       { code: PERMISSION_GESTIONAR_PLANTILLAS, label: "Gestionar plantillas de resultados" },
     ],
   },
   {
     label: "Admisión",
     permissions: [
-      { code: PERMISSION_VER_ADMISION, label: "Ver bandeja de admisión" },
-      { code: PERMISSION_GESTIONAR_ADMISION, label: "Crear y gestionar pre-órdenes de admisión" },
-      { code: PERMISSION_CONVERTIR_ADMISION_A_ORDEN, label: "Convertir pre-orden de admisión a orden de laboratorio" },
-      { code: PERMISSION_AJUSTAR_PRECIO_ADMISION, label: "Ajustar precio puntual en pre-orden de admisión" },
-      { code: PERMISSION_PURGE_ADMISION, label: "Eliminar pre-órdenes de admisión (purga)" },
+      {
+        code: PERMISSION_VER_ADMISION,
+        label: "Ver módulo admisión (pacientes del día, resultados listos, pagos externos)",
+      },
+      {
+        code: PERMISSION_GESTIONAR_ADMISION,
+        label: "Nueva atención: registrar paciente, cobrar al público, crear orden",
+      },
+      {
+        code: PERMISSION_COBRO_ADMISION,
+        label: "Lab cobra admisión: ver y cobrar a admisión (precio convenio)",
+      },
     ],
   },
   {
@@ -163,14 +168,20 @@ export const PERMISSION_GROUPS = [
     label: "Pagos / Cobros",
     permissions: [
       { code: PERMISSION_VER_PAGOS, label: "Ver módulo Pagos (lista, ticket de pago)" },
-      { code: PERMISSION_REGISTRAR_PAGOS, label: "Registrar pagos" },
+      {
+        code: PERMISSION_REGISTRAR_PAGOS,
+        label: "Registrar pagos (cobros directos, pagos a labs externos)",
+      },
       { code: PERMISSION_IMPRIMIR_TICKET_PAGO, label: "Generar ticket de pago" },
     ],
   },
   {
     label: "Órdenes y Flujo",
     permissions: [
-      { code: PERMISSION_VER_ORDENES, label: "Ver órdenes, pendientes y entregados" },
+      {
+        code: PERMISSION_VER_ORDENES,
+        label: "Ver órdenes, pendientes, entregados, laboratorio",
+      },
     ],
   },
   {
@@ -225,6 +236,51 @@ export function hasPermission(
   return false;
 }
 
+/** Permisos que indican perfil de laboratorio (no solo admisión). */
+const NON_ADMISSION_NAV_PERMISSIONS = [
+  PERMISSION_VER_PACIENTES,
+  PERMISSION_EDITAR_PACIENTES,
+  PERMISSION_VER_CATALOGO,
+  PERMISSION_GESTIONAR_CATALOGO,
+  PERMISSION_EDITAR_PRECIO_CATALOGO,
+  PERMISSION_GESTIONAR_PLANTILLAS,
+  PERMISSION_VER_ORDENES,
+  PERMISSION_QUICK_ACTIONS_RECEPCION,
+  PERMISSION_QUICK_ACTIONS_ANALISTA,
+  PERMISSION_QUICK_ACTIONS_ENTREGA,
+  PERMISSION_VER_PAGOS,
+  PERMISSION_REGISTRAR_PAGOS,
+  PERMISSION_REPORTES,
+  PERMISSION_CAPTURAR_RESULTADOS,
+  PERMISSION_VALIDAR_RESULTADOS,
+  PERMISSION_IMPRIMIR_RESULTADOS,
+  PERMISSION_VER_CONFIGURACION,
+] as const;
+
+/** True si el usuario solo tiene permisos de admisión (sin acceso a laboratorio, órdenes, etc.) */
+export function isAdmissionOnlyProfile(
+  session: { user?: { roleCode?: string | null; permissions?: string[] } } | null,
+): boolean {
+  if (!session?.user) return false;
+  if (session.user.roleCode === ADMIN_ROLE_CODE) return false;
+  const hasAdmission = hasPermission(session, PERMISSION_VER_ADMISION) || hasPermission(session, PERMISSION_GESTIONAR_ADMISION);
+  if (!hasAdmission) return false;
+  return !hasAnyPermission(session, [...NON_ADMISSION_NAV_PERMISSIONS]);
+}
+
+/** True si el perfil es principalmente recepción (acceso a órdenes y acciones de recepción) */
+export function isReceptionProfile(
+  session: { user?: { roleCode?: string | null; permissions?: string[] } } | null,
+): boolean {
+  if (!session?.user) return false;
+  if (session.user.roleCode === ADMIN_ROLE_CODE) return false;
+  if (isAdmissionOnlyProfile(session)) return false;
+  return (
+    hasPermission(session, PERMISSION_QUICK_ACTIONS_RECEPCION) &&
+    hasPermission(session, PERMISSION_VER_ORDENES)
+  );
+}
+
 /** Verifica si el usuario tiene al menos uno de los permisos indicados. */
 export function hasAnyPermission(
   session: { user?: { roleCode?: string | null; permissions?: string[] } } | null,
@@ -266,6 +322,24 @@ export async function requirePermission(
     return { response: NextResponse.json({ error: "No autorizado" }, { status: 401 }) };
   }
   if (!hasPermission(session, permission)) {
+    return { response: NextResponse.json({ error: "Sin permiso para esta acción" }, { status: 403 }) };
+  }
+  return { session };
+}
+
+/**
+ * Para uso en API routes: exige al menos uno de los permisos. Devuelve la sesión o 401/403.
+ */
+export async function requireAnyPermission(
+  permissions: string[],
+): Promise<
+  { session: Session; response?: never } | { session?: never; response: NextResponse }
+> {
+  const session = await nextAuthGetServerSession(authOptions);
+  if (!session?.user) {
+    return { response: NextResponse.json({ error: "No autorizado" }, { status: 401 }) };
+  }
+  if (!hasAnyPermission(session, permissions)) {
     return { response: NextResponse.json({ error: "Sin permiso para esta acción" }, { status: 403 }) };
   }
   return { session };

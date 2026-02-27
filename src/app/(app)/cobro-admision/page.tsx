@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
 
-import { authOptions, ADMIN_ROLE_CODE, hasPermission, PERMISSION_VER_ADMISION, PERMISSION_REGISTRAR_PAGOS } from "@/lib/auth";
+
+import { getServerSession, ADMIN_ROLE_CODE, hasPermission, PERMISSION_COBRO_ADMISION, PERMISSION_REGISTRAR_PAGOS } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency, formatDate, formatPatientDisplayName } from "@/lib/format";
 import { calculateConventionTotal } from "@/lib/order-pricing";
@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { pageLayoutClasses, PageHeader } from "@/components/layout/PageHeader";
 import { SettleAdmissionButton } from "@/components/admisiones/SettleAdmissionButton";
+import { SettleAllAdmissionButton } from "@/components/admisiones/SettleAllAdmissionButton";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { FileText, CalendarDays, Building2, DollarSign, FlaskConical } from "lucide-react";
 
@@ -28,10 +29,10 @@ export default async function CobroAdmisionPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   const canAccess =
     session?.user &&
-    (session.user.roleCode === ADMIN_ROLE_CODE || hasPermission(session, PERMISSION_VER_ADMISION));
+    (session.user.roleCode === ADMIN_ROLE_CODE || hasPermission(session, PERMISSION_COBRO_ADMISION));
   if (!canAccess) redirect("/dashboard");
 
   const params = await searchParams;
@@ -56,7 +57,7 @@ export default async function CobroAdmisionPage({
 
   const pendingOrders = await prisma.labOrder.findMany({
     where: {
-      admissionRequestId: { not: null },
+      orderSource: "ADMISION",
       admissionSettledAt: null,
       status: { not: "ANULADO" },
       createdAt: { gte: dateFrom, lte: dateTo },
@@ -83,7 +84,7 @@ export default async function CobroAdmisionPage({
 
   const settledOrders = await prisma.labOrder.findMany({
     where: {
-      admissionRequestId: { not: null },
+      orderSource: "ADMISION",
       admissionSettledAt: { not: null, gte: dateFrom, lte: dateTo },
       status: { not: "ANULADO" },
     },
@@ -120,7 +121,7 @@ export default async function CobroAdmisionPage({
     return s + cost;
   }, 0);
 
-  const canSettle = hasPermission(session, PERMISSION_REGISTRAR_PAGOS);
+  const canSettle = hasPermission(session, PERMISSION_COBRO_ADMISION) || hasPermission(session, PERMISSION_REGISTRAR_PAGOS);
 
   return (
     <div className={pageLayoutClasses.wrapper}>
@@ -190,10 +191,21 @@ export default async function CobroAdmisionPage({
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Pendiente de cancelar por admisión</CardTitle>
-          <p className="text-sm text-slate-500">
-            Órdenes provenientes de admisión. Al cobrar, marcar como &quot;saldado&quot;. El costo terciarizado se recupera como devolución interna.
-          </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle className="text-base">Pendiente de cobrar a admisión</CardTitle>
+              <p className="text-sm text-slate-500">
+                Órdenes provenientes de admisión. Cobra una a una o todas del período de una vez.
+              </p>
+            </div>
+            {canSettle && pendingOrders.length > 0 && (
+              <SettleAllAdmissionButton
+                orderIds={pendingOrders.map((o) => o.id)}
+                totalAmount={totalPendiente}
+                periodLabel={`del ${formatDate(dateFrom)} al ${formatDate(dateTo)}`}
+              />
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {pendingOrders.length === 0 ? (

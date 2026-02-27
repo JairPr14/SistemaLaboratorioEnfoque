@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { authOptions, hasPermission, PERMISSION_VER_CATALOGO, PERMISSION_GESTIONAR_CATALOGO, PERMISSION_EDITAR_PRECIO_CATALOGO } from "@/lib/auth";
+import { getServerSession, hasPermission, PERMISSION_VER_CATALOGO, PERMISSION_GESTIONAR_CATALOGO, PERMISSION_EDITAR_PRECIO_CATALOGO } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { LabTestForm } from "@/components/forms/LabTestForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,14 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 type Props = { params: Promise<{ id: string }> };
 
 export default async function TestDetailPage({ params }: Props) {
-  const session = await getServerSession(authOptions);
-  const canView =
+  const session = await getServerSession();
+  const canEdit =
     session?.user &&
-    (hasPermission(session, PERMISSION_VER_CATALOGO) ||
-      hasPermission(session, PERMISSION_GESTIONAR_CATALOGO) ||
+    (hasPermission(session, PERMISSION_GESTIONAR_CATALOGO) ||
       hasPermission(session, PERMISSION_EDITAR_PRECIO_CATALOGO));
-  if (!canView) {
-    redirect("/dashboard");
+  if (!canEdit) {
+    redirect("/catalog/tests");
   }
   const { id } = await params;
   const [test, sections, referredLabsRes] = await Promise.all([

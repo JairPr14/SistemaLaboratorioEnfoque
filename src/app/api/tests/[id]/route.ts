@@ -2,10 +2,9 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { labTestSchema } from "@/features/lab/schemas";
-import { getServerSession } from "next-auth";
+
 import {
-  authOptions,
-  hasPermission,
+  getServerSession, hasPermission,
   PERMISSION_EDITAR_PRECIO_CATALOGO,
   PERMISSION_GESTIONAR_CATALOGO,
 } from "@/lib/auth";
@@ -37,7 +36,7 @@ export async function GET(_request: Request, { params }: Params) {
 }
 
 export async function PUT(request: Request, { params }: Params) {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   if (!session?.user) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
@@ -149,7 +148,7 @@ export async function PUT(request: Request, { params }: Params) {
 }
 
 export async function DELETE(_request: Request, { params }: Params) {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   if (!session?.user) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }

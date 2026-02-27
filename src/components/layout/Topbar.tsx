@@ -106,10 +106,10 @@ export function Topbar({
               1 clic
             </span>
             {canManageAdmission && (
-              <Link href="/admisiones/nueva">
+              <Link href="/admission/nueva">
                 <Button size="sm" variant="ghost" className="h-8 gap-1.5 rounded-xl transition-all hover:bg-teal-50 hover:text-teal-700 dark:hover:bg-teal-900/30 dark:hover:text-teal-300">
                   <UserPlus className="h-3.5 w-3.5" />
-                  Nueva admisión
+                  Nueva atención
                 </Button>
               </Link>
             )}

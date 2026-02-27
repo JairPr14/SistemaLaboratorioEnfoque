@@ -188,6 +188,9 @@ export const templateSchema = z.object({
   items: z.array(templateItemSchema).min(1),
 });
 
+export const orderSourceValues = ["ADMISION", "LABORATORIO"] as const;
+export const paymentMethodValues = ["EFECTIVO", "TARJETA", "TRANSFERENCIA", "CREDITO"] as const;
+
 export const orderCreateSchema = z.object({
   patientId: z.string().min(1),
   requestedBy: z.string().optional().nullable(),
@@ -199,6 +202,19 @@ export const orderCreateSchema = z.object({
   ).optional(),
   labTestIds: z.array(z.string().min(1)).optional().default([]),
   profileIds: z.array(z.string().min(1)).optional().default([]),
+  /** Si viene de admisión (cobro directo al público) */
+  orderSource: z.enum(orderSourceValues).optional().default("LABORATORIO"),
+  branchId: z.preprocess(
+    (v) => (v === "" || v === undefined ? null : v),
+    z.string().nullable()
+  ).optional(),
+  /** Pago inicial (admisión cobra al público en el acto) */
+  initialPayment: z
+    .object({
+      amount: z.coerce.number().positive(),
+      method: z.enum(paymentMethodValues),
+    })
+    .optional(),
 }).refine(
   (data) => data.labTestIds.length > 0 || data.profileIds.length > 0,
   { message: "Selecciona al menos un análisis o una promoción", path: ["labTestIds"] }
@@ -315,8 +331,6 @@ export const preAnalyticNoteTemplateSchema = z.object({
   text: z.string().min(3),
   isActive: z.coerce.boolean().default(true),
 });
-
-export const paymentMethodValues = ["EFECTIVO", "TARJETA", "TRANSFERENCIA", "CREDITO"] as const;
 
 export const orderPaymentSchema = z.object({
   amount: z.coerce.number().positive("El monto debe ser mayor a 0"),

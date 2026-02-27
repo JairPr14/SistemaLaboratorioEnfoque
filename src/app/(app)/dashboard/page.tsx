@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { getServerSession } from "next-auth";
-
-import { authOptions, hasPermission } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { getServerSession, hasPermission, isAdmissionOnlyProfile, isReceptionProfile } from "@/lib/auth";
 import {
   PERMISSION_VER_ADMISION,
   PERMISSION_GESTIONAR_ADMISION,
@@ -12,36 +11,18 @@ import {
   PERMISSION_QUICK_ACTIONS_ANALISTA,
   PERMISSION_QUICK_ACTIONS_ENTREGA,
   PERMISSION_REGISTRAR_PAGOS,
-  PERMISSION_CONVERTIR_ADMISION_A_ORDEN,
 } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getPaidTotalsByOrderIds } from "@/lib/payments";
-import { formatCurrency } from "@/lib/format";
-import { parseLocalDate } from "@/lib/date";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Users,
-  FileText,
-  ClipboardList,
-  TestTube,
-  Calendar,
-  Clock,
-} from "lucide-react";
+import { FileText, ClipboardList, Calendar } from "lucide-react";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { DashboardCTAs } from "@/components/dashboard/DashboardCTAs";
-import { DashboardAdmissionBlock } from "@/components/dashboard/DashboardAdmissionBlock";
 import { DashboardPendingTable } from "@/components/dashboard/DashboardPendingTable";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
 
 export const dynamic = "force-dynamic";
-
-function toYYYYMMDD(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
 
 type DashboardOrderStatus =
   | "PENDIENTE"
@@ -67,27 +48,15 @@ export default async function DashboardPage({
     pendingStatus?: string;
     pendingDate?: string;
     pendingSection?: string;
-    admissionFrom?: string;
-    admissionTo?: string;
   }>;
 }) {
   const params = await searchParams;
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
 
-  const admissionFromParam = params.admissionFrom?.trim();
-  const admissionToParam = params.admissionTo?.trim();
-  const now = new Date();
-  const defaultAdmissionTo = new Date(now);
-  defaultAdmissionTo.setHours(23, 59, 59, 999);
-  const defaultAdmissionFrom = new Date(now);
-  defaultAdmissionFrom.setDate(defaultAdmissionFrom.getDate() - 30);
-  defaultAdmissionFrom.setHours(0, 0, 0, 0);
-  const admissionDateFrom = admissionFromParam
-    ? parseLocalDate(admissionFromParam, false)
-    : defaultAdmissionFrom;
-  const admissionDateTo = admissionToParam
-    ? parseLocalDate(admissionToParam, true)
-    : defaultAdmissionTo;
+  if (session?.user) {
+    if (isAdmissionOnlyProfile(session)) redirect("/admission");
+    if (isReceptionProfile(session)) redirect("/orders");
+  }
 
   const hasAdmission = !!session?.user && (hasPermission(session, PERMISSION_VER_ADMISION) || hasPermission(session, PERMISSION_GESTIONAR_ADMISION));
   const canManageAdmission = !!session?.user && hasPermission(session, PERMISSION_GESTIONAR_ADMISION);
@@ -100,6 +69,7 @@ export default async function DashboardPage({
   const hasQuickActions = hasReception || hasAnalyst || hasDelivery;
   const canRegisterPayment = !!session?.user && hasPermission(session, PERMISSION_REGISTRAR_PAGOS);
 
+  const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
@@ -107,48 +77,6 @@ export default async function DashboardPage({
     where: { isActive: true },
     orderBy: { order: "asc" },
   });
-
-  const admissionDataPromise = hasAdmission
-    ? Promise.all([
-        prisma.admissionRequest.count({ where: { status: "PENDIENTE" } }),
-        prisma.admissionRequest.count({
-          where: { status: "CONVERTIDA", convertedAt: { gte: startOfToday } },
-        }),
-        prisma.labOrder.count({
-          where: {
-            admissionRequestId: { not: null },
-            admissionSettledAt: null,
-            status: { not: "ANULADO" },
-          },
-        }),
-        prisma.admissionRequest.findMany({
-          where: { status: "PENDIENTE" },
-          include: { patient: true },
-          orderBy: { createdAt: "desc" },
-          take: 8,
-        }),
-        prisma.admissionRequest.findMany({
-          where: {
-            createdAt: { gte: admissionDateFrom, lte: admissionDateTo },
-          },
-          include: {
-            patient: true,
-            createdBy: { select: { name: true } },
-            convertedOrder: {
-              include: {
-                items: {
-                  include: {
-                    result: { select: { isDraft: true } },
-                  },
-                },
-              },
-            },
-          },
-          orderBy: { createdAt: "desc" },
-          take: 100,
-        }),
-      ])
-    : Promise.resolve([0, 0, 0, [], []] as const);
 
   const labDataPromise =
     hasOrders || hasQuickActions
@@ -179,74 +107,15 @@ export default async function DashboardPage({
         ])
       : Promise.resolve([0, 0, 0, 0, 0, [], []] as const);
 
-  const [sections, admissionData, labData] = await Promise.all([
+  const [sections, labData] = await Promise.all([
     sectionsPromise,
-    admissionDataPromise,
     labDataPromise,
   ]);
 
-  const [patientsCount, ordersCount, pendingCount, testsCount, ordersToday, pendingOrders, recentOrdersForActivity] =
+  const [, , pendingCount, , ordersToday, pendingOrders, recentOrdersForActivity] =
     hasOrders || hasQuickActions
       ? (labData as [number, number, number, number, number, unknown[], unknown[]])
       : [0, 0, 0, 0, 0, [], []];
-
-  const [admissionPendingCount, admissionConvertedToday, pendingSettlementCount, recentAdmissionsRaw, admissionsListRaw] = hasAdmission
-    ? (admissionData as [
-        number,
-        number,
-        number,
-        Array<{
-          id: string;
-          requestCode: string;
-          status: string;
-          totalPrice: number;
-          patient: { firstName: string; lastName: string };
-        }>,
-        Array<{
-          id: string;
-          requestCode: string;
-          status: string;
-          totalPrice: number;
-          createdAt: Date;
-          convertedOrderId: string | null;
-          patient: { firstName: string; lastName: string };
-          createdBy: { name: string | null } | null;
-          convertedOrder?: {
-            items: Array<{ result: { isDraft: boolean } | null }>;
-          } | null;
-        }>,
-      ])
-    : [0, 0, 0, [], []];
-
-  const admissionsList = Array.isArray(admissionsListRaw)
-    ? admissionsListRaw.map((a) => {
-        const order = a.convertedOrder;
-        const orderPrintReady =
-          !!order?.items?.length &&
-          order.items.every((i) => i.result != null && !i.result.isDraft);
-        return {
-          id: a.id,
-          requestCode: a.requestCode,
-          status: a.status,
-          patientName: `${(a.patient?.lastName ?? "").trim()} ${(a.patient?.firstName ?? "").trim()}`.trim() || "Paciente",
-          totalPrice: formatCurrency(Number(a.totalPrice ?? 0)),
-          createdAt: a.createdAt,
-          createdByName: a.createdBy?.name ?? "—",
-          convertedOrderId: a.convertedOrderId ?? undefined,
-          orderPrintReady: !!a.convertedOrderId && orderPrintReady,
-        };
-      })
-    : [];
-
-  const recentAdmissions = Array.isArray(recentAdmissionsRaw)
-    ? recentAdmissionsRaw.map((a) => ({
-        id: a.id,
-        requestCode: a.requestCode,
-        status: a.status,
-        patientName: `${(a.patient?.lastName ?? "").trim()} ${(a.patient?.firstName ?? "").trim()}`.trim() || "Paciente",
-        totalPrice: formatCurrency(Number(a.totalPrice ?? 0)),
-      }))
-    : [];
 
   const patientName = (o: { patient: { firstName: string; lastName: string } }) =>
     `${o.patient.lastName} ${o.patient.firstName}`.trim() || "Paciente";
@@ -312,60 +181,11 @@ export default async function DashboardPage({
     return { ...order, paymentStatus: paymentStatus as "PENDIENTE" | "PARCIAL" | "PAGADO" };
   }) as Parameters<typeof DashboardPendingTable>[0]["orders"];
 
-  const showAnyMetrics =
-    hasAdmission || hasPatients || hasOrders || hasCatalog;
+  const showAnyMetrics = hasOrders;
   const metricCards: React.ReactNode[] = [];
 
-  if (hasAdmission) {
-    metricCards.push(
-      <MetricCard
-        key="admission-pending"
-        title="Órdenes pendientes"
-        value={admissionPendingCount}
-        subtitle="admisión"
-        icon={<ClipboardList className="h-5 w-5" />}
-        accent="amber"
-      />,
-      <MetricCard
-        key="admission-today"
-        title="Convertidas hoy"
-        value={admissionConvertedToday}
-        subtitle="hoy"
-        icon={<Calendar className="h-5 w-5" />}
-        accent="emerald"
-      />,
-      <MetricCard
-        key="admission-settlement"
-        title="Pend. cobro admisión"
-        value={pendingSettlementCount}
-        subtitle="por saldar"
-        icon={<FileText className="h-5 w-5" />}
-        accent="violet"
-      />
-    );
-  }
-  if (hasPatients) {
-    metricCards.push(
-      <MetricCard
-        key="patients"
-        title="Pacientes activos"
-        value={patientsCount}
-        subtitle="registrados"
-        icon={<Users className="h-5 w-5" />}
-        accent="teal"
-      />
-    );
-  }
   if (hasOrders) {
     metricCards.push(
-      <MetricCard
-        key="orders-month"
-        title="Órdenes (mes)"
-        value={ordersCount}
-        subtitle="este mes"
-        icon={<FileText className="h-5 w-5" />}
-        accent="blue"
-      />,
       <MetricCard
         key="pending"
         title="Pendientes"
@@ -381,30 +201,6 @@ export default async function DashboardPage({
         subtitle="creadas hoy"
         icon={<Calendar className="h-5 w-5" />}
         accent="emerald"
-      />
-    );
-  }
-  if (hasCatalog) {
-    metricCards.push(
-      <MetricCard
-        key="tests"
-        title="Análisis en catálogo"
-        value={testsCount}
-        subtitle="activos"
-        icon={<TestTube className="h-5 w-5" />}
-        accent="violet"
-      />
-    );
-  }
-  if (hasOrders || hasQuickActions) {
-    metricCards.push(
-      <MetricCard
-        key="time"
-        title="Tiempo promedio"
-        value="24h"
-        subtitle="entrega estimada"
-        icon={<Clock className="h-5 w-5" />}
-        accent="sky"
       />
     );
   }
@@ -438,28 +234,14 @@ export default async function DashboardPage({
 
       {/* Métricas: solo las que aplican al rol */}
       {showAnyMetrics && metricCards.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {metricCards}
         </div>
       )}
 
-      {/* Contenido principal: bloque admisión y/o tabla de órdenes */}
+      {/* Contenido principal: tabla de órdenes */}
       <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-[1fr_320px]">
         <div className="space-y-6">
-          {hasAdmission && (
-            <DashboardAdmissionBlock
-              pendingCount={admissionPendingCount}
-              convertedToday={admissionConvertedToday}
-              pendingSettlementCount={pendingSettlementCount}
-              recentAdmissions={recentAdmissions}
-              admissionsList={admissionsList}
-              admissionDateFrom={admissionFromParam || toYYYYMMDD(admissionDateFrom)}
-              admissionDateTo={admissionToParam || toYYYYMMDD(admissionDateTo)}
-              canManage={canManageAdmission}
-              canConvert={!!session?.user && hasPermission(session, PERMISSION_CONVERTIR_ADMISION_A_ORDEN)}
-            />
-          )}
-
           {hasOrders && (
             <Card className="overflow-hidden border-slate-200/80 dark:border-slate-700/80">
               <CardHeader className="flex flex-row items-center justify-between border-b border-slate-100 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/30">
@@ -502,21 +284,13 @@ export default async function DashboardPage({
           )}
         </div>
 
-        {/* Actividad reciente: órdenes si tiene órdenes, o mensaje si solo admisión */}
+        {/* Actividad reciente */}
         <Card className="border-slate-200/80 dark:border-slate-700/80">
           <CardHeader className="border-b border-slate-100 dark:border-slate-800">
-            <CardTitle className="text-base">
-              {hasOrders ? "Actividad reciente" : hasAdmission ? "Resumen" : "Actividad"}
-            </CardTitle>
+            <CardTitle className="text-base">Actividad reciente</CardTitle>
           </CardHeader>
           <CardContent>
             {hasOrders && recentActivity.length > 0 ? (
-              <RecentActivity items={recentActivity} />
-            ) : hasAdmission ? (
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Usa la bandeja de admisión para ver y convertir pre-órdenes, y Cobro admisión para saldar con el laboratorio.
-              </p>
-            ) : recentActivity.length > 0 ? (
               <RecentActivity items={recentActivity} />
             ) : (
               <p className="py-6 text-center text-sm text-slate-500 dark:text-slate-400">

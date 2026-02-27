@@ -6,7 +6,7 @@ import { Printer } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
+import { formatCurrency, formatDate, formatDateTime, formatDniDisplay } from "@/lib/format";
 import { PAYMENT_METHOD_LABELS } from "@/lib/constants";
 
 type PrintFormat = "a4" | "80mm";
@@ -100,7 +100,7 @@ export function PaymentTicketClient({
             </p>
             <p className="flex justify-between text-sm">
               <span className="text-slate-500">DNI:</span>
-              <span className="font-semibold">{patientDni ?? "—"}</span>
+              <span className="font-semibold">{formatDniDisplay(patientDni)}</span>
             </p>
             <p className="flex justify-between text-sm">
               <span className="text-slate-500">Fecha:</span>

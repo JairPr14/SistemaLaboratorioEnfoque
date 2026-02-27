@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 
-import { getServerSession } from "next-auth";
-import { authOptions, hasPermission, PERMISSION_IMPRIMIR_TICKET_PAGO, PERMISSION_REGISTRAR_PAGOS, PERMISSION_VER_PAGOS } from "@/lib/auth";
+
+import { getServerSession, hasPermission, PERMISSION_IMPRIMIR_TICKET_PAGO, PERMISSION_REGISTRAR_PAGOS, PERMISSION_VER_PAGOS } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatPatientDisplayName } from "@/lib/format";
 import { getPaidTotalByOrderId } from "@/lib/payments";
@@ -11,7 +11,7 @@ type Props = { params: Promise<{ id: string }> };
 
 export default async function PaymentTicketPage({ params }: Props) {
   const { id } = await params;
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   const canPrintTicket =
     hasPermission(session, PERMISSION_IMPRIMIR_TICKET_PAGO) ||
     hasPermission(session, PERMISSION_VER_PAGOS) ||

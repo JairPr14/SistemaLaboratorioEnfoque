@@ -1,15 +1,22 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
+
 import type { Prisma } from "@prisma/client";
 
-import { authOptions, hasPermission, PERMISSION_ELIMINAR_REGISTROS, PERMISSION_VER_PACIENTES } from "@/lib/auth";
+import {
+  getServerSession, hasPermission,
+  hasAnyPermission,
+  PERMISSION_ELIMINAR_REGISTROS,
+  PERMISSION_VER_PACIENTES,
+  PERMISSION_VER_ADMISION,
+  PERMISSION_GESTIONAR_ADMISION,
+} from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PatientForm } from "@/components/forms/PatientForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DeleteButton } from "@/components/common/DeleteButton";
-import { formatDate, formatPatientDisplayName } from "@/lib/format";
+import { formatDate, formatDniDisplay, formatPatientDisplayName } from "@/lib/format";
 import { ArrowUpDown } from "lucide-react";
 
 type Props = {
@@ -22,8 +29,15 @@ export default async function PatientsPage({ searchParams }: Props) {
   const sortBy = params.sortBy?.trim() || "code";
   const sortDir: Prisma.SortOrder = params.sortDir === "asc" ? "asc" : "desc";
 
-  const session = await getServerSession(authOptions);
-  if (!session?.user || !hasPermission(session, PERMISSION_VER_PACIENTES)) {
+  const session = await getServerSession();
+  const canAccess =
+    session?.user &&
+    hasAnyPermission(session, [
+      PERMISSION_VER_PACIENTES,
+      PERMISSION_VER_ADMISION,
+      PERMISSION_GESTIONAR_ADMISION,
+    ]);
+  if (!canAccess) {
     redirect("/dashboard");
   }
   const canDeletePatients = hasPermission(session, PERMISSION_ELIMINAR_REGISTROS);
@@ -175,7 +189,7 @@ export default async function PatientsPage({ searchParams }: Props) {
                             {formatPatientDisplayName(patient.firstName, patient.lastName)}
                           </Link>
                         </TableCell>
-                        <TableCell className="text-sm font-semibold text-slate-700 dark:text-slate-300">{patient.dni ?? "—"}</TableCell>
+                        <TableCell className="text-sm font-semibold text-slate-700 dark:text-slate-300">{formatDniDisplay(patient.dni)}</TableCell>
                         <TableCell className="text-slate-700 dark:text-slate-300">{formatDate(patient.birthDate)}</TableCell>
                         <TableCell className="text-right">
                           <Link

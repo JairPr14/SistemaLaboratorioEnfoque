@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { hash } from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission, PERMISSION_GESTIONAR_USUARIOS } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireAdmin();
+  const auth = await requirePermission(PERMISSION_GESTIONAR_USUARIOS);
   if (auth.response) return auth.response;
 
   try {
@@ -28,7 +28,7 @@ export async function PATCH(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireAdmin();
+  const auth = await requirePermission(PERMISSION_GESTIONAR_USUARIOS);
   if (auth.response) return auth.response;
 
   try {

@@ -23,20 +23,19 @@ model Role {
 }
 
 model User {
-  id                       String               @id @default(cuid())
-  email                    String               @unique
-  passwordHash             String
-  name                     String?
-  isActive                 Boolean              @default(true)
-  createdAt                DateTime             @default(now())
-  updatedAt                DateTime             @updatedAt
-  roleId                   String?
-  admissionRequestsCreated AdmissionRequest[]
-  notificationReads        NotificationRead[]
-  payments                 Payment[]
-  referredLabPayments      ReferredLabPayment[]
-  role                     Role?                @relation(fields: [roleId], references: [id])
-  favoriteTests            UserFavoriteTest[]
+  id                  String               @id @default(cuid())
+  email               String               @unique
+  passwordHash        String
+  name                String?
+  isActive            Boolean              @default(true)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  roleId              String?
+  notificationReads   NotificationRead[]
+  payments            Payment[]
+  referredLabPayments ReferredLabPayment[]
+  role                Role?                @relation(fields: [roleId], references: [id])
+  favoriteTests       UserFavoriteTest[]
 
   @@index([email])
   @@index([roleId])
@@ -91,21 +90,20 @@ model LabSection {
 }
 
 model Patient {
-  id                String             @id @default(cuid())
-  code              String             @unique
-  dni               String?            @unique
-  firstName         String
-  lastName          String
-  birthDate         DateTime
-  sex               Sex
-  phone             String?
-  address           String?
-  email             String?
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  deletedAt         DateTime?
-  admissionRequests AdmissionRequest[]
-  orders            LabOrder[]
+  id        String     @id @default(cuid())
+  code      String     @unique
+  dni       String?    @unique
+  firstName String
+  lastName  String
+  birthDate DateTime
+  sex       Sex
+  phone     String?
+  address   String?
+  email     String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  deletedAt DateTime?
+  orders    LabOrder[]
 
   @@index([dni])
   @@index([code])
@@ -158,14 +156,13 @@ model LabTest {
   referredLabId        String?
   priceToAdmission     Float?
   externalLabCost      Float?
-  admissionItems       AdmissionRequestItem[]
   items                LabOrderItem[]
   template             LabTemplate?
   referredLab          ReferredLab?           @relation(fields: [referredLabId], references: [id])
-  section              LabSection             @relation(fields: [sectionId], references: [id])
-  referredLabOptions   LabTestReferredLab[]
-  profileItems         TestProfileItem[]
-  favoriteUsers        UserFavoriteTest[]
+  section            LabSection             @relation(fields: [sectionId], references: [id])
+  referredLabOptions LabTestReferredLab[]
+  profileItems       TestProfileItem[]
+  favoriteUsers      UserFavoriteTest[]
 
   @@index([sectionId])
   @@index([isActive])
@@ -220,35 +217,35 @@ model LabTemplateItemRefRange {
 }
 
 model LabOrder {
-  id                            String               @id @default(cuid())
-  orderCode                     String               @unique
-  patientId                     String
-  requestedBy                   String?
-  notes                         String?
-  status                        OrderStatus          @default(PENDIENTE)
-  totalPrice                    Float
-  createdAt                     DateTime             @default(now())
-  updatedAt                     DateTime             @updatedAt
-  deliveredAt                   DateTime?
-  patientType                   String?
-  branchId                      String?
-  preAnalyticNote               String?
-  admissionRequestId            String?              @unique
-  /// * Fecha en que admisión canceló/saldó esta orden (pagó al laboratorio)
-  admissionSettledAt            DateTime?
-  convertedFromAdmissionRequest AdmissionRequest?    @relation("AdmissionConvertedOrder")
-  admissionRequest              AdmissionRequest?    @relation("LabOrderFromAdmissionRequest", fields: [admissionRequestId], references: [id])
-  branch                        Branch?              @relation(fields: [branchId], references: [id])
-  patient                       Patient              @relation(fields: [patientId], references: [id])
-  items                         LabOrderItem[]
-  payments                      Payment[]
-  referredLabPayments           ReferredLabPayment[]
+  id                 String               @id @default(cuid())
+  orderCode          String               @unique
+  patientId          String
+  requestedBy        String?
+  notes              String?
+  status             OrderStatus          @default(PENDIENTE)
+  totalPrice         Float
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  deliveredAt        DateTime?
+  patientType        String?
+  branchId           String?
+  preAnalyticNote    String?
+  /// * Origen: ADMISION (cobro directo al público) | LABORATORIO (recepción directa)
+  orderSource        OrderSource          @default(LABORATORIO)
+  createdById        String?
+  /// * Fecha en que laboratorio cobró a admisión (precio convenio)
+  admissionSettledAt DateTime?
+  branch             Branch?              @relation(fields: [branchId], references: [id])
+  patient            Patient              @relation(fields: [patientId], references: [id])
+  items              LabOrderItem[]
+  payments           Payment[]
+  referredLabPayments ReferredLabPayment[]
 
   @@index([status])
   @@index([createdAt])
   @@index([patientType])
   @@index([branchId])
-  @@index([admissionRequestId])
+  @@index([orderSource])
 }
 
 model Payment {
@@ -342,65 +339,19 @@ model StoredImage {
 }
 
 model Branch {
-  id                String             @id @default(cuid())
-  code              String             @unique
-  name              String
-  address           String?
-  phone             String?
-  order             Int                @default(0)
-  isActive          Boolean            @default(true)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  admissionRequests AdmissionRequest[]
-  orders            LabOrder[]
+  id        String     @id @default(cuid())
+  code      String     @unique
+  name      String
+  address   String?
+  phone     String?
+  order     Int        @default(0)
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  orders    LabOrder[]
 
   @@index([code])
   @@index([order])
-}
-
-model AdmissionRequest {
-  id               String                 @id @default(cuid())
-  requestCode      String                 @unique
-  patientId        String
-  requestedBy      String?
-  notes            String?
-  patientType      OrderPatientType?
-  branchId         String?
-  createdById      String?
-  status           AdmissionStatus        @default(PENDIENTE)
-  totalPrice       Float
-  convertedOrderId String?                @unique
-  convertedAt      DateTime?
-  createdAt        DateTime               @default(now())
-  updatedAt        DateTime               @updatedAt
-  branch           Branch?                @relation(fields: [branchId], references: [id])
-  convertedOrder   LabOrder?              @relation("AdmissionConvertedOrder", fields: [convertedOrderId], references: [id])
-  createdBy        User?                  @relation(fields: [createdById], references: [id])
-  patient          Patient                @relation(fields: [patientId], references: [id])
-  items            AdmissionRequestItem[]
-  labOrder         LabOrder?              @relation("LabOrderFromAdmissionRequest")
-
-  @@index([status])
-  @@index([createdAt])
-  @@index([patientId])
-  @@index([branchId])
-}
-
-model AdmissionRequestItem {
-  id                 String           @id @default(cuid())
-  admissionRequestId String
-  labTestId          String
-  order              Int              @default(0)
-  priceBase          Float
-  priceApplied       Float
-  adjustmentReason   String?
-  createdAt          DateTime         @default(now())
-  updatedAt          DateTime         @updatedAt
-  admissionRequest   AdmissionRequest @relation(fields: [admissionRequestId], references: [id], onDelete: Cascade)
-  labTest            LabTest          @relation(fields: [labTestId], references: [id])
-
-  @@index([admissionRequestId])
-  @@index([labTestId])
 }
 
 model PreAnalyticNoteTemplate {
@@ -462,6 +413,11 @@ model NotificationRead {
   @@index([userId])
 }
 
+enum OrderSource {
+  ADMISION
+  LABORATORIO
+}
+
 enum Sex {
   M
   F
@@ -503,8 +459,3 @@ enum OrderItemStatus {
   COMPLETADO
 }
 
-enum AdmissionStatus {
-  PENDIENTE
-  CONVERTIDA
-  CANCELADA
-}

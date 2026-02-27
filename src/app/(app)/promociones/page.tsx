@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
+import { hasPermission, PERMISSION_GESTIONAR_CATALOGO } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { pageLayoutClasses } from "@/components/layout/PageHeader";
@@ -33,6 +35,8 @@ type Profile = {
 };
 
 export default function PromocionesPage() {
+  const { data: session } = useSession();
+  const canManageCatalog = hasPermission(session ?? null, PERMISSION_GESTIONAR_CATALOGO);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [tests, setTests] = useState<TestOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -168,10 +172,12 @@ export default function PromocionesPage() {
             Agrupa análisis con un precio promocional (ej. Perfil renal, Paquete recién nacido).
           </p>
         </div>
+        {canManageCatalog && (
         <Button onClick={openCreate}>
           <Plus className="h-4 w-4 mr-2" />
           Nueva promoción
         </Button>
+        )}
       </div>
 
       <Card>
@@ -193,7 +199,7 @@ export default function PromocionesPage() {
                   <TableHead>Nombre</TableHead>
                   <TableHead>Análisis</TableHead>
                   <TableHead className="text-right">Precio paquete</TableHead>
-                  <TableHead className="w-[100px]" />
+                  {canManageCatalog && <TableHead className="w-[100px]" />}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -212,6 +218,7 @@ export default function PromocionesPage() {
                         <span className="text-slate-400 dark:text-slate-500">Suma de análisis</span>
                       )}
                     </TableCell>
+                    {canManageCatalog && (
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <Button
@@ -233,6 +240,7 @@ export default function PromocionesPage() {
                         </Button>
                       </div>
                     </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>

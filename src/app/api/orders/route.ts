@@ -3,8 +3,7 @@ import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { orderCreateSchema } from "@/features/lab/schemas";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getServerSession, hasAnyPermission, PERMISSION_GESTIONAR_ADMISION, PERMISSION_VER_ORDENES } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import {
   buildOrderCode,
@@ -13,9 +12,16 @@ import {
 import { parseDatePeru } from "@/lib/date";
 
 export async function GET(request: Request) {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   if (!session?.user) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+  const canAccess = hasAnyPermission(session, [
+    PERMISSION_VER_ORDENES,
+    PERMISSION_GESTIONAR_ADMISION,
+  ]);
+  if (!canAccess) {
+    return NextResponse.json({ error: "Sin permiso para ver órdenes" }, { status: 403 });
   }
 
   try {
@@ -56,13 +62,21 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   if (!session?.user) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
+  const payload = await request.json().catch(() => ({}));
+  const isAdmissionOrder = payload?.orderSource === "ADMISION";
+  const canCreate = isAdmissionOrder
+    ? hasAnyPermission(session, [PERMISSION_GESTIONAR_ADMISION])
+    : hasAnyPermission(session, [PERMISSION_VER_ORDENES, PERMISSION_GESTIONAR_ADMISION]);
+  if (!canCreate) {
+    return NextResponse.json({ error: "Sin permiso para crear órdenes" }, { status: 403 });
+  }
+
   try {
-    const payload = await request.json();
     const parsed = orderCreateSchema.parse(payload);
 
     const fullInclude = {
@@ -80,6 +94,9 @@ export async function POST(request: Request) {
     type OrderItemPayload = {
       test: TestWithTemplate;
       priceSnapshot: number;
+      priceConventionSnapshot?: number | null;
+      referredLabId?: string | null;
+      externalLabCostSnapshot?: number | null;
       promotionId?: string | null;
       promotionName?: string | null;
     };
@@ -110,9 +127,13 @@ export async function POST(request: Request) {
             : null;
         for (const test of profileTests) {
           const price = priceEach ?? Number(test.price);
+          const convention = test.priceToAdmission != null ? Number(test.priceToAdmission) : price;
           testsFromProfiles.push({
             test,
             priceSnapshot: price,
+            priceConventionSnapshot: parsed.orderSource === "ADMISION" ? convention : undefined,
+            referredLabId: parsed.orderSource === "ADMISION" && test.isReferred ? (test.referredLabId ?? undefined) : undefined,
+            externalLabCostSnapshot: parsed.orderSource === "ADMISION" && test.externalLabCost != null ? Number(test.externalLabCost) : undefined,
             promotionId: profile.id,
             promotionName: profile.name,
           });
@@ -124,13 +145,20 @@ export async function POST(request: Request) {
     const individualTestIds = (parsed.labTestIds ?? []).filter((id) => !fromProfileTestIds.has(id));
     const individualTests = await prisma.labTest.findMany({
       where: { id: { in: individualTestIds }, deletedAt: null, isActive: true },
-      include: fullInclude,
+      include: { ...fullInclude, referredLab: true },
     });
 
-    const onlyIndividual: OrderItemPayload[] = individualTests.map((test) => ({
-      test,
-      priceSnapshot: Number(test.price),
-    }));
+    const onlyIndividual: OrderItemPayload[] = individualTests.map((test) => {
+      const price = Number(test.price);
+      const convention = test.priceToAdmission != null ? Number(test.priceToAdmission) : price;
+      return {
+        test,
+        priceSnapshot: price,
+        priceConventionSnapshot: parsed.orderSource === "ADMISION" ? convention : undefined,
+        referredLabId: parsed.orderSource === "ADMISION" && test.isReferred ? (test.referredLabId ?? undefined) : undefined,
+        externalLabCostSnapshot: parsed.orderSource === "ADMISION" && test.externalLabCost != null ? Number(test.externalLabCost) : undefined,
+      };
+    });
     const orderItemsPayload: OrderItemPayload[] = [...testsFromProfiles, ...onlyIndividual];
 
     if (orderItemsPayload.length === 0) {
@@ -161,13 +189,19 @@ export async function POST(request: Request) {
             requestedBy: parsed.requestedBy ?? null,
             notes: parsed.notes ?? null,
             patientType: parsed.patientType ?? null,
+            branchId: parsed.branchId ?? undefined,
+            orderSource: parsed.orderSource === "ADMISION" ? "ADMISION" : "LABORATORIO",
+            createdById: parsed.orderSource === "ADMISION" ? session.user.id : undefined,
             totalPrice,
             createdAt: dayStart,
             items: {
               createMany: {
-                data: orderItemsPayload.map(({ test, priceSnapshot, promotionId, promotionName }) => ({
+                data: orderItemsPayload.map(({ test, priceSnapshot, priceConventionSnapshot, referredLabId, externalLabCostSnapshot, promotionId, promotionName }) => ({
                   labTestId: test.id,
                   priceSnapshot,
+                  priceConventionSnapshot: priceConventionSnapshot ?? undefined,
+                  referredLabId: referredLabId ?? undefined,
+                  externalLabCostSnapshot: externalLabCostSnapshot ?? undefined,
                   promotionId: promotionId ?? undefined,
                   promotionName: promotionName ?? undefined,
                   templateSnapshot: test.template
@@ -202,6 +236,16 @@ export async function POST(request: Request) {
           },
           include: { items: true },
         });
+        if (parsed.orderSource === "ADMISION" && parsed.initialPayment) {
+          await prisma.payment.create({
+            data: {
+              orderId: order!.id,
+              amount: parsed.initialPayment.amount,
+              method: parsed.initialPayment.method,
+              recordedById: session.user.id,
+            },
+          });
+        }
         break;
       } catch (err) {
         const isUnique =

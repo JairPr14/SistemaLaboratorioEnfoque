@@ -1,13 +1,13 @@
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { authOptions, hasPermission, PERMISSION_GESTIONAR_PLANTILLAS, PERMISSION_CAPTURAR_RESULTADOS } from "@/lib/auth";
+
+import { getServerSession, hasPermission, PERMISSION_GESTIONAR_PLANTILLAS, PERMISSION_CAPTURAR_RESULTADOS } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { pageLayoutClasses } from "@/components/layout/PageHeader";
 import { TemplateForm } from "@/components/forms/TemplateForm";
 import { TemplatesList } from "@/components/templates/TemplatesList";
 
 export default async function TemplatesPage() {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   const canView =
     session?.user &&
     (hasPermission(session, PERMISSION_GESTIONAR_PLANTILLAS) || hasPermission(session, PERMISSION_CAPTURAR_RESULTADOS));

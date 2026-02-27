@@ -52,6 +52,32 @@ export function formatSexDisplay(sex?: string | null): string {
   }
 }
 
+/**
+ * DNI para mostrar al usuario.
+ * Si no hay DNI o es un placeholder generado (SIN-DNI-xxx), devuelve "NO PRESENTA".
+ */
+export function formatDniDisplay(dni?: string | null): string {
+  if (!dni || !String(dni).trim()) return "NO PRESENTA";
+  if (String(dni).toUpperCase().startsWith("SIN-DNI")) return "NO PRESENTA";
+  return dni;
+}
+
+/** Convierte paciente de BD a opción para select (OrderForm, admisión). */
+export function toPatientSelectOption(p: {
+  id: string;
+  dni?: string | null;
+  firstName: string;
+  lastName: string;
+}) {
+  return {
+    id: p.id,
+    label: `${p.lastName} ${p.firstName} (${formatDniDisplay(p.dni)})`,
+    dni: p.dni ?? null,
+    firstName: p.firstName,
+    lastName: p.lastName,
+  };
+}
+
 /** Nombre del paciente en formato estándar: Apellidos Nombres */
 export function formatPatientDisplayName(firstName?: string | null, lastName?: string | null): string {
   const a = String(lastName ?? "").trim();

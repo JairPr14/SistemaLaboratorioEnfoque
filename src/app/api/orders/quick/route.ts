@@ -9,12 +9,12 @@ import {
 } from "@/features/lab/order-utils";
 import { generateNextPatientCode } from "@/lib/patient-code";
 import { parseDatePeru } from "@/lib/date";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+
+import { getServerSession } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   if (!session?.user) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }

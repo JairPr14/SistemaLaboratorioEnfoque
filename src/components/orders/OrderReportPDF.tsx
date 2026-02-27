@@ -7,6 +7,8 @@ import {
   StyleSheet,
 } from "@react-pdf/renderer";
 
+import { formatDniDisplay } from "@/lib/format";
+
 export const styles = StyleSheet.create({
   page: {
     paddingTop: 100,
@@ -392,7 +394,7 @@ export function OrderReportPDF(props: OrderReportPDFProps) {
               </View>
               <View style={styles.patientRow}>
                 <Text style={styles.patientLabel}>DNI:</Text>
-                <Text style={styles.patientValue}>{order.patient.dni ?? "—"}</Text>
+                <Text style={styles.patientValue}>{formatDniDisplay(order.patient.dni)}</Text>
               </View>
               <View style={styles.patientRow}>
                 <Text style={styles.patientLabel}>FECHA:</Text>

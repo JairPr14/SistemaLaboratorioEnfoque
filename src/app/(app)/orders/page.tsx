@@ -1,10 +1,8 @@
 import Link from "next/link";
-import { getServerSession } from "next-auth";
 import type { Prisma } from "@prisma/client";
-
 import { redirect } from "next/navigation";
 import {
-  authOptions,
+  getServerSession,
   hasAnyPermission,
   hasPermission,
   PERMISSION_ELIMINAR_REGISTROS,
@@ -26,10 +24,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DeleteButton } from "@/components/common/DeleteButton";
 import { EmptyTableRow } from "@/components/common/EmptyTableRow";
 import { StatusBadge } from "@/components/common/StatusBadge";
+import { OrderStatusSelect } from "@/components/orders/OrderStatusSelect";
 import { FilterDateRange } from "@/components/common/FilterDateRange";
 import { FilterSubmitReset } from "@/components/common/FilterSubmitReset";
 import { RegistrarpagoButton } from "@/components/pagos/RegistrarpagoButton";
-import { Search, Plus, Printer, Activity, CreditCard, FileText, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Search, Plus, Printer, Activity, CreditCard, FileText, ArrowUpDown, ArrowUp, ArrowDown, UserPlus } from "lucide-react";
 
 export default async function OrdersPage({
   searchParams,
@@ -54,7 +53,7 @@ export default async function OrdersPage({
   const sortBy = params.sortBy?.trim() || "createdAt";
   const sortDir: Prisma.SortOrder = params.sortDir === "asc" ? "asc" : "desc";
   const focusSearch = params.focusSearch === "1";
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   const canAccessOrders = hasAnyPermission(session, [
     PERMISSION_VER_ORDENES,
     PERMISSION_QUICK_ACTIONS_RECEPCION,
@@ -68,6 +67,7 @@ export default async function OrdersPage({
   }
   const canDeleteOrders = hasPermission(session, PERMISSION_ELIMINAR_REGISTROS);
   const canRegisterPayment = hasPermission(session, PERMISSION_REGISTRAR_PAGOS);
+  const canManageAdmission = hasPermission(session, PERMISSION_GESTIONAR_ADMISION);
 
   const dateFrom = from ? parseLocalDate(from, false) : null;
   const dateTo = to ? parseLocalDate(to, true) : null;
@@ -142,8 +142,17 @@ export default async function OrdersPage({
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Órdenes de laboratorio</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">Gestión de órdenes y análisis</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {canRegisterPayment && <RegistrarpagoButton />}
+          {canManageAdmission && (
+            <Link
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-teal-600 bg-teal-50 px-4 text-sm font-medium text-teal-700 transition-colors hover:bg-teal-100 dark:border-teal-500 dark:bg-teal-950/50 dark:text-teal-400 dark:hover:bg-teal-900/50"
+              href="/admission/nueva"
+            >
+              <UserPlus className="h-4 w-4" />
+              Nueva admisión
+            </Link>
+          )}
           <Link
             className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-slate-900 px-4 text-sm font-medium text-white transition-colors hover:bg-slate-800 dark:bg-teal-600 dark:hover:bg-teal-700"
             href="/orders/new"
@@ -316,7 +325,7 @@ export default async function OrdersPage({
                           {formatDate(order.createdAt)}
                         </TableCell>
                         <TableCell>
-                          <StatusBadge type="order" value={order.status} />
+                          <OrderStatusSelect orderId={order.id} currentStatus={order.status} />
                         </TableCell>
                         <TableCell>
                           <StatusBadge type="payment" value={order.paymentStatus} />

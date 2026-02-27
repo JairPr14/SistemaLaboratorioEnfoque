@@ -2,14 +2,14 @@ import { NextResponse } from "next/server";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission, PERMISSION_GESTIONAR_PREANALITICOS } from "@/lib/auth";
 import { preAnalyticNoteTemplateSchema } from "@/features/lab/schemas";
 import { logger } from "@/lib/logger";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: Request, { params }: Params) {
-  const auth = await requireAdmin();
+  const auth = await requirePermission(PERMISSION_GESTIONAR_PREANALITICOS);
   if (auth.response) return auth.response;
 
   try {
@@ -46,7 +46,7 @@ export async function PATCH(request: Request, { params }: Params) {
 }
 
 export async function DELETE(_request: Request, { params }: Params) {
-  const auth = await requireAdmin();
+  const auth = await requirePermission(PERMISSION_GESTIONAR_PREANALITICOS);
   if (auth.response) return auth.response;
 
   try {

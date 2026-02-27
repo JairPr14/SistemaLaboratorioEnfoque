@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
+
 
 import { prisma } from "@/lib/prisma";
-import { authOptions, hasPermission, PERMISSION_CAPTURAR_RESULTADOS, PERMISSION_VER_ORDENES } from "@/lib/auth";
+import { getServerSession, hasPermission, PERMISSION_CAPTURAR_RESULTADOS, PERMISSION_VER_ORDENES } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 
 type Params = { params: Promise<{ id: string; itemId: string }> };
 
 export async function PUT(request: Request, { params }: Params) {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   if (!session?.user) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }

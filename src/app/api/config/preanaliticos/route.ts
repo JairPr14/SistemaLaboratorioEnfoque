@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 
 import { prisma } from "@/lib/prisma";
-import { getServerSession, requireAdmin } from "@/lib/auth";
+import { getServerSession, requirePermission, PERMISSION_GESTIONAR_PREANALITICOS } from "@/lib/auth";
 import { preAnalyticNoteTemplateSchema } from "@/features/lab/schemas";
 import { logger } from "@/lib/logger";
 
@@ -24,7 +24,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAdmin();
+  const auth = await requirePermission(PERMISSION_GESTIONAR_PREANALITICOS);
   if (auth.response) return auth.response;
 
   try {

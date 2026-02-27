@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { hash } from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { requireAnyPermission, requirePermission, PERMISSION_GESTIONAR_USUARIOS, PERMISSION_VER_CONFIGURACION } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 
 export async function GET() {
-  const auth = await requireAdmin();
+  const auth = await requireAnyPermission([PERMISSION_VER_CONFIGURACION, PERMISSION_GESTIONAR_USUARIOS]);
   if (auth.response) return auth.response;
 
   try {
@@ -31,7 +31,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAdmin();
+  const auth = await requirePermission(PERMISSION_GESTIONAR_USUARIOS);
   if (auth.response) return auth.response;
   try {
     const body = await request.json();

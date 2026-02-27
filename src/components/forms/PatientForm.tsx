@@ -26,9 +26,11 @@ type Props = {
   canEdit?: boolean;
   /** Fecha y hora de creación del registro (solo para pacientes existentes). */
   createdAt?: Date | string;
+  /** Callback opcional al guardar correctamente (ej. cerrar modal) */
+  onSuccess?: () => void;
 };
 
-export function PatientForm({ patientId, defaultValues, canEdit = true, createdAt }: Props) {
+export function PatientForm({ patientId, defaultValues, canEdit = true, createdAt, onSuccess }: Props) {
   const router = useRouter();
   const [nextCode, setNextCode] = useState<string | null>(null);
   const [loadingCode, setLoadingCode] = useState(false);
@@ -119,6 +121,7 @@ export function PatientForm({ patientId, defaultValues, canEdit = true, createdA
           ? `Paciente guardado correctamente. Código: ${code}`
           : "Paciente guardado correctamente.",
       );
+      onSuccess?.();
       router.refresh();
     } catch (error) {
       console.error("Error submitting patient form:", error);

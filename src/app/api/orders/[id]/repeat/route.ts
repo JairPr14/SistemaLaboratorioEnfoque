@@ -5,14 +5,14 @@ import {
   buildOrderCode,
   getNextOrderSequence,
 } from "@/features/lab/order-utils";
-import { getServerSession } from "next-auth";
+
 import { logger } from "@/lib/logger";
-import { authOptions } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function POST(request: Request, { params }: Params) {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   if (!session?.user) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }

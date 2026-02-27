@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions, hasPermission, PERMISSION_GESTIONAR_SEDES, ADMIN_ROLE_CODE } from "@/lib/auth";
+
+import { getServerSession, hasPermission, PERMISSION_GESTIONAR_SEDES, ADMIN_ROLE_CODE } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -21,7 +21,7 @@ export async function GET(_request: Request, context: RouteContext) {
 
 export async function PUT(request: Request, context: RouteContext) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
     const canManage = hasPermission(session, PERMISSION_GESTIONAR_SEDES) || session?.user?.roleCode === ADMIN_ROLE_CODE;
     if (!session?.user || !canManage) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
@@ -69,7 +69,7 @@ export async function PUT(request: Request, context: RouteContext) {
 
 export async function DELETE(_request: Request, context: RouteContext) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
     const canManage = hasPermission(session, PERMISSION_GESTIONAR_SEDES) || session?.user?.roleCode === ADMIN_ROLE_CODE;
     if (!session?.user || !canManage) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });

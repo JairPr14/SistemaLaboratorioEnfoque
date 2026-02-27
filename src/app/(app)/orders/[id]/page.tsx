@@ -1,9 +1,8 @@
 import { notFound, redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
+
 
 import {
-  authOptions,
-  hasAnyPermission,
+  getServerSession, hasAnyPermission,
   hasPermission,
   PERMISSION_CAPTURAR_RESULTADOS,
   PERMISSION_ELIMINAR_REGISTROS,
@@ -18,7 +17,7 @@ import {
   PERMISSION_VER_PAGOS,
 } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatCurrency, formatDate, formatPatientDisplayName } from "@/lib/format";
+import { formatCurrency, formatDate, formatDniDisplay, formatPatientDisplayName } from "@/lib/format";
 import { getPaidTotalByOrderId } from "@/lib/payments";
 import { calculateConventionTotal } from "@/lib/order-pricing";
 import { Badge } from "@/components/ui/badge";
@@ -38,7 +37,7 @@ type Props = {
 export default async function OrderDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
   const { captureItem } = await searchParams;
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   const canAccessOrder = hasAnyPermission(session, [
     PERMISSION_VER_ORDENES,
     PERMISSION_QUICK_ACTIONS_RECEPCION,
@@ -98,7 +97,7 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
   const paymentStatus =
     paidTotal <= 0 ? "PENDIENTE" : paidTotal + 0.0001 < Number(order.totalPrice) ? "PARCIAL" : "PAGADO";
 
-  const isFromAdmission = !!order.admissionRequestId;
+  const isFromAdmission = order.orderSource === "ADMISION";
   const conventionTotal = isFromAdmission
     ? calculateConventionTotal(order.items)
     : null;
@@ -158,7 +157,7 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
             <div>
               <p className="text-sm text-slate-500 dark:text-slate-400">DNI</p>
               <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                {order.patient.dni ?? "—"}
+                {formatDniDisplay(order.patient.dni)}
               </p>
             </div>
             <div>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { UserPlus, ClipboardList, DollarSign, Plus } from "lucide-react";
+import { UserPlus, ClipboardList, Plus, FileSearch, Building2 } from "lucide-react";
 import { QuickOrderModal } from "@/components/orders/QuickOrderModal";
 import { useState } from "react";
 
@@ -33,23 +33,29 @@ export function DashboardCTAs({
           {showAdmission && (
             <>
               {canManageAdmission && (
-                <Link href="/admisiones/nueva">
+                <Link href="/admission/nueva">
                   <Button size="sm" className="gap-2 rounded-xl shadow-sm transition-all hover:shadow">
                     <Plus className="h-4 w-4" />
-                    Nueva orden
+                    Nueva atención
                   </Button>
                 </Link>
               )}
-              <Link href="/admisiones">
+              <Link href="/admission/pacientes-dia">
                 <Button variant="outline" size="sm" className="gap-2 rounded-xl border-slate-200 dark:border-slate-600">
                   <ClipboardList className="h-4 w-4" />
-                  Bandeja de admisión
+                  Pacientes del día
                 </Button>
               </Link>
-              <Link href="/cobro-admision">
+              <Link href="/admission/resultados">
                 <Button variant="outline" size="sm" className="gap-2 rounded-xl border-slate-200 dark:border-slate-600">
-                  <DollarSign className="h-4 w-4" />
-                  Cobro admisión
+                  <FileSearch className="h-4 w-4" />
+                  Resultados listos
+                </Button>
+              </Link>
+              <Link href="/admission/pagos-externos">
+                <Button variant="outline" size="sm" className="gap-2 rounded-xl border-slate-200 dark:border-slate-600">
+                  <Building2 className="h-4 w-4" />
+                  Pagos externos
                 </Button>
               </Link>
             </>

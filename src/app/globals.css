@@ -64,6 +64,15 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Oculta scrollbar manteniendo scroll (sidebar, etc.) */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 
 /* Estilos para selects en modo oscuro */
 .dark select {
@@ -164,7 +173,8 @@ body {
   }
 
   /* Sello virtual: incluir al imprimir */
-  .print-stamp img {
+  .print-stamp img,
+  .print-stamp-img {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
@@ -459,6 +469,27 @@ body {
   padding-top: 12px;
   border-top: 1px solid #e2e8f0;
   font-size: 10px;
+}
+
+/* Sello y firma: solo en última hoja, inferior derecha, sin ocultar texto */
+.print-stamp-block {
+  margin-top: 16px;
+  padding-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+  min-height: 0;
+  flex-shrink: 0;
+}
+
+.print-stamp-img {
+  max-width: 90px;
+  max-height: 70px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
 }
 
 @media print {

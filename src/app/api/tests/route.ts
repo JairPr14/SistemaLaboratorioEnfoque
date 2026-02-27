@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { labTestSchema } from "@/features/lab/schemas";
-import { getServerSession } from "next-auth";
-import { authOptions, hasPermission, PERMISSION_GESTIONAR_CATALOGO } from "@/lib/auth";
+
+import { getServerSession, hasPermission, PERMISSION_GESTIONAR_CATALOGO } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 
 type PrismaErrorWithCode = { code?: string };
@@ -43,7 +43,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   if (!session?.user) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { authOptions, hasPermission, PERMISSION_VER_ORDENES, PERMISSION_GESTIONAR_ADMISION } from "@/lib/auth";
+import { getServerSession, hasPermission, PERMISSION_VER_ORDENES, PERMISSION_GESTIONAR_ADMISION } from "@/lib/auth";
+import { toPatientSelectOption } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { OrderForm } from "@/components/forms/OrderForm";
 import { PageHeader, pageLayoutClasses } from "@/components/layout/PageHeader";
@@ -8,7 +8,7 @@ import { PageHeader, pageLayoutClasses } from "@/components/layout/PageHeader";
 type Props = { searchParams: Promise<{ patientId?: string }> };
 
 export default async function NewOrderPage({ searchParams }: Props) {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   const canCreate =
     session?.user &&
     (hasPermission(session, PERMISSION_VER_ORDENES) || hasPermission(session, PERMISSION_GESTIONAR_ADMISION));
@@ -65,20 +65,8 @@ export default async function NewOrderPage({ searchParams }: Props) {
       <div className="rounded-2xl border border-slate-200/80 bg-white/80 shadow-sm backdrop-blur-sm dark:border-slate-700/80 dark:bg-slate-900/60">
         <OrderForm
             defaultPatientId={defaultPatientId ?? undefined}
-            patients={patients.map((p) => ({
-              id: p.id,
-              label: `${p.lastName} ${p.firstName} (${p.dni ?? "—"})`,
-              dni: p.dni,
-              firstName: p.firstName,
-              lastName: p.lastName,
-            }))}
-            recentPatients={recentPatients.map((p) => ({
-              id: p.id,
-              label: `${p.lastName} ${p.firstName} (${p.dni ?? "—"})`,
-              dni: p.dni,
-              firstName: p.firstName,
-              lastName: p.lastName,
-            }))}
+            patients={patients.map(toPatientSelectOption)}
+            recentPatients={recentPatients.map(toPatientSelectOption)}
             tests={tests.map((t) => ({
               id: t.id,
               label: `${t.code} - ${t.name}`,

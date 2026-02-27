@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { testProfileSchema } from "@/features/lab/schemas";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission, PERMISSION_GESTIONAR_CATALOGO } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import { mapTestProfile, testProfileIncludeItems } from "@/lib/test-profiles";
 
@@ -31,7 +31,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAdmin();
+  const auth = await requirePermission(PERMISSION_GESTIONAR_CATALOGO);
   if (auth.response) return auth.response;
 
   try {

@@ -4,14 +4,14 @@ import { prisma } from "@/lib/prisma";
 import { patientSchema } from "@/features/lab/schemas";
 import { generateNextPatientCode } from "@/lib/patient-code";
 import { parseDateTimePeru, parseDatePeru } from "@/lib/date";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+
+import { getServerSession } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 
 type PrismaErrorWithCode = { code?: string };
 
 export async function GET(request: Request) {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   if (!session?.user) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
@@ -48,7 +48,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   if (!session?.user) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }

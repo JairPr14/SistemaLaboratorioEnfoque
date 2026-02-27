@@ -3,16 +3,20 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { parseDateTimePeru } from "@/lib/date";
 import { orderUpdateSchema } from "@/features/lab/schemas";
-import { requirePermission, PERMISSION_ELIMINAR_REGISTROS, getServerSession } from "@/lib/auth";
+import { requirePermission, requireAnyPermission, PERMISSION_ELIMINAR_REGISTROS, PERMISSION_VER_ORDENES, PERMISSION_GESTIONAR_ADMISION, PERMISSION_QUICK_ACTIONS_RECEPCION, PERMISSION_QUICK_ACTIONS_ANALISTA, PERMISSION_QUICK_ACTIONS_ENTREGA, getServerSession } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function GET(_request: Request, { params }: Params) {
-  const session = await getServerSession();
-  if (!session?.user) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireAnyPermission([
+    PERMISSION_VER_ORDENES,
+    PERMISSION_GESTIONAR_ADMISION,
+    PERMISSION_QUICK_ACTIONS_RECEPCION,
+    PERMISSION_QUICK_ACTIONS_ANALISTA,
+    PERMISSION_QUICK_ACTIONS_ENTREGA,
+  ]);
+  if (auth.response) return auth.response;
 
   try {
     const { id } = await params;
@@ -44,10 +48,15 @@ export async function GET(_request: Request, { params }: Params) {
 }
 
 export async function PUT(request: Request, { params }: Params) {
-  const session = await getServerSession();
-  if (!session?.user) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireAnyPermission([
+    PERMISSION_VER_ORDENES,
+    PERMISSION_GESTIONAR_ADMISION,
+    PERMISSION_QUICK_ACTIONS_RECEPCION,
+    PERMISSION_QUICK_ACTIONS_ANALISTA,
+    PERMISSION_QUICK_ACTIONS_ENTREGA,
+  ]);
+  if (auth.response) return auth.response;
+  const session = auth.session;
 
   try {
     const { id } = await params;
@@ -127,16 +136,6 @@ export async function DELETE(_request: Request, { params }: Params) {
     }
 
     await prisma.$transaction(async (tx) => {
-      if (order.admissionRequestId) {
-        await tx.admissionRequest.update({
-          where: { id: order.admissionRequestId },
-          data: {
-            status: "PENDIENTE",
-            convertedOrderId: null,
-            convertedAt: null,
-          },
-        });
-      }
       for (const item of order.items) {
         if (item.result) {
           await tx.labResultItem.deleteMany({ where: { resultId: item.result.id } });

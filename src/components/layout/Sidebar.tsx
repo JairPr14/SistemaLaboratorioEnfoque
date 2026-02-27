@@ -1,16 +1,21 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import type { ComponentType } from "react";
 import {
   BarChart3,
+  ChevronDown,
+  ChevronRight,
   ClipboardList,
   DollarSign,
   FileText,
   FlaskConical,
   Home,
+  Layers,
+  Microscope,
   Settings,
   ShoppingBag,
   Tags,
@@ -27,6 +32,7 @@ import {
   hasAnyPermission,
   hasPermission,
   hasRoleWithPermissions,
+  isAdmissionOnlyProfile,
   PERMISSION_CAPTURAR_RESULTADOS,
   PERMISSION_EDITAR_PACIENTES,
   PERMISSION_EDITAR_PRECIO_CATALOGO,
@@ -37,6 +43,7 @@ import {
   PERMISSION_QUICK_ACTIONS_ANALISTA,
   PERMISSION_QUICK_ACTIONS_ENTREGA,
   PERMISSION_QUICK_ACTIONS_RECEPCION,
+  PERMISSION_COBRO_ADMISION,
   PERMISSION_REGISTRAR_PAGOS,
   PERMISSION_REPORTES,
   PERMISSION_VALIDAR_RESULTADOS,
@@ -49,94 +56,87 @@ import {
 } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 
-/** Permisos requeridos por ítem: si tiene al menos uno, puede verlo. Vacío = siempre visible (Dashboard). */
-const navItemsBase: {
+type NavItem = {
   href: string;
   label: string;
   icon: ComponentType<{ className?: string }>;
   requiredPermissions: string[];
-}[] = [
-  { href: "/dashboard", label: "Dashboard", icon: Home, requiredPermissions: [] },
+  hideWhenOnlyAdmission?: boolean;
+};
+
+/** Ítem suelto (sin grupo) */
+type NavSingle = {
+  type: "single";
+  href: string;
+  label: string;
+  icon: ComponentType<{ className?: string }>;
+  requiredPermissions: string[];
+  hideWhenOnlyAdmission?: boolean;
+};
+
+/** Grupo colapsable de ítems */
+type NavGroupItem = {
+  type: "group";
+  label: string;
+  icon: ComponentType<{ className?: string }>;
+  items: NavItem[];
+};
+
+type NavEntry = NavSingle | NavGroupItem;
+
+const navStructure: NavEntry[] = [
+  { type: "single", href: "/dashboard", label: "Dashboard", icon: Home, requiredPermissions: [], hideWhenOnlyAdmission: true },
+  { type: "single", href: "/patients", label: "Pacientes", icon: Users, requiredPermissions: [PERMISSION_VER_PACIENTES, PERMISSION_EDITAR_PACIENTES] },
   {
-    href: "/patients",
-    label: "Pacientes",
-    icon: Users,
-    requiredPermissions: [PERMISSION_VER_PACIENTES, PERMISSION_EDITAR_PACIENTES],
-  },
-  {
-    href: "/catalog/tests",
+    type: "group",
     label: "Catálogo",
     icon: FlaskConical,
-    requiredPermissions: [PERMISSION_VER_CATALOGO, PERMISSION_GESTIONAR_CATALOGO, PERMISSION_EDITAR_PRECIO_CATALOGO],
-  },
-  {
-    href: "/promociones",
-    label: "Promociones",
-    icon: Tags,
-    requiredPermissions: [PERMISSION_VER_CATALOGO, PERMISSION_GESTIONAR_CATALOGO],
-  },
-  {
-    href: "/templates",
-    label: "Plantillas",
-    icon: TestTube2,
-    requiredPermissions: [PERMISSION_GESTIONAR_PLANTILLAS, PERMISSION_CAPTURAR_RESULTADOS],
-  },
-  {
-    href: "/orders",
-    label: "Órdenes",
-    icon: ClipboardList,
-    requiredPermissions: [
-      PERMISSION_VER_ORDENES,
-      PERMISSION_QUICK_ACTIONS_RECEPCION,
-      PERMISSION_QUICK_ACTIONS_ANALISTA,
-      PERMISSION_QUICK_ACTIONS_ENTREGA,
-      PERMISSION_GESTIONAR_ADMISION,
-      PERMISSION_VER_ADMISION,
+    items: [
+      { href: "/catalog/tests", label: "Análisis", icon: FlaskConical, requiredPermissions: [PERMISSION_VER_CATALOGO, PERMISSION_GESTIONAR_CATALOGO, PERMISSION_EDITAR_PRECIO_CATALOGO] },
+      { href: "/promociones", label: "Promociones", icon: Tags, requiredPermissions: [PERMISSION_VER_CATALOGO, PERMISSION_GESTIONAR_CATALOGO] },
+      { href: "/templates", label: "Plantillas", icon: TestTube2, requiredPermissions: [PERMISSION_GESTIONAR_PLANTILLAS, PERMISSION_CAPTURAR_RESULTADOS] },
     ],
   },
   {
-    href: "/admisiones",
-    label: "Admisión",
-    icon: UserPlus,
-    requiredPermissions: [PERMISSION_VER_ADMISION, PERMISSION_GESTIONAR_ADMISION],
+    type: "group",
+    label: "Órdenes y admisión",
+    icon: ClipboardList,
+    items: [
+      { href: "/orders", label: "Órdenes", icon: ClipboardList, requiredPermissions: [PERMISSION_VER_ORDENES, PERMISSION_QUICK_ACTIONS_RECEPCION, PERMISSION_QUICK_ACTIONS_ANALISTA, PERMISSION_QUICK_ACTIONS_ENTREGA, PERMISSION_GESTIONAR_ADMISION, PERMISSION_VER_ADMISION] },
+      { href: "/admission", label: "Admisión", icon: UserPlus, requiredPermissions: [PERMISSION_VER_ADMISION, PERMISSION_GESTIONAR_ADMISION] },
+      { href: "/laboratorio", label: "Laboratorio", icon: Microscope, requiredPermissions: [PERMISSION_VER_ORDENES, PERMISSION_VER_ADMISION] },
+      { href: "/cobro-admision", label: "Lab cobra admisión", icon: DollarSign, requiredPermissions: [PERMISSION_COBRO_ADMISION] },
+    ],
   },
   {
-    href: "/cobro-admision",
-    label: "Cobro admisión",
-    icon: DollarSign,
-    requiredPermissions: [PERMISSION_VER_ADMISION],
+    type: "group",
+    label: "Proceso lab",
+    icon: Layers,
+    items: [
+      { href: "/pending", label: "Pendientes", icon: ShoppingBag, requiredPermissions: [PERMISSION_VER_ORDENES, PERMISSION_QUICK_ACTIONS_ANALISTA, PERMISSION_CAPTURAR_RESULTADOS] },
+      { href: "/results", label: "Resultados", icon: FileText, requiredPermissions: [PERMISSION_CAPTURAR_RESULTADOS, PERMISSION_VALIDAR_RESULTADOS, PERMISSION_IMPRIMIR_RESULTADOS] },
+      { href: "/delivered", label: "Entregados", icon: UserRound, requiredPermissions: [PERMISSION_VER_ORDENES, PERMISSION_QUICK_ACTIONS_ENTREGA] },
+    ],
   },
+  { type: "single", href: "/pagos", label: "Pagos", icon: Wallet, requiredPermissions: [PERMISSION_VER_PAGOS, PERMISSION_REGISTRAR_PAGOS] },
   {
-    href: "/pagos",
-    label: "Pagos",
-    icon: Wallet,
-    requiredPermissions: [PERMISSION_VER_PAGOS, PERMISSION_REGISTRAR_PAGOS],
-  },
-  {
-    href: "/results",
-    label: "Resultados",
-    icon: FileText,
-    requiredPermissions: [PERMISSION_CAPTURAR_RESULTADOS, PERMISSION_VALIDAR_RESULTADOS, PERMISSION_IMPRIMIR_RESULTADOS],
-  },
-  {
-    href: "/pending",
-    label: "Pendientes",
-    icon: ShoppingBag,
-    requiredPermissions: [PERMISSION_VER_ORDENES, PERMISSION_QUICK_ACTIONS_ANALISTA, PERMISSION_CAPTURAR_RESULTADOS],
-  },
-  {
-    href: "/delivered",
-    label: "Entregados",
-    icon: UserRound,
-    requiredPermissions: [PERMISSION_VER_ORDENES, PERMISSION_QUICK_ACTIONS_ENTREGA],
-  },
-  {
-    href: "/reportes",
+    type: "group",
     label: "Reportes",
     icon: BarChart3,
-    requiredPermissions: [PERMISSION_REPORTES],
+    items: [
+      { href: "/reportes/finanzas", label: "Financieros", icon: DollarSign, requiredPermissions: [PERMISSION_REPORTES] },
+      { href: "/reportes/estadisticas", label: "Estadísticos", icon: BarChart3, requiredPermissions: [PERMISSION_REPORTES] },
+    ],
   },
 ];
+
+function filterItem(item: NavItem, session: { user?: { roleCode?: string | null; permissions?: string[] } } | null, hasRole: boolean, isAdmin: boolean, hasAdmissionOnly: boolean): boolean {
+  if (item.hideWhenOnlyAdmission && hasAdmissionOnly) return false;
+  if (item.requiredPermissions.length === 0) return true;
+  if (!hasRole) return false;
+  if (isAdmin) return true;
+  return hasAnyPermission(session, item.requiredPermissions);
+}
 
 export function Sidebar({
   open,
@@ -150,16 +150,55 @@ export function Sidebar({
   const { data: session } = useSession();
   const hasRole = hasRoleWithPermissions(session ?? null);
   const isAdmin = session?.user?.roleCode === ADMIN_ROLE_CODE;
-  const navItems = navItemsBase.filter((item) => {
-    if (item.requiredPermissions.length === 0) return true; // Dashboard siempre visible
-    if (!hasRole) return false; // Sin rol/permisos: solo Dashboard
-    if (isAdmin) return true; // Administrador accede a todo
-    return hasAnyPermission(session ?? null, item.requiredPermissions);
+  const hasAdmissionOnly = isAdmissionOnlyProfile(session ?? null);
+
+  // Grupos expandidos: por defecto expandir el que contiene la ruta actual
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
+    const initial = new Set<string>();
+    for (const entry of navStructure) {
+      if (entry.type === "group") {
+        const hasActiveChild = entry.items.some((i) => pathname.startsWith(i.href));
+        if (hasActiveChild) initial.add(entry.label);
+      }
+    }
+    // Si ninguno tiene activo, expandir todos por defecto
+    if (initial.size === 0) {
+      navStructure.forEach((e) => e.type === "group" && initial.add(e.label));
+    }
+    return initial;
   });
+
+  useEffect(() => {
+    // Al cambiar ruta, expandir el grupo que la contiene
+    for (const entry of navStructure) {
+      if (entry.type === "group") {
+        const hasActiveChild = entry.items.some((i) => pathname.startsWith(i.href));
+        if (hasActiveChild) {
+          setExpandedGroups((prev) => new Set(prev).add(entry.label));
+        }
+      }
+    }
+  }, [pathname]);
+
+  const toggleGroup = (label: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+  };
 
   const handleNavClick = () => {
     if (isMobile) onToggle();
   };
+
+  const navLinkClass = (active: boolean) =>
+    cn(
+      "group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200",
+      "text-slate-600 hover:bg-slate-100 hover:text-slate-900 hover:translate-x-0.5 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100",
+      active && "bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow-md shadow-teal-600/30 hover:translate-x-0 dark:from-teal-600 dark:to-cyan-500",
+    );
 
   return (
     <>
@@ -188,33 +227,76 @@ export function Sidebar({
           Laboratorio en línea
         </div>
       </div>
-      <nav className="flex-1 space-y-1 overflow-y-auto px-2.5 py-3">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const active = pathname.startsWith(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={handleNavClick}
-              className={cn(
-                "group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200",
-                "text-slate-600 hover:bg-slate-100 hover:text-slate-900 hover:translate-x-0.5 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100",
-                active &&
-                  "bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow-md shadow-teal-600/30 hover:translate-x-0 dark:from-teal-600 dark:to-cyan-500",
-              )}
-            >
-              {!active && (
-                <span className="absolute left-0 top-1/2 h-0 w-1 -translate-y-1/2 rounded-r-full bg-teal-500 opacity-0 transition-all duration-200 group-hover:h-5 group-hover:opacity-100" />
-              )}
-              <Icon
-                className={cn(
-                  "h-4 w-4 shrink-0 transition-transform duration-200",
-                  active ? "text-white" : "text-slate-400 group-hover:text-teal-600 dark:text-slate-500 dark:group-hover:text-teal-400",
+      <nav className="flex-1 space-y-1 overflow-y-auto scrollbar-hide px-2.5 py-3">
+        {navStructure.map((entry) => {
+          if (entry.type === "single") {
+            if (!filterItem(entry, session ?? null, hasRole, !!isAdmin, hasAdmissionOnly)) return null;
+            const Icon = entry.icon;
+            const active = pathname.startsWith(entry.href);
+            return (
+              <Link
+                key={entry.href}
+                href={entry.href}
+                onClick={handleNavClick}
+                className={navLinkClass(active)}
+              >
+                {!active && (
+                  <span className="absolute left-0 top-1/2 h-0 w-1 -translate-y-1/2 rounded-r-full bg-teal-500 opacity-0 transition-all duration-200 group-hover:h-5 group-hover:opacity-100" />
                 )}
-              />
-              {item.label}
-            </Link>
+                <Icon className={cn("h-4 w-4 shrink-0", active ? "text-white" : "text-slate-400 group-hover:text-teal-600 dark:text-slate-500 dark:group-hover:text-teal-400")} />
+                {entry.label}
+              </Link>
+            );
+          }
+
+          // Grupo colapsable
+          const visibleChildren = entry.items.filter((i) => filterItem(i, session ?? null, hasRole, !!isAdmin, hasAdmissionOnly));
+          if (visibleChildren.length === 0) return null;
+
+          const isExpanded = expandedGroups.has(entry.label);
+          const GroupIcon = entry.icon;
+
+          return (
+            <div key={entry.label} className="space-y-0.5">
+              <button
+                type="button"
+                onClick={() => toggleGroup(entry.label)}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-xl px-3.5 py-2.5 text-left text-sm font-medium transition-all duration-200",
+                  "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100",
+                )}
+              >
+                {isExpanded ? (
+                  <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
+                )}
+                <GroupIcon className="h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500" />
+                <span>{entry.label}</span>
+              </button>
+              {isExpanded && (
+                <div className="ml-4 space-y-0.5 border-l border-slate-200 pl-2 dark:border-slate-700">
+                  {visibleChildren.map((item) => {
+                    const Icon = item.icon;
+                    const active = pathname.startsWith(item.href);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={handleNavClick}
+                        className={navLinkClass(active)}
+                      >
+                        {!active && (
+                          <span className="absolute left-0 top-1/2 h-0 w-1 -translate-y-1/2 rounded-r-full bg-teal-500 opacity-0 transition-all duration-200 group-hover:h-5 group-hover:opacity-100" />
+                        )}
+                        <Icon className={cn("h-4 w-4 shrink-0", active ? "text-white" : "text-slate-400 group-hover:text-teal-600 dark:text-slate-500 dark:group-hover:text-teal-400")} />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           );
         })}
       </nav>
