@@ -411,6 +411,16 @@ export default async function DashboardPage({
 
   return (
     <div className="min-w-0 space-y-6">
+      {/* Encabezado del dashboard */}
+      <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-50 to-white px-6 py-5 dark:border-slate-700/80 dark:from-slate-900/50 dark:to-slate-800/30">
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+          Resumen
+        </h2>
+        <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400 capitalize">
+          {new Date().toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+        </p>
+      </div>
+
       {/* CTAs según rol: admisión primero, luego laboratorio */}
       <DashboardCTAs
         hasAdmission={hasAdmission}
@@ -451,10 +461,10 @@ export default async function DashboardPage({
           )}
 
           {hasOrders && (
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
+            <Card className="overflow-hidden border-slate-200/80 dark:border-slate-700/80">
+              <CardHeader className="flex flex-row items-center justify-between border-b border-slate-100 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/30">
                 <div>
-                  <CardTitle>Pendientes y recientes</CardTitle>
+                  <CardTitle className="text-base">Pendientes y recientes</CardTitle>
                   <p className="text-sm font-normal text-slate-500 dark:text-slate-400 mt-0.5">
                     Órdenes pendientes, en curso, completados y entregados
                   </p>
@@ -493,8 +503,8 @@ export default async function DashboardPage({
         </div>
 
         {/* Actividad reciente: órdenes si tiene órdenes, o mensaje si solo admisión */}
-        <Card>
-          <CardHeader>
+        <Card className="border-slate-200/80 dark:border-slate-700/80">
+          <CardHeader className="border-b border-slate-100 dark:border-slate-800">
             <CardTitle className="text-base">
               {hasOrders ? "Actividad reciente" : hasAdmission ? "Resumen" : "Actividad"}
             </CardTitle>

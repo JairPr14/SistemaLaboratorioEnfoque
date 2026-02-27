@@ -48,8 +48,8 @@ export function DashboardAdmissionBlock({
   canConvert,
 }: Props) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+    <Card className="border-slate-200/80 dark:border-slate-700/80">
+      <CardHeader className="flex flex-row items-center justify-between border-b border-slate-100 dark:border-slate-800">
         <div>
           <CardTitle className="text-base">Admisión</CardTitle>
           <p className="text-sm font-normal text-slate-500 dark:text-slate-400 mt-0.5">

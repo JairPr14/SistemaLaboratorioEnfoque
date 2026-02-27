@@ -107,11 +107,14 @@ export async function POST(request: Request) {
     } else if (parsed.patientDraft) {
       const draft = parsed.patientDraft;
       const code = await generateNextPatientCode();
-      const dniVal = draft.dni && String(draft.dni).trim() ? String(draft.dni).trim() : undefined;
+      const dniVal =
+        draft.dni && String(draft.dni).trim()
+          ? String(draft.dni).trim()
+          : `SIN-DNI-${code}`;
       const patient = await prisma.patient.create({
         data: {
           code,
-          ...(dniVal != null ? { dni: dniVal } : {}),
+          dni: dniVal,
           firstName: draft.firstName.trim().toUpperCase(),
           lastName: draft.lastName.trim().toUpperCase(),
           birthDate: parseDatePeru(draft.birthDate),

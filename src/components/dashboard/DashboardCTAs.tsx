@@ -29,25 +29,25 @@ export function DashboardCTAs({
   return (
     <>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-1 flex-wrap items-center gap-3">
+        <div className="flex flex-1 flex-wrap items-center gap-2 sm:gap-3">
           {showAdmission && (
             <>
               {canManageAdmission && (
                 <Link href="/admisiones/nueva">
-                  <Button size="sm" className="gap-2">
+                  <Button size="sm" className="gap-2 rounded-xl shadow-sm transition-all hover:shadow">
                     <Plus className="h-4 w-4" />
                     Nueva orden
                   </Button>
                 </Link>
               )}
               <Link href="/admisiones">
-                <Button variant="outline" size="sm" className="gap-2">
+                <Button variant="outline" size="sm" className="gap-2 rounded-xl border-slate-200 dark:border-slate-600">
                   <ClipboardList className="h-4 w-4" />
                   Bandeja de admisión
                 </Button>
               </Link>
               <Link href="/cobro-admision">
-                <Button variant="outline" size="sm" className="gap-2">
+                <Button variant="outline" size="sm" className="gap-2 rounded-xl border-slate-200 dark:border-slate-600">
                   <DollarSign className="h-4 w-4" />
                   Cobro admisión
                 </Button>
@@ -58,7 +58,7 @@ export function DashboardCTAs({
             <>
               {hasOrdersOrReception && (
                 <>
-                  <Button size="sm" className="gap-2" onClick={() => setQuickOrderOpen(true)}>
+                  <Button size="sm" className="gap-2 rounded-xl shadow-sm transition-all hover:shadow" onClick={() => setQuickOrderOpen(true)}>
                     <Plus className="h-4 w-4" />
                     Nueva orden
                   </Button>
@@ -67,7 +67,7 @@ export function DashboardCTAs({
               )}
               {hasPatients && (
                 <Link href="/patients">
-                  <Button variant="outline" size="sm" className="gap-2">
+                  <Button variant="outline" size="sm" className="gap-2 rounded-xl border-slate-200 dark:border-slate-600">
                     <UserPlus className="h-4 w-4" />
                     Pacientes
                   </Button>

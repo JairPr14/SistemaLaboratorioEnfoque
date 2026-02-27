@@ -131,9 +131,11 @@ export function QuickActions({ sectionOptions }: Props) {
 
   return (
     <>
-      <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800/70">
-        <div className="mb-2 flex items-center gap-2">
-          <Bolt className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+      <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-50/80 to-white p-4 dark:border-slate-700/80 dark:from-slate-800/50 dark:to-slate-900/30">
+        <div className="mb-3 flex items-center gap-2">
+          <div className="rounded-lg bg-teal-100 p-1.5 dark:bg-teal-900/30">
+            <Bolt className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+          </div>
           <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Acciones rápidas</p>
         </div>
 
