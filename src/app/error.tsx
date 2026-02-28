@@ -12,8 +12,9 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Log error en desarrollo
     logger.error("Application error:", error);
+    // Log en consola para depuración (visible en DevTools)
+    console.error("[Error]", error.message, error.digest ? `digest=${error.digest}` : "");
   }, [error]);
 
   return (
@@ -23,6 +24,11 @@ export default function Error({
         <p className="text-lg text-slate-600 dark:text-slate-400">
           Ocurrió un error inesperado. Por favor, intente nuevamente.
         </p>
+        {error.digest && (
+          <p className="text-xs text-slate-500 font-mono">
+            Código: {error.digest}
+          </p>
+        )}
         {process.env.NODE_ENV === "development" && (
           <details className="mt-4 rounded bg-slate-100 p-4 text-left dark:bg-slate-800">
             <summary className="cursor-pointer font-semibold text-slate-900 dark:text-slate-100">Detalles técnicos (solo desarrollo)</summary>

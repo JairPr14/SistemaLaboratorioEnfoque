@@ -315,25 +315,49 @@ function formatDisplayValue(
   return formatted ? formatted + (valueType === "PERCENTAGE" ? " %" : "") : rawVal;
 }
 
+function formatRefRangeItem(r: RefRangeItem): string {
+  const ageLabels: Record<string, string> = { NIÑOS: "Niños", JOVENES: "Jóvenes", ADULTOS: "Adultos" };
+  const sexLabels: Record<string, string> = { M: "Hombres", F: "Mujeres", O: "Otros" };
+  const criteria = [
+    r.ageGroup ? ageLabels[r.ageGroup] || r.ageGroup : null,
+    r.sex ? sexLabels[r.sex] || r.sex : null,
+  ].filter(Boolean);
+  const rangeDisplay =
+    (r.refRangeText?.trim()) || (r.refMin != null || r.refMax != null ? `${r.refMin ?? ""} - ${r.refMax ?? ""}`.trim() : "");
+  if (!rangeDisplay) return "";
+  return criteria.length > 0 ? `${criteria.join(" + ")}: ${rangeDisplay}` : rangeDisplay;
+}
+
+function getRangePart(formatted: string): string {
+  const idx = formatted.indexOf(":");
+  return idx >= 0 ? formatted.slice(idx + 1).trim() : formatted.trim();
+}
+
 function formatValorRef(res: ResultItem, refRanges: RefRangeItem[], optionsArr: string[]): string {
-  if (res.refTextSnapshot) return res.refTextSnapshot;
-  if (refRanges.length > 0) {
-    const ageLabels: Record<string, string> = { NIÑOS: "Niños", JOVENES: "Jóvenes", ADULTOS: "Adultos" };
-    const sexLabels: Record<string, string> = { M: "Hombres", F: "Mujeres", O: "Otros" };
-    return refRanges
-      .map((r) => {
-        const criteria = [
-          r.ageGroup ? ageLabels[r.ageGroup] || r.ageGroup : null,
-          r.sex ? sexLabels[r.sex] || r.sex : null,
-        ].filter(Boolean);
-        const rangeDisplay =
-          r.refRangeText || (r.refMin != null && r.refMax != null ? `${r.refMin} - ${r.refMax}` : "");
-        return criteria.length > 0 ? `${criteria.join(" + ")}: ${rangeDisplay}` : rangeDisplay;
-      })
-      .filter(Boolean)
-      .join(" | ") || "-";
+  const fallbackRef = (res.refTextSnapshot ?? "").trim();
+  const fromRanges = refRanges.map(formatRefRangeItem).filter(Boolean);
+
+  if (fromRanges.length > 0) {
+    const seenRanges = new Set<string>();
+    const parts: string[] = [];
+    for (const p of fromRanges) {
+      const rangePart = getRangePart(p).toLowerCase();
+      if (!rangePart) continue;
+      if (seenRanges.has(rangePart)) {
+        const hasCriteria = p.includes(":");
+        const existingIdx = parts.findIndex((x) => getRangePart(x).toLowerCase() === rangePart);
+        if (existingIdx >= 0 && hasCriteria && !parts[existingIdx]!.includes(":")) {
+          parts[existingIdx] = p;
+        }
+        continue;
+      }
+      seenRanges.add(rangePart);
+      parts.push(p);
+    }
+    if (parts.length > 0) return parts.join("\n");
   }
-  return optionsArr.length > 0 ? optionsArr.join(" / ") : "-";
+
+  return fallbackRef || (optionsArr.length > 0 ? optionsArr.join(" / ") : "-");
 }
 
 export function OrderReportPDF(props: OrderReportPDFProps) {

@@ -93,24 +93,61 @@ function parseTemplateSnapshot(snapshot: unknown): {
   };
 }
 
+const AGE_GROUP_LABELS: Record<string, string> = {
+  NIÑOS: "Niños",
+  JOVENES: "Jóvenes",
+  ADULTOS: "Adultos",
+};
+const SEX_LABELS: Record<string, string> = { M: "Hombres", F: "Mujeres", O: "Otros" };
+
+function formatRefRangeItem(r: RefRangeItem): string {
+  const criteria = [
+    r.ageGroup ? AGE_GROUP_LABELS[r.ageGroup] || r.ageGroup : null,
+    r.sex ? SEX_LABELS[r.sex] || r.sex : null,
+  ].filter(Boolean);
+  const rangeDisplay =
+    (r.refRangeText?.trim()) || (r.refMin != null || r.refMax != null ? `${r.refMin ?? ""} - ${r.refMax ?? ""}`.trim() : "");
+  if (!rangeDisplay) return "";
+  return criteria.length > 0 ? `${criteria.join(" + ")}: ${rangeDisplay}` : rangeDisplay;
+}
+
+function getRangePart(formatted: string): string {
+  const idx = formatted.indexOf(":");
+  return idx >= 0 ? formatted.slice(idx + 1).trim() : formatted.trim();
+}
+
 function formatReferenceValue(
   refTextSnapshot: string | null,
   refMinSnapshot: number | null,
   refMaxSnapshot: number | null,
   refRanges: RefRangeItem[]
 ): string {
-  if (refTextSnapshot && refTextSnapshot.trim() !== "") return refTextSnapshot;
-  const parts = refRanges
-    .map((r) => {
-      const rangeStr = (r.refRangeText?.trim()) || (r.refMin != null || r.refMax != null ? `${r.refMin ?? ""} - ${r.refMax ?? ""}`.trim() : "");
-      if (!rangeStr) return "";
-      const sexLabel = r.sex === "M" ? "Hombres" : r.sex === "F" ? "Mujeres" : null;
-      return sexLabel ? `${sexLabel} : ${rangeStr}` : rangeStr;
-    })
-    .filter(Boolean);
-  if (parts.length > 0) return parts.join("\n");
-  if (refMinSnapshot != null || refMaxSnapshot != null) return `${refMinSnapshot ?? ""} - ${refMaxSnapshot ?? ""}`.trim();
-  return "-";
+  const fallbackRef =
+    (refTextSnapshot?.trim()) ||
+    (refMinSnapshot != null || refMaxSnapshot != null ? `${refMinSnapshot ?? ""} - ${refMaxSnapshot ?? ""}`.trim() : "");
+  const fromRanges = refRanges.map(formatRefRangeItem).filter(Boolean);
+
+  if (fromRanges.length > 0) {
+    const seenRanges = new Set<string>();
+    const parts: string[] = [];
+    for (const p of fromRanges) {
+      const rangePart = getRangePart(p).toLowerCase();
+      if (!rangePart) continue;
+      if (seenRanges.has(rangePart)) {
+        const hasCriteria = p.includes(":");
+        const existingIdx = parts.findIndex((x) => getRangePart(x).toLowerCase() === rangePart);
+        if (existingIdx >= 0 && hasCriteria && !parts[existingIdx]!.includes(":")) {
+          parts[existingIdx] = p;
+        }
+        continue;
+      }
+      seenRanges.add(rangePart);
+      parts.push(p);
+    }
+    if (parts.length > 0) return parts.join("\n");
+  }
+
+  return fallbackRef || "-";
 }
 
 function buildRowsForItem(item: {

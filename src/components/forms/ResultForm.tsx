@@ -96,6 +96,7 @@ export function ResultForm({
   const [saving, setSaving] = useState(false);
   const [addingParam, setAddingParam] = useState(false);
   const [removingParamId, setRemovingParamId] = useState<string | null>(null);
+  const [paramToRemove, setParamToRemove] = useState<(TemplateItem & { index: number }) | null>(null);
   const [addParamModalOpen, setAddParamModalOpen] = useState(false);
   const [addParamGroup, setAddParamGroup] = useState("");
   const [addParamName, setAddParamName] = useState("Nuevo parámetro");
@@ -281,6 +282,13 @@ export function ResultForm({
       form.setValue("items", currentItems.slice(0, -1));
     } finally {
       setAddingParam(false);
+    }
+  };
+
+  const handleConfirmRemove = () => {
+    if (paramToRemove) {
+      handleRemoveParam(paramToRemove);
+      setParamToRemove(null);
     }
   };
 
@@ -632,7 +640,7 @@ export function ResultForm({
                               type="button"
                               aria-label="Quitar parámetro"
                               title="Quitar parámetro (solo para este paciente)"
-                              onClick={() => handleRemoveParam(item)}
+                              onClick={() => setParamToRemove(item)}
                               disabled={removingParamId === item.id || itemsToUse.length <= 1}
                               className="shrink-0 h-9 w-9 rounded border border-slate-300 bg-slate-50 text-slate-500 hover:bg-red-50 hover:text-red-600 hover:border-red-200 disabled:opacity-50 disabled:cursor-not-allowed dark:border-slate-600 dark:bg-slate-800 dark:hover:bg-red-950/30 dark:hover:text-red-400 dark:hover:border-red-900"
                             >
@@ -732,6 +740,32 @@ export function ResultForm({
                 </Button>
                 <Button type="button" onClick={handleAddParam}>
                   Añadir
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+          <Dialog
+            open={paramToRemove != null}
+            onOpenChange={(open) => {
+              if (!open) setParamToRemove(null);
+            }}
+          >
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Confirmar</DialogTitle>
+                <DialogDescription>¿Seguro que quieres borrar?</DialogDescription>
+              </DialogHeader>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={() => setParamToRemove(null)}>
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={handleConfirmRemove}
+                  disabled={paramToRemove != null && removingParamId === paramToRemove.id}
+                >
+                  Borrar
                 </Button>
               </div>
             </DialogContent>

@@ -2,17 +2,26 @@
 
 import { Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 
+/** Rutas que requieren permisos elevados; no redirigir aquí tras login (evita error al cambiar de usuario) */
+const ELEVATED_PATH_PREFIXES = ["/configuracion", "/reportes", "/promociones"];
+
+function sanitizeCallbackUrl(raw: string | null): string {
+  const url = (raw ?? "/").trim();
+  if (!url.startsWith("/") || url.startsWith("//")) return "/";
+  const safe = ELEVATED_PATH_PREFIXES.every((p) => !url.startsWith(p));
+  return safe ? url : "/";
+}
+
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/";
+  const callbackUrl = sanitizeCallbackUrl(searchParams.get("callbackUrl"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);

@@ -456,6 +456,8 @@ body {
 /* Descripción del parámetro debajo del valor referencial */
 .print-valor-ref {
   vertical-align: top !important;
+  white-space: pre-line;
+  line-height: 1.5;
 }
 
 .print-param-description {
@@ -476,7 +478,7 @@ body {
 .print-stamp-overlay {
   position: absolute;
   bottom: 20mm;
-  right: 12mm;
+  right: calc(12mm - 30px);
   z-index: 2;
   pointer-events: none;
   user-select: none;
