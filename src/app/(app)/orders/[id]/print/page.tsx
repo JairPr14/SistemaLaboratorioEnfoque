@@ -621,7 +621,7 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                 <div key={analysis.itemId} className="print-analysis-block">
                   <div className="print-analysis-name">
                     {analysis.analysisName}
-                    {analysis.isContinuation ? " (continuación)" : ""}
+                    {analysis.isContinuation ? " " : ""}
                   </div>
 
                   <table className="print-report-table mt-2">
@@ -629,7 +629,7 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                       <col className="col-analisis" />
                       <col className="col-resultados" />
                       <col className="col-unidad" />
-                      <col className="col-valor-ref" />
+                      <col className="col-valor-ref" />   
                     </colgroup>
                     <thead>
                       <tr>

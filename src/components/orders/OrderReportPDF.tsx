@@ -510,7 +510,7 @@ export function OrderReportPDF(props: OrderReportPDFProps) {
                 <View key={`${item.id}-${paramRange?.start ?? 0}`} style={{ marginBottom: 20 }}>
                   <Text style={{ fontWeight: 700, color: "#0f172a", marginBottom: 8 }}>
                     {item.labTest.name}
-                    {chunkItem.isContinuation ? " (continuación)" : ""}
+                    {chunkItem.isContinuation ? " " : ""}
                   </Text>
                   {hasResults ? (
                     <View style={styles.table}>
