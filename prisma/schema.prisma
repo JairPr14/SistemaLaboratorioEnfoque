@@ -171,14 +171,15 @@ model LabTest {
 }
 
 model LabTemplate {
-  id        String            @id @default(cuid())
-  labTestId String            @unique
-  title     String
-  notes     String?
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
-  labTest   LabTest           @relation(fields: [labTestId], references: [id])
-  items     LabTemplateItem[]
+  id         String            @id @default(cuid())
+  labTestId  String            @unique
+  title      String
+  notes      String?
+  isVerified Boolean           @default(false) // Indica que la plantilla está correcta/revisada
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  labTest    LabTest           @relation(fields: [labTestId], references: [id])
+  items      LabTemplateItem[]
 }
 
 model LabTemplateItem {

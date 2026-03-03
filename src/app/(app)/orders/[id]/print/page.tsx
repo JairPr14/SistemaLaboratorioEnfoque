@@ -608,6 +608,7 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
         patientPhone={order.patient.phone}
         analysesNames={analysesNames}
         date={date}
+        orderCode={order.orderCode}
         backHref={`/orders/${id}`}
         toggleLogoUrl={buildPrintUrl(!showReferredLogo)}
         showLogoButton={!!referredLabWithLogo}

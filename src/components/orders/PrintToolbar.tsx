@@ -16,6 +16,8 @@ type PrintToolbarProps = {
   patientPhone?: string | null;
   analysesNames: string;
   date: string;
+  /** Código de orden (ej. ENF001) para el nombre del PDF guardado */
+  orderCode?: string;
   /** URL de destino al retroceder (ej. /orders/{id}). Si no se pasa, usa router.back() */
   backHref?: string;
   /** URL para alternar visibilidad del logo del lab referido (mostrar/ocultar) */
@@ -26,11 +28,19 @@ type PrintToolbarProps = {
   logoVisible?: boolean;
 };
 
+/** Genera nombre de archivo PDF: NomCompleto-codigoOrden (ej. CesarJairPalaciosRodas-ENF001) */
+function buildPdfFilename(patientName: string, orderCode: string): string {
+  const namePart = patientName.replace(/\s+/g, "").replace(/[/\\:*?"<>|]/g, "");
+  const codePart = orderCode.replace(/[/\\:*?"<>|]/g, "");
+  return codePart ? `${namePart}-${codePart}` : namePart;
+}
+
 export function PrintToolbar({
   patientName,
   patientPhone,
   analysesNames,
   date,
+  orderCode,
   backHref,
   toggleLogoUrl,
   showLogoButton,
@@ -38,7 +48,17 @@ export function PrintToolbar({
 }: PrintToolbarProps) {
   const router = useRouter();
 
-  const handleSavePdf = () => window.print();
+  const handleSavePdf = () => {
+    const baseTitle = document.title;
+    const pdfTitle = orderCode ? buildPdfFilename(patientName, orderCode) : patientName;
+    document.title = pdfTitle;
+    const onAfterPrint = () => {
+      document.title = baseTitle;
+      window.removeEventListener("afterprint", onAfterPrint);
+    };
+    window.addEventListener("afterprint", onAfterPrint);
+    window.print();
+  };
 
   const handleBack = () => {
     if (backHref) {

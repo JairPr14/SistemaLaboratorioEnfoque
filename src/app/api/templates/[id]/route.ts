@@ -118,6 +118,39 @@ export async function PUT(request: Request, { params }: Params) {
   }
 }
 
+export async function PATCH(request: Request, { params }: Params) {
+  const session = await getServerSession();
+  if (!session?.user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
+  try {
+    const { id } = await params;
+    const body = await request.json();
+    const { isVerified } = body as { isVerified?: boolean };
+
+    if (typeof isVerified !== "boolean") {
+      return NextResponse.json({ error: "isVerified debe ser true o false" }, { status: 400 });
+    }
+
+    const item = await prisma.labTemplate.update({
+      where: { id },
+      data: { isVerified },
+      include: { labTest: true },
+    });
+    return NextResponse.json({ item });
+  } catch (error) {
+    logger.error("Error updating template verified status:", error);
+    if (error instanceof Error && error.message.includes("Record to update not found")) {
+      return NextResponse.json({ error: "Plantilla no encontrada" }, { status: 404 });
+    }
+    return NextResponse.json(
+      { error: "Error al actualizar estado de plantilla" },
+      { status: 500 },
+    );
+  }
+}
+
 export async function DELETE(_request: Request, { params }: Params) {
   const session = await getServerSession();
   if (!session?.user) {

@@ -31,6 +31,7 @@ export default async function TemplatesPage() {
     testCode: t.labTest.code,
     testName: t.labTest.name,
     itemsCount: t.items.length,
+    isVerified: t.isVerified ?? false,
   }));
 
   const testIdsWithTemplate = new Set(templates.map((t) => t.labTest.id));

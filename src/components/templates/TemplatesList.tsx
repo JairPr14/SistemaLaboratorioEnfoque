@@ -1,9 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { CheckCircle2, Circle } from "lucide-react";
+import { toast } from "sonner";
 
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { DeleteButton } from "@/components/common/DeleteButton";
 
 type TemplateItem = {
@@ -12,14 +15,39 @@ type TemplateItem = {
   testCode: string;
   testName: string;
   itemsCount: number;
+  isVerified: boolean;
 };
 
 type Props = {
   templates: TemplateItem[];
 };
 
-export function TemplatesList({ templates }: Props) {
+export function TemplatesList({ templates: initialTemplates }: Props) {
   const [search, setSearch] = useState("");
+  const [templates, setTemplates] = useState(initialTemplates);
+
+  useEffect(() => {
+    setTemplates(initialTemplates);
+  }, [initialTemplates]);
+
+  const toggleVerified = async (id: string, current: boolean) => {
+    const next = !current;
+    try {
+      const res = await fetch(`/api/templates/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isVerified: next }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Error");
+      setTemplates((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, isVerified: next } : t))
+      );
+      toast.success(next ? "Plantilla marcada como correcta" : "Marcado quitado");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error");
+    }
+  };
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -58,7 +86,13 @@ export function TemplatesList({ templates }: Props) {
               <ul className="divide-y divide-slate-100 dark:divide-slate-700 max-h-[400px] overflow-y-auto">
                 {filtered.map((template) => (
                   <li key={template.id}>
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 hover:bg-slate-50/50 dark:hover:bg-slate-700/30">
+                    <div
+                      className={`flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors ${
+                        template.isVerified
+                          ? "bg-emerald-50/70 dark:bg-emerald-900/20 border-l-4 border-l-emerald-500"
+                          : ""
+                      }`}
+                    >
                       <div className="min-w-0 flex-1">
                         <Link
                           href={`/templates/${template.id}`}
@@ -75,6 +109,19 @@ export function TemplatesList({ templates }: Props) {
                           {template.itemsCount} parámetros
                         </span>
                         <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleVerified(template.id, template.isVerified)}
+                            title={template.isVerified ? "Quitar marca de correcta" : "Marcar plantilla como correcta"}
+                            className={template.isVerified ? "text-emerald-600 dark:text-emerald-400" : "text-slate-500"}
+                          >
+                            {template.isVerified ? (
+                              <CheckCircle2 className="h-5 w-5" />
+                            ) : (
+                              <Circle className="h-5 w-5" />
+                            )}
+                          </Button>
                           <Link
                             href={`/templates/${template.id}`}
                             className="inline-flex items-center justify-center gap-2 rounded-md border border-slate-200 dark:border-slate-600 h-9 px-3 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
