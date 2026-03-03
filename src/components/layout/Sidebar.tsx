@@ -62,6 +62,7 @@ type NavItem = {
   icon: ComponentType<{ className?: string }>;
   requiredPermissions: string[];
   hideWhenOnlyAdmission?: boolean;
+  adminOnly?: boolean;
 };
 
 /** Ítem suelto (sin grupo) */
@@ -72,6 +73,7 @@ type NavSingle = {
   icon: ComponentType<{ className?: string }>;
   requiredPermissions: string[];
   hideWhenOnlyAdmission?: boolean;
+  adminOnly?: boolean;
 };
 
 /** Grupo colapsable de ítems */
@@ -119,6 +121,15 @@ const navStructure: NavEntry[] = [
     ],
   },
   { type: "single", href: "/pagos", label: "Pagos", icon: Wallet, requiredPermissions: [PERMISSION_VER_PAGOS, PERMISSION_REGISTRAR_PAGOS] },
+      
+  {
+    type: "single",
+    href: "/gestion-administrativa-clinica",
+    label: "Gestión administrativa clínica",
+    icon: Users,
+    requiredPermissions: [],
+    adminOnly: true,
+  },
   {
     type: "group",
     label: "Reportes",
@@ -128,10 +139,12 @@ const navStructure: NavEntry[] = [
       { href: "/reportes/estadisticas", label: "Estadísticos", icon: BarChart3, requiredPermissions: [PERMISSION_REPORTES] },
     ],
   },
+
 ];
 
 function filterItem(item: NavItem, session: { user?: { roleCode?: string | null; permissions?: string[] } } | null, hasRole: boolean, isAdmin: boolean, hasAdmissionOnly: boolean): boolean {
   if (item.hideWhenOnlyAdmission && hasAdmissionOnly) return false;
+  if (item.adminOnly && !isAdmin) return false;
   if (item.requiredPermissions.length === 0) return true;
   if (!hasRole) return false;
   if (isAdmin) return true;

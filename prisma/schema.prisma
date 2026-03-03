@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
 model Role {
@@ -339,19 +340,114 @@ model StoredImage {
 }
 
 model Branch {
-  id        String     @id @default(cuid())
-  code      String     @unique
+  id        String    @id @default(cuid())
+  code      String    @unique
   name      String
   address   String?
   phone     String?
-  order     Int        @default(0)
-  isActive  Boolean    @default(true)
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  order     Int       @default(0)
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   orders    LabOrder[]
 
   @@index([code])
   @@index([order])
+}
+
+// ===========================================
+// Módulo: Personal
+// ===========================================
+
+model StaffMember {
+  id            String         @id @default(cuid())
+  firstName     String         // Nombre
+  lastName      String         // Apellido
+  age           Int?           // Edad
+  jobTitle      String?        // Cargo
+  phone         String?        // Teléfono
+  address       String?        // Dirección
+  salary        Float?         // Sueldo mensual
+  hireDate      DateTime?      // Fecha de ingreso
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  staffDiscounts StaffDiscount[]
+  payrolls      Payroll[]
+
+  @@index([lastName])
+  @@index([isActive])
+}
+
+// ===========================================
+// Módulo: Planilla (pagos quincenales)
+// ===========================================
+// Pagos: 15 y 31/01 de cada mes. Sueldo / 2 por quincena.
+// Descuentos: una quincena o ambas. AFP/ONP en ambas.
+
+model DiscountType {
+  id                   String   @id @default(cuid())
+  code                 String   @unique
+  name                 String
+  splitAcrossQuincenas Boolean  @default(false) // AFP, ONP: se descuentan en Q1 y Q2
+  isActive             Boolean  @default(true)
+  order                Int      @default(0)
+  staffDiscounts       StaffDiscount[]
+
+  @@index([code])
+}
+
+model StaffDiscount {
+  id             String       @id @default(cuid())
+  staffMemberId  String
+  discountTypeId String
+  amount         Float
+  periodYear     Int
+  periodMonth    Int          // 1-12
+  periodQuincena Int          @default(1) // 1 = días 1-15, 2 = días 16-fin
+  status         String       @default("PENDIENTE") // PENDIENTE | APLICADO
+  payrollId      String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  staffMember    StaffMember  @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
+  discountType   DiscountType @relation(fields: [discountTypeId], references: [id])
+
+  @@index([staffMemberId])
+  @@index([periodYear, periodMonth, periodQuincena])
+}
+
+model PayrollPeriod {
+  id        String   @id @default(cuid())
+  year      Int
+  month     Int      // 1-12
+  quincena  Int      // 1 = días 1-15, 2 = días 16-fin (31 o 1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  payrolls  Payroll[]
+
+  @@unique([year, month, quincena])
+  @@index([year, month, quincena])
+}
+
+model Payroll {
+  id              String          @id @default(cuid())
+  staffMemberId   String
+  payrollPeriodId String
+  baseSalary      Float           // Sueldo quincenal (mensual / 2)
+  discountsTotal  Float           @default(0)
+  netSalary       Float
+  status          String          @default("PENDIENTE") // PENDIENTE | PAGADO
+  paymentMethod   String?         // EFECTIVO | TRANSFERENCIA | YAPE | PLIN
+  transferNumber  String?         // N° op. cuando es transferencia
+  paidAt          DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  staffMember     StaffMember     @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
+  payrollPeriod   PayrollPeriod   @relation(fields: [payrollPeriodId], references: [id], onDelete: Cascade)
+
+  @@unique([staffMemberId, payrollPeriodId])
+  @@index([staffMemberId])
+  @@index([payrollPeriodId])
 }
 
 model PreAnalyticNoteTemplate {
@@ -451,6 +547,8 @@ enum PaymentMethod {
   TARJETA
   TRANSFERENCIA
   CREDITO
+  YAPE   // Planilla
+  PLIN   // Planilla
 }
 
 enum OrderItemStatus {
@@ -458,4 +556,5 @@ enum OrderItemStatus {
   EN_PROCESO
   COMPLETADO
 }
+
 

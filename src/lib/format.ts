@@ -103,6 +103,23 @@ export function formatPatientDisplayName(firstName?: string | null, lastName?: s
   return [a, b].filter(Boolean).join(" ") || "—";
 }
 
+/** Tiempo trabajando desde hireDate: "X años Y meses" o "X meses" */
+export function formatTenure(hireDate?: Date | string | null): string {
+  if (!hireDate) return "—";
+  const from = typeof hireDate === "string" ? new Date(hireDate) : hireDate;
+  const now = new Date();
+  if (isNaN(from.getTime())) return "—";
+  let months = (now.getFullYear() - from.getFullYear()) * 12 + (now.getMonth() - from.getMonth());
+  if (now.getDate() < from.getDate()) months--;
+  if (months < 0) return "—";
+  if (months < 12) return months === 0 ? "Menos de 1 mes" : `${months} ${months === 1 ? "mes" : "meses"}`;
+  const years = Math.floor(months / 12);
+  const m = months % 12;
+  return m === 0
+    ? `${years} ${years === 1 ? "año" : "años"}`
+    : `${years} ${years === 1 ? "año" : "años"} ${m} ${m === 1 ? "mes" : "meses"}`;
+}
+
 /** Formato para input datetime-local: YYYY-MM-DDTHH:mm (hora Perú) */
 export function toDateTimeLocal(date?: Date | string | null): string {
   if (!date) return "";

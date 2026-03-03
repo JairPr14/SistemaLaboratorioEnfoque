@@ -494,16 +494,16 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
       patient: true,
       items: {
         include: {
-          labTest: {
-            include: {
+          labTest: { 
+            include: { 
               section: true,
               referredLab: { select: { id: true, name: true, logoUrl: true } },
               referredLabOptions: {
                 include: { referredLab: { select: { id: true, name: true, logoUrl: true } } },
                 take: 5,
               },
-              template: {
-                include: {
+              template: { 
+                include: { 
                   items: {
                     include: { refRanges: { orderBy: { order: "asc" } } },
                     orderBy: { order: "asc" },
@@ -668,15 +668,15 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                       <col className="col-unidad" />
                       <col className="col-valor-ref" />   
                     </colgroup>
-                    <thead>
+                          <thead>
                       <tr>
                         <th>ANÁLISIS</th>
                         <th>RESULTADO</th>
                         <th>UNIDAD</th>
                         <th>VALOR REFERENCIAL</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                            </tr>
+                          </thead>
+                          <tbody>
                       {analysis.rows.length === 0 ? (
                         <tr>
                           <td colSpan={4}>Sin resultados registrados.</td>
@@ -697,14 +697,14 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                                 {row.description && (
                                   <div className="print-param-description">{row.description}</div>
                                 )}
-                              </td>
-                            </tr>
+                                  </td>
+                                </tr>
                           )
                         )
                       )}
-                    </tbody>
-                  </table>
-                </div>
+                          </tbody>
+                        </table>
+                      </div>
               ))}
             </div>
             {showStamp && pageIndex === pages.length - 1 && (
@@ -715,7 +715,7 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                   alt="Sello y firma"
                   className="print-stamp-img"
                 />
-              </div>
+            </div>
             )}
           </div>
         ))
