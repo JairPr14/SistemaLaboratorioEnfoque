@@ -18,6 +18,9 @@ type PrintToolbarProps = {
   date: string;
   /** Código de orden (ej. ENF001) para el nombre del PDF guardado */
   orderCode?: string;
+  /** Nombre y apellido por separado para el archivo PDF: Nombre-Apellido-codigoOrden */
+  patientFirstName?: string | null;
+  patientLastName?: string | null;
   /** URL de destino al retroceder (ej. /orders/{id}). Si no se pasa, usa router.back() */
   backHref?: string;
   /** URL para alternar visibilidad del logo del lab referido (mostrar/ocultar) */
@@ -28,10 +31,21 @@ type PrintToolbarProps = {
   logoVisible?: boolean;
 };
 
-/** Genera nombre de archivo PDF: NomCompleto-codigoOrden (ej. CesarJairPalaciosRodas-ENF001) */
-function buildPdfFilename(patientName: string, orderCode: string): string {
-  const namePart = patientName.replace(/\s+/g, "").replace(/[/\\:*?"<>|]/g, "");
+/** Genera nombre de archivo PDF: Nombre-Apellido-codigoOrden (ej. CesarJair-PalaciosRodas-ENF001) */
+function buildPdfFilename(
+  patientName: string,
+  orderCode: string,
+  firstName?: string | null,
+  lastName?: string | null
+): string {
+  const sanitize = (s: string) => s.replace(/\s+/g, "").replace(/[/\\:*?"<>|]/g, "");
   const codePart = orderCode.replace(/[/\\:*?"<>|]/g, "");
+  let namePart: string;
+  if (typeof firstName === "string" && typeof lastName === "string" && (firstName.trim() || lastName.trim())) {
+    namePart = `${sanitize(firstName)}-${sanitize(lastName)}`;
+  } else {
+    namePart = patientName.replace(/\s+/g, "").replace(/[/\\:*?"<>|]/g, "");
+  }
   return codePart ? `${namePart}-${codePart}` : namePart;
 }
 
@@ -41,6 +55,8 @@ export function PrintToolbar({
   analysesNames,
   date,
   orderCode,
+  patientFirstName,
+  patientLastName,
   backHref,
   toggleLogoUrl,
   showLogoButton,
@@ -50,7 +66,7 @@ export function PrintToolbar({
 
   const handleSavePdf = () => {
     const baseTitle = document.title;
-    const pdfTitle = orderCode ? buildPdfFilename(patientName, orderCode) : patientName;
+    const pdfTitle = orderCode ? buildPdfFilename(patientName, orderCode, patientFirstName, patientLastName) : patientName;
     document.title = pdfTitle;
     const onAfterPrint = () => {
       document.title = baseTitle;

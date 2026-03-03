@@ -1,0 +1,26 @@
+# Base de datos PostgreSQL local para desarrollo
+# Uso: docker compose up -d
+# Conecta con: postgresql://postgres:postgres@localhost:5432/sistema_lab_dev
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sistema-lab-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: sistema_lab_dev
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_dev_data:

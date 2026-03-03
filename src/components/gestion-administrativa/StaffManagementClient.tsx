@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Clock } from "lucide-react";
+import { Plus, Pencil, Trash2, Clock, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -59,6 +59,7 @@ export function StaffManagementClient() {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<StaffMember | null>(null);
   const [form, setForm] = useState<Form>(emptyForm);
+  const [hideSalary, setHideSalary] = useState(false);
 
   const loadItems = async () => {
     try {
@@ -169,12 +170,24 @@ export function StaffManagementClient() {
   return (
     <>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4">
           <CardTitle>Personal ({activeItems.length})</CardTitle>
-          <Button onClick={openCreate} className="gap-2">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setHideSalary((h) => !h)}
+              className="gap-1"
+              title={hideSalary ? "Mostrar sueldo" : "Ocultar sueldo"}
+            >
+              {hideSalary ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+              {hideSalary ? "Mostrar sueldo" : "Ocultar sueldo"}
+            </Button>
+            <Button onClick={openCreate} className="gap-2">
             <Plus className="h-4 w-4" />
-            Nuevo personal
-          </Button>
+              Nuevo personal
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -211,7 +224,7 @@ export function StaffManagementClient() {
                         {item.address ?? "—"}
                       </TableCell>
                       <TableCell className="text-right">
-                        {item.salary != null ? formatCurrency(item.salary) : "—"}
+                        {hideSalary ? "·····" : (item.salary != null ? formatCurrency(item.salary) : "—")}
                       </TableCell>
                       <TableCell>{formatDate(item.hireDate)}</TableCell>
                       <TableCell className="flex items-center gap-1.5">
@@ -257,7 +270,7 @@ export function StaffManagementClient() {
                           <TableCell>{item.phone ?? "—"}</TableCell>
                           <TableCell>{item.address ?? "—"}</TableCell>
                           <TableCell className="text-right">
-                            {item.salary != null ? formatCurrency(item.salary) : "—"}
+                            {hideSalary ? "·····" : (item.salary != null ? formatCurrency(item.salary) : "—")}
                           </TableCell>
                           <TableCell>{formatDate(item.hireDate)}</TableCell>
                           <TableCell>{formatTenure(item.hireDate)}</TableCell>

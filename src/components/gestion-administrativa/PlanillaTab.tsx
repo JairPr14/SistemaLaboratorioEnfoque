@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, DollarSign, Banknote, Smartphone, CreditCard } from "lucide-react";
+import { Plus, DollarSign, Banknote, Smartphone, CreditCard, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -79,6 +79,7 @@ export function PlanillaTab() {
   const [paymentMethod, setPaymentMethod] = useState<string>("EFECTIVO");
   const [transferNumber, setTransferNumber] = useState("");
   const [paying, setPaying] = useState(false);
+  const [hideSalary, setHideSalary] = useState(false);
 
   const loadPeriods = async () => {
     setLoadingPeriods(true);
@@ -224,21 +225,33 @@ export function PlanillaTab() {
             })}
           </select>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            setNewPeriodYear(new Date().getFullYear());
-            setNewPeriodMonth(new Date().getMonth() + 1);
-            setNewPeriodQuincena(1);
-            setGeneratingFullMonth(true);
-            setShowPeriodDialog(true);
-          }}
-          className="gap-1"
-        >
-          <Plus className="h-4 w-4" />
-          Generar planilla del mes
-        </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setHideSalary((h) => !h)}
+              className="gap-1"
+              title={hideSalary ? "Mostrar sueldo" : "Ocultar sueldo"}
+            >
+              {hideSalary ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+              {hideSalary ? "Mostrar sueldo" : "Ocultar sueldo"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setNewPeriodYear(new Date().getFullYear());
+                setNewPeriodMonth(new Date().getMonth() + 1);
+                setNewPeriodQuincena(1);
+                setGeneratingFullMonth(true);
+                setShowPeriodDialog(true);
+              }}
+              className="gap-1"
+            >
+              <Plus className="h-4 w-4" />
+              Generar planilla del mes
+            </Button>
+          </div>
       </CardHeader>
       <CardContent>
         {loadingPeriods ? (
@@ -273,9 +286,15 @@ export function PlanillaTab() {
                   <TableRow key={line.staffMemberId}>
                     <TableCell className="font-medium">{line.staffMember.fullName}</TableCell>
                     <TableCell>{line.staffMember.jobTitle ?? "—"}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(line.baseSalary)}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(line.discountsTotal)}</TableCell>
-                    <TableCell className="text-right font-medium">{formatCurrency(line.netSalary)}</TableCell>
+                    <TableCell className="text-right">
+                      {hideSalary ? "·····" : formatCurrency(line.baseSalary)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {hideSalary ? "·····" : formatCurrency(line.discountsTotal)}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {hideSalary ? "·····" : formatCurrency(line.netSalary)}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={line.status === "PAGADO" ? "default" : "secondary"}>
                         {line.status === "PAGADO" ? "Pagado" : "Pendiente"}
