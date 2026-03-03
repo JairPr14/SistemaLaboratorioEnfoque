@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { getServerSession, ADMIN_ROLE_CODE } from "@/lib/auth";
 
 async function ensureAdmin() {
@@ -9,12 +8,9 @@ async function ensureAdmin() {
   return null;
 }
 
+/** BonusType no existe en el schema actual; retorna lista vacía */
 export async function GET() {
   const denied = await ensureAdmin();
   if (denied) return denied;
-  const items = await prisma.bonusType.findMany({
-    where: { isActive: true },
-    orderBy: { order: "asc" },
-  });
-  return NextResponse.json({ items });
+  return NextResponse.json({ items: [] });
 }
