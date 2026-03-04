@@ -21,7 +21,6 @@ import { QuickActions } from "@/components/dashboard/QuickActions";
 import { DashboardCTAs } from "@/components/dashboard/DashboardCTAs";
 import { DashboardPendingTable } from "@/components/dashboard/DashboardPendingTable";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
-import { DatabaseErrorFallback } from "@/components/ui/DatabaseErrorFallback";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +50,6 @@ export default async function DashboardPage({
     pendingSection?: string;
   }>;
 }) {
-  try {
   const params = await searchParams;
   const session = await getServerSession();
 
@@ -304,7 +302,4 @@ export default async function DashboardPage({
       </div>
     </div>
   );
-  } catch (error) {
-    return <DatabaseErrorFallback error={error} />;
-  }
 }
