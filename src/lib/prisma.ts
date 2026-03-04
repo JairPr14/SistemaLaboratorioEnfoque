@@ -14,11 +14,21 @@ export function ensureDatabaseUrl(): void {
 }
 
 function getDatabaseUrlWithConnectionLimit(): string | undefined {
-  const url = process.env.DATABASE_URL;
+  let url = process.env.DATABASE_URL;
   if (!url) return undefined;
-  if (url.includes("connection_limit=")) return url;
   const separator = url.includes("?") ? "&" : "?";
-  return `${url}${separator}connection_limit=10`;
+  const params: string[] = [];
+  // Seenode y otros cloud Postgres requieren SSL
+  if (!url.includes("sslmode=") && (url.includes("seenode") || url.includes("neon.tech") || url.includes("run-on-seenode"))) {
+    params.push("sslmode=require");
+  }
+  if (!url.includes("connection_limit=")) {
+    params.push(`connection_limit=${process.env.VERCEL ? 1 : 10}`);
+  }
+  if (params.length > 0) {
+    url = `${url}${separator}${params.join("&")}`;
+  }
+  return url;
 }
 
 const prismaOptions: ConstructorParameters<typeof PrismaClient>[0] = {
