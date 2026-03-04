@@ -53,7 +53,7 @@ import {
   PERMISSION_VER_ORDENES,
   PERMISSION_VER_PACIENTES,
   PERMISSION_VER_PAGOS,
-} from "@/lib/auth";
+} from "@/lib/auth-utils";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 
 type NavItem = {

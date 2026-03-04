@@ -340,13 +340,15 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteIt
                 patientSex,
               );
 
-              const validTemplateIds = new Set(
-                item.labTest.template?.items?.map((t) => t.id) ?? []
-              );
+              // Incluir IDs de plantilla del análisis Y del templateSnapshot (parámetros adicionales del paciente).
+              // Si no, parámetros extra (extra-xxx) se marcan como huérfanos y se duplican en el listado.
+              const validTemplateIds = new Set<string>([
+                ...(item.labTest.template?.items?.map((t) => t.id) ?? []),
+                ...baseTemplateItems.map((t) => t.id),
+              ]);
 
-              // Solo agregar como huérfanos los ítems cuyo templateItemId existe pero no está
-              // en la plantilla actual (ej. ítem eliminado). Los templateItemId=null suelen
-              // corresponder a ítems de la plantilla y duplicarían la visualización.
+              // Solo agregar como huérfanos los ítems cuyo templateItemId no está ni en plantilla ni en snapshot
+              // (ej. ítem eliminado de ambos). Los templateItemId=null no se consideran huérfanos.
               const orphanResultItems = (item.result?.items ?? []).filter((r) => {
                 const tid = r.templateItemId;
                 return tid != null && tid !== "" && !validTemplateIds.has(tid);

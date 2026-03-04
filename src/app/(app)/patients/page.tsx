@@ -51,17 +51,16 @@ export default async function PatientsPage({ searchParams }: Props) {
 
   const patients = await prisma.patient.findMany({
     where: {
-      deletedAt: null,
       ...(search
         ? {
             OR: [
-              { firstName: { contains: search } },
-              { lastName: { contains: search } },
+              { firstName: { contains: search, mode: "insensitive" } },
+              { lastName: { contains: search, mode: "insensitive" } },
               { dni: { contains: search } },
-              { code: { contains: search } },
+              { code: { contains: search, mode: "insensitive" } },
             ],
           }
-        : {}),
+        : { deletedAt: null }),
     },
     orderBy,
   });
@@ -179,15 +178,22 @@ export default async function PatientsPage({ searchParams }: Props) {
                   </TableHeader>
                   <TableBody>
                     {patients.map((patient) => (
-                      <TableRow key={patient.id}>
+                      <TableRow key={patient.id} className={patient.deletedAt ? "opacity-75 bg-slate-50 dark:bg-slate-800/50" : undefined}>
                         <TableCell className="font-mono text-sm text-slate-900 dark:text-slate-100">{patient.code}</TableCell>
                         <TableCell>
-                          <Link
-                            className="text-sm font-semibold text-slate-900 dark:text-slate-100 hover:underline"
-                            href={`/patients/${patient.id}`}
-                          >
-                            {formatPatientDisplayName(patient.firstName, patient.lastName)}
-                          </Link>
+                          <span className="flex items-center gap-2">
+                            <Link
+                              className="text-sm font-semibold text-slate-900 dark:text-slate-100 hover:underline"
+                              href={`/patients/${patient.id}`}
+                            >
+                              {formatPatientDisplayName(patient.firstName, patient.lastName)}
+                            </Link>
+                            {patient.deletedAt && (
+                              <span className="rounded px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">
+                                Eliminado
+                              </span>
+                            )}
+                          </span>
                         </TableCell>
                         <TableCell className="text-sm font-semibold text-slate-700 dark:text-slate-300">{formatDniDisplay(patient.dni)}</TableCell>
                         <TableCell className="text-slate-700 dark:text-slate-300">{formatDate(patient.birthDate)}</TableCell>
@@ -198,7 +204,7 @@ export default async function PatientsPage({ searchParams }: Props) {
                           >
                             {canDeletePatients ? "Editar" : "Ver"}
                           </Link>
-                          {canDeletePatients && (
+                          {canDeletePatients && !patient.deletedAt && (
                             <DeleteButton url={`/api/patients/${patient.id}`} label="Eliminar" />
                           )}
                         </TableCell>

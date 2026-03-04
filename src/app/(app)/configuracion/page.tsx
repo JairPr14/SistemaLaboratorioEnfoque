@@ -29,7 +29,7 @@ import {
   PERMISSION_GESTIONAR_SELLO,
   PERMISSION_GESTIONAR_CATALOGO,
   PERMISSION_GESTIONAR_LAB_REFERIDOS,
-} from "@/lib/auth";
+} from "@/lib/auth-utils";
 
 function hasPermissionClient(
   session: { user?: { roleCode?: string | null; permissions?: string[] } } | null,

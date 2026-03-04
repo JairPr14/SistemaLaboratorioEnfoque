@@ -94,6 +94,29 @@ export async function PUT(request: Request, { params }: Params) {
   }
 }
 
+export async function PATCH(_request: Request, { params }: Params) {
+  const auth = await requirePermission(PERMISSION_EDITAR_PACIENTES);
+  if (auth.response) return auth.response;
+  try {
+    const { id } = await params;
+    const item = await prisma.patient.update({
+      where: { id },
+      data: { deletedAt: null },
+    });
+
+    return NextResponse.json({ item });
+  } catch (error) {
+    logger.error("Error restoring patient:", error);
+    if (error instanceof Error && error.message.includes("Record to update not found")) {
+      return NextResponse.json({ error: "Paciente no encontrado" }, { status: 404 });
+    }
+    return NextResponse.json(
+      { error: "Error al restaurar paciente" },
+      { status: 500 },
+    );
+  }
+}
+
 export async function DELETE(_request: Request, { params }: Params) {
   const auth = await requirePermission(PERMISSION_ELIMINAR_REGISTROS);
   if (auth.response) return auth.response;

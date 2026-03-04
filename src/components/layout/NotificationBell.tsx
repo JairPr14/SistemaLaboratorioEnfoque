@@ -11,7 +11,7 @@ import {
   PERMISSION_QUICK_ACTIONS_ANALISTA,
   PERMISSION_QUICK_ACTIONS_ENTREGA,
   PERMISSION_CAPTURAR_RESULTADOS,
-} from "@/lib/auth";
+} from "@/lib/auth-utils";
 import type { Session } from "next-auth";
 
 const POPUP_SHOWN_KEY = "notification-popup-shown-ids";

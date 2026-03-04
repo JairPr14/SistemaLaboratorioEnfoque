@@ -29,7 +29,7 @@ import {
   PERMISSION_QUICK_ACTIONS_ANALISTA,
   PERMISSION_QUICK_ACTIONS_ENTREGA,
   PERMISSION_QUICK_ACTIONS_RECEPCION,
-} from "@/lib/auth";
+} from "@/lib/auth-utils";
 import { QuickOrderModal } from "@/components/orders/QuickOrderModal";
 
 export function Topbar({

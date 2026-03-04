@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { hasPermission, PERMISSION_GESTIONAR_CATALOGO } from "@/lib/auth";
+import { hasPermission, PERMISSION_GESTIONAR_CATALOGO } from "@/lib/auth-utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { pageLayoutClasses } from "@/components/layout/PageHeader";

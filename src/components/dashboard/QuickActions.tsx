@@ -34,7 +34,7 @@ import {
   PERMISSION_QUICK_ACTIONS_RECEPCION,
   PERMISSION_REGISTRAR_PAGOS,
   PERMISSION_VALIDAR_RESULTADOS,
-} from "@/lib/auth";
+} from "@/lib/auth-utils";
 import { QuickOrderModal } from "@/components/orders/QuickOrderModal";
 import { CashierDialog } from "@/components/pagos/CashierDialog";
 

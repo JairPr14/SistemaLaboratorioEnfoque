@@ -101,14 +101,13 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({ item });
   } catch (error) {
-    logger.error("Error creating patient:", error);
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
         { error: "Datos inválidos", details: error },
         { status: 400 },
       );
     }
-    // Prisma: clave única (DNI o código duplicado)
+    // Prisma: clave única (DNI o código duplicado) - no loguear, es caso esperado
     const prismaErr = error as PrismaErrorWithCode & { meta?: { target?: string[] } } | null;
     if (prismaErr?.code === "P2002") {
       const target = prismaErr.meta?.target ?? [];
@@ -123,6 +122,7 @@ export async function POST(request: Request) {
         { status: 409 },
       );
     }
+    logger.error("Error creating patient:", error);
     const message =
       error instanceof Error ? error.message : "Error al crear paciente";
     return NextResponse.json({ error: message }, { status: 500 });

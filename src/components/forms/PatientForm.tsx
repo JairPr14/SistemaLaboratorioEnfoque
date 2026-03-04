@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm, type Resolver } from "react-hook-form";
+import { useForm, Controller, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { User, Hash, Mail, Phone, MapPin } from "lucide-react";
@@ -35,6 +35,9 @@ export function PatientForm({ patientId, defaultValues, canEdit = true, createdA
   const [nextCode, setNextCode] = useState<string | null>(null);
   const [loadingCode, setLoadingCode] = useState(false);
 
+  const stringOrEmpty = (v: unknown): string =>
+    v === null || v === undefined ? "" : String(v);
+
   const form = useForm<PatientFormValues>({
     resolver: zodResolver(patientSchema) as Resolver<PatientFormValues>,
     defaultValues: {
@@ -48,7 +51,21 @@ export function PatientForm({ patientId, defaultValues, canEdit = true, createdA
       address: "",
       email: "",
       createdAt: patientId && createdAt ? toDateTimeLocal(createdAt) : toDateTimeLocal(new Date()),
-      ...defaultValues,
+      ...(defaultValues && {
+        dni: stringOrEmpty(defaultValues.dni),
+        firstName: stringOrEmpty(defaultValues.firstName),
+        lastName: stringOrEmpty(defaultValues.lastName),
+        birthDate: stringOrEmpty(defaultValues.birthDate),
+        ageYears: defaultValues.ageYears ?? null,
+        sex: defaultValues.sex ?? "M",
+        phone: stringOrEmpty(defaultValues.phone),
+        address: stringOrEmpty(defaultValues.address),
+        email: stringOrEmpty(defaultValues.email),
+        code: defaultValues.code,
+        createdAt: defaultValues.createdAt
+          ? toDateTimeLocal(defaultValues.createdAt)
+          : (patientId && createdAt ? toDateTimeLocal(createdAt) : toDateTimeLocal(new Date())),
+      }),
       ...(createdAt && { createdAt: toDateTimeLocal(createdAt) }),
     },
   });
@@ -117,11 +134,26 @@ export function PatientForm({ patientId, defaultValues, canEdit = true, createdA
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        toast.error(errorData.error || "No se pudo guardar el paciente.");
+        const message = (errorData as { error?: string })?.error || "No se pudo guardar el paciente.";
+
+        // Si ya existe un paciente con el mismo DNI, mostrar atajo para verlo en el listado
+        if (res.status === 409 && typeof values.dni === "string" && values.dni.trim()) {
+          toast.error(message, {
+            action: {
+              label: "Ver paciente",
+              onClick: () => {
+                const dniSearch = encodeURIComponent(values.dni!.trim());
+                router.push(`/patients?search=${dniSearch}`);
+              },
+            },
+          });
+        } else {
+          toast.error(message);
+        }
         return;
       }
 
-      const data = await res.json().catch(() => ({}));
+      const data = (await res.json().catch(() => ({}))) as { item?: { code?: string } } | undefined;
       const code = data?.item?.code as string | undefined;
       toast.success(
         code
@@ -221,14 +253,25 @@ export function PatientForm({ patientId, defaultValues, canEdit = true, createdA
               readOnly
             />
           ) : (
-            <Input
-              type="number"
-              min={0}
-              max={150}
-              className="mt-1 rounded-xl"
-              placeholder="Ej: 28"
-              disabled={!canEdit}
-              {...form.register("ageYears", { valueAsNumber: true })}
+            <Controller
+              control={form.control}
+              name="ageYears"
+              render={({ field }) => (
+                <Input
+                  type="number"
+                  min={0}
+                  max={150}
+                  className="mt-1 rounded-xl"
+                  placeholder="Ej: 28"
+                  disabled={!canEdit}
+                  value={field.value === null || field.value === undefined ? "" : field.value}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    field.onChange(v === "" ? null : Number(v));
+                  }}
+                  onBlur={field.onBlur}
+                />
+              )}
             />
           )}
         </div>

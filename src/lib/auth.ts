@@ -5,6 +5,57 @@ import { compare } from "bcryptjs";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+import {
+  hasPermission,
+  hasAnyPermission,
+  ADMIN_ROLE_CODE,
+  PERMISSION_ELIMINAR_REGISTROS,
+  PERMISSION_VER_ADMISION,
+  PERMISSION_GESTIONAR_ADMISION,
+} from "./auth-utils";
+
+// Re-exportar todo lo que los Server Components y API routes necesitan
+export {
+  PERMISSION_REPORTES,
+  PERMISSION_EDITAR_PACIENTES,
+  PERMISSION_ELIMINAR_REGISTROS,
+  PERMISSION_VER_PAGOS,
+  PERMISSION_REGISTRAR_PAGOS,
+  PERMISSION_IMPRIMIR_TICKET_PAGO,
+  PERMISSION_VER_ORDENES,
+  PERMISSION_VER_PACIENTES,
+  PERMISSION_VER_CATALOGO,
+  PERMISSION_QUICK_ACTIONS_RECEPCION,
+  PERMISSION_QUICK_ACTIONS_ANALISTA,
+  PERMISSION_QUICK_ACTIONS_ENTREGA,
+  PERMISSION_CAPTURAR_RESULTADOS,
+  PERMISSION_VALIDAR_RESULTADOS,
+  PERMISSION_IMPRIMIR_RESULTADOS,
+  PERMISSION_VER_CONFIGURACION,
+  PERMISSION_GESTIONAR_ROLES,
+  PERMISSION_GESTIONAR_USUARIOS,
+  PERMISSION_GESTIONAR_SEDES,
+  PERMISSION_GESTIONAR_SECCIONES,
+  PERMISSION_GESTIONAR_PREANALITICOS,
+  PERMISSION_GESTIONAR_CATALOGO,
+  PERMISSION_EDITAR_PRECIO_CATALOGO,
+  PERMISSION_GESTIONAR_PLANTILLAS,
+  PERMISSION_GESTIONAR_SELLO,
+  PERMISSION_GESTIONAR_LAB_REFERIDOS,
+  PERMISSION_VER_ADMISION,
+  PERMISSION_GESTIONAR_ADMISION,
+  PERMISSION_COBRO_ADMISION,
+  PERMISSION_GROUPS,
+  ALL_PERMISSIONS,
+  ADMIN_ROLE_CODE,
+  hasPermission,
+  hasAnyPermission,
+  isAdmissionOnlyProfile,
+  isReceptionProfile,
+  hasRoleWithPermissions,
+  isAdmin,
+} from "./auth-utils";
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -41,13 +92,8 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   ],
-  session: {
-    strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 días
-  },
-  pages: {
-    signIn: "/login",
-  },
+  session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
+  pages: { signIn: "/login" },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
@@ -71,281 +117,28 @@ export const authOptions: NextAuthOptions = {
   },
 };
 
-/** Permisos que se pueden asignar a un rol en Configuración → Roles. */
-export const PERMISSION_REPORTES = "REPORTES";
-export const PERMISSION_EDITAR_PACIENTES = "EDITAR_PACIENTES";
-export const PERMISSION_ELIMINAR_REGISTROS = "ELIMINAR_REGISTROS";
-export const PERMISSION_VER_PAGOS = "VER_PAGOS";
-export const PERMISSION_REGISTRAR_PAGOS = "REGISTRAR_PAGOS";
-export const PERMISSION_IMPRIMIR_TICKET_PAGO = "IMPRIMIR_TICKET_PAGO";
-export const PERMISSION_VER_ORDENES = "VER_ORDENES";
-export const PERMISSION_VER_PACIENTES = "VER_PACIENTES";
-export const PERMISSION_VER_CATALOGO = "VER_CATALOGO";
-export const PERMISSION_QUICK_ACTIONS_RECEPCION = "QUICK_ACTIONS_RECEPCION";
-export const PERMISSION_QUICK_ACTIONS_ANALISTA = "QUICK_ACTIONS_ANALISTA";
-export const PERMISSION_QUICK_ACTIONS_ENTREGA = "QUICK_ACTIONS_ENTREGA";
-export const PERMISSION_CAPTURAR_RESULTADOS = "CAPTURAR_RESULTADOS";
-export const PERMISSION_VALIDAR_RESULTADOS = "VALIDAR_RESULTADOS";
-export const PERMISSION_IMPRIMIR_RESULTADOS = "IMPRIMIR_RESULTADOS";
-
-// Permisos de Configuración
-export const PERMISSION_VER_CONFIGURACION = "VER_CONFIGURACION";
-export const PERMISSION_GESTIONAR_ROLES = "GESTIONAR_ROLES";
-export const PERMISSION_GESTIONAR_USUARIOS = "GESTIONAR_USUARIOS";
-export const PERMISSION_GESTIONAR_SEDES = "GESTIONAR_SEDES";
-export const PERMISSION_GESTIONAR_SECCIONES = "GESTIONAR_SECCIONES";
-export const PERMISSION_GESTIONAR_PREANALITICOS = "GESTIONAR_PREANALITICOS";
-export const PERMISSION_GESTIONAR_CATALOGO = "GESTIONAR_CATALOGO";
-export const PERMISSION_EDITAR_PRECIO_CATALOGO = "EDITAR_PRECIO_CATALOGO";
-export const PERMISSION_GESTIONAR_PLANTILLAS = "GESTIONAR_PLANTILLAS";
-export const PERMISSION_GESTIONAR_SELLO = "GESTIONAR_SELLO";
-export const PERMISSION_GESTIONAR_LAB_REFERIDOS = "GESTIONAR_LAB_REFERIDOS";
-export const PERMISSION_VER_ADMISION = "VER_ADMISION";
-export const PERMISSION_GESTIONAR_ADMISION = "GESTIONAR_ADMISION";
-export const PERMISSION_COBRO_ADMISION = "COBRO_ADMISION";
-
-/** Permisos agrupados por módulo para la configuración de roles. */
-export const PERMISSION_GROUPS = [
-  {
-    label: "Configuración del Sistema",
-    permissions: [
-      { code: PERMISSION_VER_CONFIGURACION, label: "Ver panel de configuración" },
-      { code: PERMISSION_GESTIONAR_ROLES, label: "Gestionar roles" },
-      { code: PERMISSION_GESTIONAR_USUARIOS, label: "Gestionar usuarios" },
-      { code: PERMISSION_GESTIONAR_SEDES, label: "Gestionar sedes" },
-      { code: PERMISSION_GESTIONAR_SECCIONES, label: "Gestionar secciones de laboratorio" },
-      { code: PERMISSION_GESTIONAR_PREANALITICOS, label: "Gestionar notas preanalíticas" },
-      { code: PERMISSION_GESTIONAR_SELLO, label: "Gestionar sello virtual de PDFs" },
-      { code: PERMISSION_GESTIONAR_LAB_REFERIDOS, label: "Gestionar laboratorios referidos" },
-    ],
-  },
-  {
-    label: "Catálogo y Plantillas",
-    permissions: [
-      { code: PERMISSION_VER_CATALOGO, label: "Ver catálogo y promociones (admisión usa el catálogo)" },
-      { code: PERMISSION_GESTIONAR_CATALOGO, label: "Gestionar catálogo de análisis" },
-      { code: PERMISSION_EDITAR_PRECIO_CATALOGO, label: "Editar precio público y convenio del catálogo" },
-      { code: PERMISSION_GESTIONAR_PLANTILLAS, label: "Gestionar plantillas de resultados" },
-    ],
-  },
-  {
-    label: "Admisión",
-    permissions: [
-      {
-        code: PERMISSION_VER_ADMISION,
-        label: "Ver módulo admisión (pacientes del día, resultados listos, pagos externos)",
-      },
-      {
-        code: PERMISSION_GESTIONAR_ADMISION,
-        label: "Nueva atención: registrar paciente, cobrar al público, crear orden",
-      },
-      {
-        code: PERMISSION_COBRO_ADMISION,
-        label: "Lab cobra admisión: ver y cobrar a admisión (precio convenio)",
-      },
-    ],
-  },
-  {
-    label: "Reportes",
-    permissions: [
-      { code: PERMISSION_REPORTES, label: "Ver reportes" },
-    ],
-  },
-  {
-    label: "Pacientes",
-    permissions: [
-      { code: PERMISSION_VER_PACIENTES, label: "Ver y buscar pacientes" },
-      { code: PERMISSION_EDITAR_PACIENTES, label: "Modificar datos de pacientes" },
-    ],
-  },
-  {
-    label: "Registros",
-    permissions: [
-      { code: PERMISSION_ELIMINAR_REGISTROS, label: "Eliminar registros (pacientes, órdenes, ítems)" },
-    ],
-  },
-  {
-    label: "Pagos / Cobros",
-    permissions: [
-      { code: PERMISSION_VER_PAGOS, label: "Ver módulo Pagos (lista, ticket de pago)" },
-      {
-        code: PERMISSION_REGISTRAR_PAGOS,
-        label: "Registrar pagos (cobros directos, pagos a labs externos)",
-      },
-      { code: PERMISSION_IMPRIMIR_TICKET_PAGO, label: "Generar ticket de pago" },
-    ],
-  },
-  {
-    label: "Órdenes y Flujo",
-    permissions: [
-      {
-        code: PERMISSION_VER_ORDENES,
-        label: "Ver órdenes, pendientes, entregados, laboratorio",
-      },
-    ],
-  },
-  {
-    label: "Recepción",
-    permissions: [
-      { code: PERMISSION_QUICK_ACTIONS_RECEPCION, label: "Acciones rápidas de recepción" },
-    ],
-  },
-  {
-    label: "Análisis",
-    permissions: [
-      { code: PERMISSION_QUICK_ACTIONS_ANALISTA, label: "Acciones rápidas de analista" },
-      { code: PERMISSION_CAPTURAR_RESULTADOS, label: "Capturar resultados" },
-      { code: PERMISSION_VALIDAR_RESULTADOS, label: "Validar resultados" },
-    ],
-  },
-  {
-    label: "Entrega",
-    permissions: [
-      { code: PERMISSION_QUICK_ACTIONS_ENTREGA, label: "Acciones rápidas de entrega" },
-    ],
-  },
-  {
-    label: "Resultados",
-    permissions: [
-      { code: PERMISSION_IMPRIMIR_RESULTADOS, label: "Imprimir resultados" },
-    ],
-  },
-] as const;
-
-/** Lista plana de todos los permisos (compatibilidad). */
-export const ALL_PERMISSIONS = PERMISSION_GROUPS.flatMap((g) =>
-  g.permissions.map((p) => ({ code: p.code, label: p.label })),
-);
-
-/** Código del rol administrador (compatibilidad: si el rol no tiene permisos configurados, ADMIN tiene todos). */
-export const ADMIN_ROLE_CODE = "ADMIN";
-
-// Re-exportar getServerSession con authOptions pre-configurado
 export async function getServerSession() {
   return nextAuthGetServerSession(authOptions);
 }
 
-export function hasPermission(
-  session: { user?: { roleCode?: string | null; permissions?: string[] } } | null,
-  permission: string,
-): boolean {
-  if (!session?.user) return false;
-  const perms = session.user.permissions ?? [];
-  if (perms.includes(permission)) return true;
-  if (session.user.roleCode === ADMIN_ROLE_CODE && perms.length === 0) return true;
-  return false;
-}
-
-/** Permisos que indican perfil de laboratorio (no solo admisión). */
-const NON_ADMISSION_NAV_PERMISSIONS = [
-  PERMISSION_VER_PACIENTES,
-  PERMISSION_EDITAR_PACIENTES,
-  PERMISSION_VER_CATALOGO,
-  PERMISSION_GESTIONAR_CATALOGO,
-  PERMISSION_EDITAR_PRECIO_CATALOGO,
-  PERMISSION_GESTIONAR_PLANTILLAS,
-  PERMISSION_VER_ORDENES,
-  PERMISSION_QUICK_ACTIONS_RECEPCION,
-  PERMISSION_QUICK_ACTIONS_ANALISTA,
-  PERMISSION_QUICK_ACTIONS_ENTREGA,
-  PERMISSION_VER_PAGOS,
-  PERMISSION_REGISTRAR_PAGOS,
-  PERMISSION_REPORTES,
-  PERMISSION_CAPTURAR_RESULTADOS,
-  PERMISSION_VALIDAR_RESULTADOS,
-  PERMISSION_IMPRIMIR_RESULTADOS,
-  PERMISSION_VER_CONFIGURACION,
-] as const;
-
-/** True si el usuario solo tiene permisos de admisión (sin acceso a laboratorio, órdenes, etc.) */
-export function isAdmissionOnlyProfile(
-  session: { user?: { roleCode?: string | null; permissions?: string[] } } | null,
-): boolean {
-  if (!session?.user) return false;
-  if (session.user.roleCode === ADMIN_ROLE_CODE) return false;
-  const hasAdmission = hasPermission(session, PERMISSION_VER_ADMISION) || hasPermission(session, PERMISSION_GESTIONAR_ADMISION);
-  if (!hasAdmission) return false;
-  return !hasAnyPermission(session, [...NON_ADMISSION_NAV_PERMISSIONS]);
-}
-
-/** True si el perfil es principalmente recepción (acceso a órdenes y acciones de recepción) */
-export function isReceptionProfile(
-  session: { user?: { roleCode?: string | null; permissions?: string[] } } | null,
-): boolean {
-  if (!session?.user) return false;
-  if (session.user.roleCode === ADMIN_ROLE_CODE) return false;
-  if (isAdmissionOnlyProfile(session)) return false;
-  return (
-    hasPermission(session, PERMISSION_QUICK_ACTIONS_RECEPCION) &&
-    hasPermission(session, PERMISSION_VER_ORDENES)
-  );
-}
-
-/** Verifica si el usuario tiene al menos uno de los permisos indicados. */
-export function hasAnyPermission(
-  session: { user?: { roleCode?: string | null; permissions?: string[] } } | null,
-  permissions: string[],
-): boolean {
-  if (!session?.user || permissions.length === 0) return false;
-  return permissions.some((p) => hasPermission(session, p));
-}
-
-/** Devuelve true si el usuario tiene rol asignado con permisos (o es ADMIN). */
-export function hasRoleWithPermissions(
-  session: { user?: { roleCode?: string | null; permissions?: string[] } } | null,
-): boolean {
-  if (!session?.user) return false;
-  if (session.user.roleCode === ADMIN_ROLE_CODE) return true;
-  const perms = session.user.permissions ?? [];
-  return perms.length > 0;
-}
-
-/** @deprecated Usar hasPermission(session, PERMISSION_*) según el caso. */
-export function isAdmin(session: { user?: { roleCode?: string | null; permissions?: string[] } } | null): boolean {
-  return (
-    hasPermission(session, PERMISSION_REPORTES) &&
-    hasPermission(session, PERMISSION_EDITAR_PACIENTES) &&
-    hasPermission(session, PERMISSION_ELIMINAR_REGISTROS)
-  );
-}
-
-/**
- * Para uso en API routes: exige un permiso concreto. Devuelve la sesión o la respuesta 401/403.
- */
 export async function requirePermission(
   permission: string,
-): Promise<
-  { session: Session; response?: never } | { session?: never; response: NextResponse }
-> {
+): Promise<{ session: Session; response?: never } | { session?: never; response: NextResponse }> {
   const session = await nextAuthGetServerSession(authOptions);
-  if (!session?.user) {
-    return { response: NextResponse.json({ error: "No autorizado" }, { status: 401 }) };
-  }
-  if (!hasPermission(session, permission)) {
-    return { response: NextResponse.json({ error: "Sin permiso para esta acción" }, { status: 403 }) };
-  }
+  if (!session?.user) return { response: NextResponse.json({ error: "No autorizado" }, { status: 401 }) };
+  if (!hasPermission(session, permission)) return { response: NextResponse.json({ error: "Sin permiso para esta acción" }, { status: 403 }) };
   return { session };
 }
 
-/**
- * Para uso en API routes: exige al menos uno de los permisos. Devuelve la sesión o 401/403.
- */
 export async function requireAnyPermission(
   permissions: string[],
-): Promise<
-  { session: Session; response?: never } | { session?: never; response: NextResponse }
-> {
+): Promise<{ session: Session; response?: never } | { session?: never; response: NextResponse }> {
   const session = await nextAuthGetServerSession(authOptions);
-  if (!session?.user) {
-    return { response: NextResponse.json({ error: "No autorizado" }, { status: 401 }) };
-  }
-  if (!hasAnyPermission(session, permissions)) {
-    return { response: NextResponse.json({ error: "Sin permiso para esta acción" }, { status: 403 }) };
-  }
+  if (!session?.user) return { response: NextResponse.json({ error: "No autorizado" }, { status: 401 }) };
+  if (!hasAnyPermission(session, permissions)) return { response: NextResponse.json({ error: "Sin permiso para esta acción" }, { status: 403 }) };
   return { session };
 }
 
-/** @deprecated Usar requirePermission(PERMISSION_EDITAR_PACIENTES) o requirePermission(PERMISSION_ELIMINAR_REGISTROS). */
 export async function requireAdmin(): Promise<
   { session: Session; response?: never } | { session?: never; response: NextResponse }
 > {

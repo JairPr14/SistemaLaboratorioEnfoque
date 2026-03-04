@@ -20,7 +20,10 @@ function getDatabaseUrlWithConnectionLimit(): string | undefined {
 }
 
 const prismaOptions: ConstructorParameters<typeof PrismaClient>[0] = {
-  log: ["error", "warn"],
+  log: [
+    { level: "error", emit: "event" },
+    { level: "warn", emit: "stdout" },
+  ],
 };
 
 const dbUrlWithLimit = getDatabaseUrlWithConnectionLimit();
@@ -28,9 +31,16 @@ if (dbUrlWithLimit) {
   prismaOptions.datasources = { db: { url: dbUrlWithLimit } };
 }
 
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient(prismaOptions);
+const prismaClient = globalForPrisma.prisma ?? new PrismaClient(prismaOptions);
+
+// Filtrar P2002 (unique constraint) para no llenar la consola; es un caso esperado (ej. DNI duplicado)
+prismaClient.$on("error" as never, (e: { message?: string }) => {
+  const msg = String(e?.message ?? e);
+  if (msg.includes("P2002") || msg.includes("Unique constraint failed")) return;
+  console.error("[Prisma]", msg);
+});
+
+export const prisma = prismaClient;
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;

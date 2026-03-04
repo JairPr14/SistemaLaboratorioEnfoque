@@ -8,6 +8,7 @@ import { getServerSession, hasPermission, PERMISSION_EDITAR_PACIENTES, PERMISSIO
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/format";
 import { PatientForm } from "@/components/forms/PatientForm";
+import { RestorePatientButton } from "@/components/common/RestorePatientButton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -24,9 +25,7 @@ export default async function PatientDetailPage({ params }: Props) {
   }
   const canEditPatient = hasPermission(session, PERMISSION_EDITAR_PACIENTES);
   const [patient, orders] = await Promise.all([
-    prisma.patient.findFirst({
-      where: { id, deletedAt: null },
-    }),
+    prisma.patient.findFirst({ where: { id } }),
     prisma.labOrder.findMany({
       where: { patientId: id },
       include: {
@@ -46,13 +45,22 @@ export default async function PatientDetailPage({ params }: Props) {
   }
 
   const birthDate = patient.birthDate.toISOString().split("T")[0];
+  const isDeleted = !!patient.deletedAt;
 
   return (
     <div className="space-y-6">
+      {isDeleted && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 dark:border-amber-800/60 dark:bg-amber-900/20 p-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+            Este paciente fue eliminado. Puedes restaurarlo para que vuelva a aparecer en el listado activo.
+          </p>
+          {canEditPatient && <RestorePatientButton patientId={patient.id} />}
+        </div>
+      )}
       <div className="rounded-2xl border border-slate-200/80 bg-white/80 shadow-sm backdrop-blur-sm dark:border-slate-700/80 dark:bg-slate-900/60">
         <PatientForm
             patientId={patient.id}
-            canEdit={canEditPatient}
+            canEdit={canEditPatient && !isDeleted}
             createdAt={patient.createdAt}
             defaultValues={{
               code: patient.code,
@@ -71,13 +79,15 @@ export default async function PatientDetailPage({ params }: Props) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-4">
           <CardTitle>Análisis realizados</CardTitle>
-          <Link
-            href={`/orders/new?patientId=${patient.id}`}
-            className={cn(buttonVariants({ size: "sm" }), "gap-2")}
-          >
-            <Plus className="h-4 w-4" />
-            Nueva orden
-          </Link>
+          {!isDeleted && (
+            <Link
+              href={`/orders/new?patientId=${patient.id}`}
+              className={cn(buttonVariants({ size: "sm" }), "gap-2")}
+            >
+              <Plus className="h-4 w-4" />
+              Nueva orden
+            </Link>
+          )}
         </CardHeader>
         <CardContent>
           {orders.length === 0 ? (
@@ -86,15 +96,17 @@ export default async function PatientDetailPage({ params }: Props) {
                 <Plus className="h-8 w-8 text-slate-400 dark:text-slate-500" />
               </div>
               <p className="mb-4 text-slate-600 dark:text-slate-400">
-                Este paciente aún no tiene órdenes ni análisis registrados.
+                {isDeleted ? "Restaura el paciente para crear nuevas órdenes." : "Este paciente aún no tiene órdenes ni análisis registrados."}
               </p>
-              <Link
-                href={`/orders/new?patientId=${patient.id}`}
-                className={cn(buttonVariants({ size: "lg" }), "gap-2 inline-flex")}
-              >
-                <Plus className="h-4 w-4" />
-                Crear primera orden
-              </Link>
+              {!isDeleted && (
+                <Link
+                  href={`/orders/new?patientId=${patient.id}`}
+                  className={cn(buttonVariants({ size: "lg" }), "gap-2 inline-flex")}
+                >
+                  <Plus className="h-4 w-4" />
+                  Crear primera orden
+                </Link>
+              )}
             </div>
           ) : (
             <div className="space-y-4">
