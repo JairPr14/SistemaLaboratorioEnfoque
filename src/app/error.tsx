@@ -24,6 +24,9 @@ export default function Error({
         <p className="text-lg text-slate-600 dark:text-slate-400">
           Ocurrió un error inesperado. Por favor, intente nuevamente.
         </p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Si el error persiste, verifique que la base de datos esté en ejecución y que <code className="rounded bg-slate-200 px-1 dark:bg-slate-700">DATABASE_URL</code> esté correcta en <code className="rounded bg-slate-200 px-1 dark:bg-slate-700">.env</code>. Ejecute <code className="rounded bg-slate-200 px-1 dark:bg-slate-700">pnpm dev</code> para ver el mensaje de error completo.
+        </p>
         {error.digest && (
           <p className="text-xs text-slate-500 font-mono">
             Código: {error.digest}

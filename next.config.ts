@@ -4,6 +4,12 @@ const nextConfig: NextConfig = {
   // Optimización para producción en Vercel
   output: "standalone",
 
+  // Asegurar que Prisma se incluya en standalone
+  serverExternalPackages: ["@prisma/client", "prisma"],
+  outputFileTracingIncludes: {
+    "/**": ["./node_modules/@prisma/**/*", "./node_modules/prisma/**/*"],
+  },
+
   // Headers de seguridad
   async headers() {
     return [
