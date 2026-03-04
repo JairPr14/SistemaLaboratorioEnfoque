@@ -19,12 +19,14 @@ export async function GET() {
       { status: 200 },
     );
   } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
       {
         status: "error",
         timestamp: new Date().toISOString(),
         database: "disconnected",
-        error: process.env.NODE_ENV === "development" ? String(error) : undefined,
+        error: process.env.NODE_ENV === "development" ? msg : undefined,
+        hint: process.env.NODE_ENV === "production" ? (msg.toLowerCase().includes("ssl") ? "SSL requerido" : msg.includes("ECONNREFUSED") ? "Conexión rechazada" : msg.includes("ENOTFOUND") ? "Host no encontrado" : "Revisar DATABASE_URL") : undefined,
       },
       { status: 503 },
     );

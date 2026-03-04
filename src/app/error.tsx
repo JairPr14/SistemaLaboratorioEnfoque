@@ -25,7 +25,7 @@ export default function Error({
           Ocurrió un error inesperado. Por favor, intente nuevamente.
         </p>
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          Si el error persiste, verifique que la base de datos esté en ejecución y que <code className="rounded bg-slate-200 px-1 dark:bg-slate-700">DATABASE_URL</code> esté correcta en <code className="rounded bg-slate-200 px-1 dark:bg-slate-700">.env</code>. Ejecute <code className="rounded bg-slate-200 px-1 dark:bg-slate-700">pnpm dev</code> para ver el mensaje de error completo.
+          Pruebe <a href="/api/health" className="text-teal-600 underline dark:text-teal-400">/api/health</a> para verificar la conexión a la base de datos. Si falla, revise <code className="rounded bg-slate-200 px-1 dark:bg-slate-700">DATABASE_URL</code> en Vercel y que las migraciones estén aplicadas (<code className="rounded bg-slate-200 px-1 dark:bg-slate-700">prisma migrate deploy</code>).
         </p>
         {error.digest && (
           <p className="text-xs text-slate-500 font-mono">

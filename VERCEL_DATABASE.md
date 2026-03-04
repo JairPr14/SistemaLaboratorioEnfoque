@@ -13,6 +13,17 @@ Este proyecto usa **Seenode** como base de datos en producción. Sigue estos pas
 | `NEXTAUTH_URL` | La URL real de tu app, ej: `https://sistema-laboratorio-enfoque.vercel.app` | Production, Preview, Development |
 | `NEXTAUTH_SECRET` | Una clave secreta (usa la misma que en desarrollo) | Production, Preview, Development |
 
+## Aplicar migraciones a Seenode
+
+Antes de usar la app, debes aplicar el esquema a la base de datos de Seenode:
+
+```bash
+# Con DATABASE_URL apuntando a Seenode en .env (o inline):
+DATABASE_URL="postgresql://..." pnpm prisma migrate deploy
+```
+
+O temporalmente cambia `DATABASE_URL` en `.env` a Seenode, ejecuta `pnpm prisma migrate deploy`, y luego vuelve a poner Docker para desarrollo local.
+
 ## Obtener DATABASE_URL de Seenode
 
 1. Entra a tu panel de Seenode
