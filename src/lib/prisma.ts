@@ -16,10 +16,7 @@ function getDatabaseUrlWithConnectionLimit(): string | undefined {
   if (!url.includes("connection_limit=")) {
     params.push(`connection_limit=${process.env.VERCEL ? 1 : 10}`);
   }
-  if (params.length > 0) {
-    url = `${url}${separator}${params.join("&")}`;
-  }
-  return url;
+  return params.length > 0 ? `${url}${separator}${params.join("&")}` : url;
 }
 
 const prismaOptions: ConstructorParameters<typeof PrismaClient>[0] = {
