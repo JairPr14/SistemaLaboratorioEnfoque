@@ -21,7 +21,15 @@ export default async function TestsPage() {
   const canEditOrCreate = canManageCatalog || canEditPrice;
   const tests = await prisma.labTest.findMany({
     where: { deletedAt: null },
-    include: { section: true },
+    include: {
+      section: true,
+      template: {
+        select: {
+          id: true,
+          isVerified: true,
+        },
+      },
+    },
     orderBy: [{ section: { order: "asc" } }, { name: "asc" }],
   });
 
@@ -33,6 +41,9 @@ export default async function TestsPage() {
     sectionName: t.section?.name ?? "",
     sectionId: t.sectionId,
     price: Number(t.price),
+    hasTemplate: !!t.template,
+    isTemplateVerified: !!t.template?.isVerified,
+    templateId: t.template?.id ?? null,
   }));
 
   const [sections, referredLabsRes] = await Promise.all([
