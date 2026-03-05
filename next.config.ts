@@ -62,6 +62,14 @@ const nextConfig: NextConfig = {
   // Optimizaciones de producción
   poweredByHeader: false,
   reactStrictMode: true,
+
+  // Cache: revalidación periódica para respuestas más rápidas
+  experimental: {
+    staleTimes: {
+      dynamic: 30,
+      static: 180,
+    },
+  },
 };
 
 export default nextConfig;

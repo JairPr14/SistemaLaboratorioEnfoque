@@ -50,7 +50,7 @@ export default async function OrdersPage({
   const paymentStatus = params.paymentStatus?.trim();
   const from = params.from?.trim();
   const to = params.to?.trim();
-  const sortBy = params.sortBy?.trim() || "createdAt";
+  const sortBy = params.sortBy?.trim() || "orderCode";
   const sortDir: Prisma.SortOrder = params.sortDir === "asc" ? "asc" : "desc";
   const focusSearch = params.focusSearch === "1";
   const session = await getServerSession();
@@ -191,8 +191,8 @@ export default async function OrdersPage({
                 defaultTo={to}
               />
 
-              <FilterSubmitReset
-                showReset={Boolean(search || status || paymentStatus || from || to || sortBy !== "createdAt" || sortDir !== "desc")}
+                <FilterSubmitReset
+                showReset={Boolean(search || status || paymentStatus || from || to || sortBy !== "orderCode" || sortDir !== "desc")}
                 resetHref="/orders"
               />
             </div>
@@ -245,8 +245,8 @@ export default async function OrdersPage({
                   defaultValue={sortBy}
                   className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm transition-colors focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-slate-500"
                 >
-                  <option value="createdAt">Fecha</option>
                   <option value="orderCode">Código orden</option>
+                  <option value="createdAt">Fecha</option>
                   <option value="patient">Paciente</option>
                 </select>
               </div>
@@ -278,8 +278,7 @@ export default async function OrdersPage({
               <TableHeader>
                 <TableRow className="bg-slate-50 dark:bg-slate-800/50">
                   <TableHead className="w-12 font-semibold text-center">#</TableHead>
-                  <TableHead className="font-semibold">Orden</TableHead>
-                  <TableHead className="font-semibold">Paciente</TableHead>
+                  <TableHead className="font-semibold min-w-[220px]">Orden</TableHead>
                   <TableHead className="font-semibold">Fecha</TableHead>
                   <TableHead className="font-semibold">Estado</TableHead>
                   <TableHead className="font-semibold">Cobro</TableHead>
@@ -293,7 +292,7 @@ export default async function OrdersPage({
               <TableBody>
                 {visibleOrders.length === 0 ? (
                   <EmptyTableRow
-                    colSpan={11}
+                    colSpan={10}
                     message="No se encontraron órdenes"
                     className="py-12 text-center"
                     icon={<FileText className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />}
@@ -315,11 +314,8 @@ export default async function OrdersPage({
                             className="font-medium text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
                             href={`/orders/${order.id}`}
                           >
-                            {order.orderCode}
+                            {order.orderCode} – {formatPatientDisplayName(order.patient.firstName, order.patient.lastName)}
                           </Link>
-                        </TableCell>
-                        <TableCell className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                          {formatPatientDisplayName(order.patient.firstName, order.patient.lastName)}
                         </TableCell>
                         <TableCell className="text-slate-600 dark:text-slate-400">
                           {formatDate(order.createdAt)}

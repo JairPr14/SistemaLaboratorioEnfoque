@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 
@@ -7,7 +8,7 @@ import { getServerSession, hasAnyPermission, PERMISSION_GESTIONAR_ADMISION, PERM
 import { logger } from "@/lib/logger";
 import {
   buildOrderCode,
-  getNextOrderSequence,
+  getNextOrderSequenceAsync,
 } from "@/features/lab/order-utils";
 import { parseDatePeru } from "@/lib/date";
 
@@ -102,53 +103,58 @@ export async function POST(request: Request) {
     };
     const testsFromProfiles: OrderItemPayload[] = [];
     const fromProfileTestIds = new Set<string>();
+    const profileIds = parsed.profileIds ?? [];
+    const labTestIds = parsed.labTestIds ?? [];
 
-    if (parsed.profileIds && parsed.profileIds.length > 0) {
-      const profiles = await prisma.testProfile.findMany({
-        where: { id: { in: parsed.profileIds }, isActive: true },
-        include: {
-          items: {
-            orderBy: { order: "asc" },
+    const [profiles, individualTests] = await Promise.all([
+      profileIds.length > 0
+        ? prisma.testProfile.findMany({
+            where: { id: { in: profileIds }, isActive: true },
             include: {
-              labTest: {
-                include: fullInclude,
+              items: {
+                orderBy: { order: "asc" },
+                include: {
+                  labTest: { include: fullInclude },
+                },
               },
             },
-          },
-        },
-      });
+          })
+        : Promise.resolve([]),
+      labTestIds.length > 0
+        ? prisma.labTest.findMany({
+            where: { id: { in: labTestIds }, deletedAt: null, isActive: true },
+            include: { ...fullInclude, referredLab: true },
+          })
+        : Promise.resolve([]),
+    ]);
 
-      for (const profile of profiles) {
-        const profileTests = profile.items.map((i) => i.labTest).filter(Boolean);
-        if (profileTests.length === 0) continue;
-        const priceEach =
-          profile.packagePrice != null
-            ? Number(profile.packagePrice) / profileTests.length
-            : null;
-        for (const test of profileTests) {
-          const price = priceEach ?? Number(test.price);
-          const convention = test.priceToAdmission != null ? Number(test.priceToAdmission) : price;
-          testsFromProfiles.push({
-            test,
-            priceSnapshot: price,
-            priceConventionSnapshot: parsed.orderSource === "ADMISION" ? convention : undefined,
-            referredLabId: parsed.orderSource === "ADMISION" && test.isReferred ? (test.referredLabId ?? undefined) : undefined,
-            externalLabCostSnapshot: parsed.orderSource === "ADMISION" && test.externalLabCost != null ? Number(test.externalLabCost) : undefined,
-            promotionId: profile.id,
-            promotionName: profile.name,
-          });
-          fromProfileTestIds.add(test.id);
-        }
+    for (const profile of profiles) {
+      const profileTests = profile.items.map((i) => i.labTest).filter(Boolean);
+      if (profileTests.length === 0) continue;
+      const priceEach =
+        profile.packagePrice != null
+          ? Number(profile.packagePrice) / profileTests.length
+          : null;
+      for (const test of profileTests) {
+        fromProfileTestIds.add(test.id);
+        const price = priceEach ?? Number(test.price);
+        const convention = test.priceToAdmission != null ? Number(test.priceToAdmission) : price;
+        testsFromProfiles.push({
+          test,
+          priceSnapshot: price,
+          priceConventionSnapshot: parsed.orderSource === "ADMISION" ? convention : undefined,
+          referredLabId: parsed.orderSource === "ADMISION" && test.isReferred ? (test.referredLabId ?? undefined) : undefined,
+          externalLabCostSnapshot: parsed.orderSource === "ADMISION" && test.externalLabCost != null ? Number(test.externalLabCost) : undefined,
+          promotionId: profile.id,
+          promotionName: profile.name,
+        });
       }
     }
 
-    const individualTestIds = (parsed.labTestIds ?? []).filter((id) => !fromProfileTestIds.has(id));
-    const individualTests = await prisma.labTest.findMany({
-      where: { id: { in: individualTestIds }, deletedAt: null, isActive: true },
-      include: { ...fullInclude, referredLab: true },
-    });
+    const individualTestIds = labTestIds.filter((id) => !fromProfileTestIds.has(id));
+    const individualTestsFiltered = individualTests.filter((t) => individualTestIds.includes(t.id));
 
-    const onlyIndividual: OrderItemPayload[] = individualTests.map((test) => {
+    const onlyIndividual: OrderItemPayload[] = individualTestsFiltered.map((test) => {
       const price = Number(test.price);
       const convention = test.priceToAdmission != null ? Number(test.priceToAdmission) : price;
       return {
@@ -189,10 +195,7 @@ export async function POST(request: Request) {
     let order: Awaited<ReturnType<typeof prisma.labOrder.create>>;
     const maxRetries = 3;
     for (let attempt = 0; attempt < maxRetries; attempt++) {
-      const existing = await prisma.labOrder.findMany({
-        select: { orderCode: true },
-      });
-      const nextSeq = getNextOrderSequence(existing);
+      const nextSeq = await getNextOrderSequenceAsync(prisma);
       const orderCode = buildOrderCode(nextSeq);
 
       try {
@@ -260,6 +263,8 @@ export async function POST(request: Request) {
             },
           });
         }
+        revalidatePath("/orders");
+        revalidatePath("/dashboard");
         break;
       } catch (err) {
         const isUnique =

@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
@@ -52,6 +53,9 @@ export async function DELETE(_request: Request, { params }: Params) {
         data: { totalPrice: newTotal },
       });
     });
+    revalidatePath("/orders");
+    revalidatePath(`/orders/${orderId}`);
+    revalidatePath("/dashboard");
 
     return NextResponse.json({ success: true });
   } catch (error) {

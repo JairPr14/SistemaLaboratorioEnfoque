@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
@@ -74,7 +75,8 @@ export async function PUT(request: Request, { params }: Params) {
       where: { id },
       data: updateData as Parameters<typeof prisma.patient.update>[0]["data"],
     });
-
+    revalidatePath("/patients");
+    revalidatePath(`/patients/${id}`);
     return NextResponse.json({ item });
   } catch (error) {
     logger.error("Error updating patient:", error);
@@ -126,7 +128,8 @@ export async function DELETE(_request: Request, { params }: Params) {
       where: { id },
       data: { deletedAt: new Date() },
     });
-
+    revalidatePath("/patients");
+    revalidatePath(`/patients/${id}`);
     return NextResponse.json({ item });
   } catch (error) {
     logger.error("Error deleting patient:", error);

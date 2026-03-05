@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/layout/AppShell";
 
-export const dynamic = "force-dynamic";
+// Revalidar cada 30s: cache para velocidad + actualización constante
+export const revalidate = 30;
 
 export default function AppLayout({
   children,

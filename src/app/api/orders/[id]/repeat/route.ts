@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
   buildOrderCode,
-  getNextOrderSequence,
+  getNextOrderSequenceAsync,
 } from "@/features/lab/order-utils";
 
 import { logger } from "@/lib/logger";
@@ -65,10 +65,7 @@ export async function POST(request: Request, { params }: Params) {
     async function createWithNextCode(
       orderSource: NonNullable<typeof sourceOrder>,
     ): Promise<{ orderCode: string; orderId: string }> {
-      const existing = await prisma.labOrder.findMany({
-        select: { orderCode: true },
-      });
-      const nextSeq = getNextOrderSequence(existing);
+      const nextSeq = await getNextOrderSequenceAsync(prisma);
       const orderCode = buildOrderCode(nextSeq);
 
       const order = await prisma.labOrder.create({

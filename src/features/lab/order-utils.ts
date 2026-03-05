@@ -1,3 +1,5 @@
+import type { PrismaClient } from "@prisma/client";
+
 export function buildPatientCode() {
   return `PAC-${String(Date.now()).slice(-8)}`;
 }
@@ -23,11 +25,21 @@ export function parseOrderCodeSequence(orderCode: string): number {
   return Number.isNaN(n) ? 0 : n;
 }
 
-/** Obtiene el siguiente número correlativo a partir de orderCodes existentes */
+/** Obtiene el siguiente número correlativo a partir de orderCodes existentes (legacy) */
 export function getNextOrderSequence(orderCodes: { orderCode: string }[]): number {
   if (orderCodes.length === 0) return 1;
   const maxSeq = Math.max(...orderCodes.map((o) => parseOrderCodeSequence(o.orderCode)));
   return maxSeq + 1;
+}
+
+/** Obtiene el siguiente número correlativo con una sola consulta eficiente (O(1)) */
+export async function getNextOrderSequenceAsync(prisma: PrismaClient): Promise<number> {
+  const last = await prisma.labOrder.findFirst({
+    select: { orderCode: true },
+    orderBy: { orderCode: "desc" },
+  });
+  if (!last) return 1;
+  return parseOrderCodeSequence(last.orderCode) + 1;
 }
 
 export function buildAdmissionCode(sequence: number, date?: Date) {

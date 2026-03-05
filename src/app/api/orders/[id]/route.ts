@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
@@ -145,6 +146,9 @@ export async function DELETE(_request: Request, { params }: Params) {
       await tx.labOrderItem.deleteMany({ where: { orderId: id } });
       await tx.labOrder.delete({ where: { id } });
     });
+    revalidatePath("/orders");
+    revalidatePath(`/orders/${id}`);
+    revalidatePath("/dashboard");
 
     return NextResponse.json({ success: true });
   } catch (error) {

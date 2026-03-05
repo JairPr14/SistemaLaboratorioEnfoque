@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession, ADMIN_ROLE_CODE } from "@/lib/auth";
@@ -84,6 +85,7 @@ export async function POST(request: Request) {
         where: { id: existingPayroll.id },
         include: { staffMember: true },
       });
+      revalidatePath("/gestion-administrativa-clinica");
       return NextResponse.json(updated);
     }
 
@@ -119,6 +121,7 @@ export async function POST(request: Request) {
 
       return created;
     });
+    revalidatePath("/gestion-administrativa-clinica");
 
     return NextResponse.json(payroll);
   } catch (error) {

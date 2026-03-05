@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { quickOrderSchema } from "@/features/lab/schemas";
 import {
   buildOrderCode,
-  getNextOrderSequence,
+  getNextOrderSequenceAsync,
 } from "@/features/lab/order-utils";
 import { generateNextPatientCode } from "@/lib/patient-code";
 import { parseDatePeru } from "@/lib/date";
@@ -81,43 +81,50 @@ export async function POST(request: Request) {
     };
     const orderItemsPayload: OrderItemPayload[] = [];
     const fromProfileTestIds = new Set<string>();
+    const profileIds = parsed.profileIds ?? [];
+    const testIds = parsed.tests ?? [];
 
-    if (parsed.profileIds && parsed.profileIds.length > 0) {
-      const profiles = await prisma.testProfile.findMany({
-        where: { id: { in: parsed.profileIds }, isActive: true },
-        include: {
-          items: {
-            orderBy: { order: "asc" },
-            include: { labTest: { include: fullInclude } },
-          },
-        },
-      });
-      for (const profile of profiles) {
-        const profileTests = profile.items.map((i) => i.labTest).filter(Boolean);
-        if (profileTests.length === 0) continue;
-        const priceEach =
-          profile.packagePrice != null
-            ? Number(profile.packagePrice) / profileTests.length
-            : null;
-        for (const test of profileTests) {
-          orderItemsPayload.push({
-            test,
-            priceSnapshot: priceEach ?? Number(test.price),
-            promotionId: profile.id,
-            promotionName: profile.name,
-          });
-          fromProfileTestIds.add(test.id);
-        }
+    const [profiles, allRequestedTests] = await Promise.all([
+      profileIds.length > 0
+        ? prisma.testProfile.findMany({
+            where: { id: { in: profileIds }, isActive: true },
+            include: {
+              items: {
+                orderBy: { order: "asc" },
+                include: { labTest: { include: fullInclude } },
+              },
+            },
+          })
+        : Promise.resolve([]),
+      testIds.length > 0
+        ? prisma.labTest.findMany({
+            where: { id: { in: testIds }, deletedAt: null, isActive: true },
+            include: fullInclude,
+          })
+        : Promise.resolve([]),
+    ]);
+
+    for (const profile of profiles) {
+      const profileTests = profile.items.map((i) => i.labTest).filter(Boolean);
+      if (profileTests.length === 0) continue;
+      const priceEach =
+        profile.packagePrice != null
+          ? Number(profile.packagePrice) / profileTests.length
+          : null;
+      for (const test of profileTests) {
+        fromProfileTestIds.add(test.id);
+        orderItemsPayload.push({
+          test,
+          priceSnapshot: priceEach ?? Number(test.price),
+          promotionId: profile.id,
+          promotionName: profile.name,
+        });
       }
     }
 
-    const individualTestIds = (parsed.tests ?? []).filter((id) => !fromProfileTestIds.has(id));
-    if (individualTestIds.length > 0) {
-      const individualTests = await prisma.labTest.findMany({
-        where: { id: { in: individualTestIds }, deletedAt: null, isActive: true },
-        include: fullInclude,
-      });
-      for (const test of individualTests) {
+    const individualTestIds = testIds.filter((id) => !fromProfileTestIds.has(id));
+    for (const test of allRequestedTests) {
+      if (individualTestIds.includes(test.id)) {
         orderItemsPayload.push({ test, priceSnapshot: Number(test.price) });
       }
     }
@@ -139,10 +146,7 @@ export async function POST(request: Request) {
     let orderCode: string;
     const maxRetries = 3;
     for (let attempt = 0; attempt < maxRetries; attempt++) {
-      const existing = await prisma.labOrder.findMany({
-        select: { orderCode: true },
-      });
-      const nextSeq = getNextOrderSequence(existing);
+      const nextSeq = await getNextOrderSequenceAsync(prisma);
       orderCode = buildOrderCode(nextSeq);
 
       try {

@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
@@ -138,6 +139,9 @@ async function upsertResult(request: Request, paramsPromise: Params["params"]) {
     },
     { timeout: 15000 }
     );
+    revalidatePath("/orders");
+    revalidatePath(`/orders/${orderItem.orderId}`);
+    revalidatePath("/dashboard");
 
     return NextResponse.json({ item: result });
   } catch (error) {

@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
@@ -99,6 +100,7 @@ export async function POST(request: Request) {
     if (!item) {
       return NextResponse.json({ error: "No se pudo generar el código de paciente." }, { status: 500 });
     }
+    revalidatePath("/patients");
     return NextResponse.json({ item });
   } catch (error) {
     if (error instanceof Error && error.name === "ZodError") {
