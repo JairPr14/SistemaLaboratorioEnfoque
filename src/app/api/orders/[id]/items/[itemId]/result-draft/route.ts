@@ -38,11 +38,13 @@ export async function PUT(request: Request, { params }: Params) {
     const saved = await prisma.$transaction(async (tx) => {
       let result = orderItem.result;
       if (!result) {
-        result = await tx.labResult.create({
-          data: {
+        result = await tx.labResult.upsert({
+          where: { orderItemId: orderItem.id },
+          create: {
             orderItemId: orderItem.id,
             isDraft: true,
           },
+          update: { isDraft: true },
         });
       }
 

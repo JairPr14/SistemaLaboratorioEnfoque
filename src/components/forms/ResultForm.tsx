@@ -403,7 +403,7 @@ export function ResultForm({
   };
 
   const isAdditionalParam = (item: TemplateItem & { index: number }) =>
-    additionalItems.some((a) => a.id === item.id);
+    item.id.startsWith("extra-") || additionalItems.some((a) => a.id === item.id);
 
   const handleSave = async () => {
     const values = form.getValues();
@@ -566,12 +566,28 @@ export function ResultForm({
                     return (
                       <TableRow key={`${item.id}-${formIndex}`}>
                         <TableCell className="py-2 text-sm text-slate-800 dark:text-slate-200">
-                          {form.watch(`items.${formIndex}.paramNameSnapshot`) || item.paramName}
-                          {item.unit && (
-                            <span className="text-slate-500 dark:text-slate-400 ml-1 text-xs">
-                              ({item.unit})
+                          <div className="flex items-center gap-2">
+                            <span>
+                              {form.watch(`items.${formIndex}.paramNameSnapshot`) || item.paramName}
+                              {item.unit && (
+                                <span className="text-slate-500 dark:text-slate-400 ml-1 text-xs">
+                                  ({item.unit})
+                                </span>
+                              )}
                             </span>
-                          )}
+                            {isAdditionalParam(item) && (
+                              <button
+                                type="button"
+                                aria-label="Editar grupo y nombre"
+                                title="Editar grupo y nombre del parámetro"
+                                onClick={() => handleEditParam(item)}
+                                disabled={updatingParamId === item.id}
+                                className="shrink-0 h-7 w-7 rounded border border-slate-300 bg-slate-50 text-slate-500 hover:bg-teal-50 hover:text-teal-600 hover:border-teal-200 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:hover:bg-teal-950/30 dark:hover:text-teal-400"
+                              >
+                                <Pencil className="h-3.5 w-3.5 mx-auto" />
+                              </button>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="py-2">
                           <div className="flex gap-1.5 items-center">

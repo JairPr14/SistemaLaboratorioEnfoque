@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getPrintConfig } from "@/lib/print-config";
 import { formatDatePrint, formatDniDisplay, formatPatientDisplayName, formatSexDisplay } from "@/lib/format";
 import { PrintToolbar } from "@/components/orders/PrintToolbar";
+import { PrintImageWithFallback } from "@/components/orders/PrintImageWithFallback";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -45,6 +46,8 @@ type PrintPage = {
   section: string;
   analyses: AnalysisChunk[];
   hasReferredAnalyses?: boolean;
+  /** 2–3 parámetros adicionales: reducir padding 20px para encajar en una hoja */
+  hasCompactAdditionalParams?: boolean;
 };
 
 function calculateAge(birthDate: Date): number {
@@ -257,7 +260,9 @@ function buildRowsForItem(item: {
     const sorted = (grouped[groupName] ?? []).sort(
       (a, b) => getOrder(a.templateItemId, a.order) - getOrder(b.templateItemId, b.order)
     );
-    const showGroupHeader = groupName !== "General" && sorted.length > 1;
+    const isAdditional = isAdditionalParamGroup(groupName);
+    const showGroupHeader =
+      groupName !== "General" && (sorted.length > 1 || isAdditional);
     if (showGroupHeader) {
       rows.push({
         kind: "group",
@@ -289,6 +294,31 @@ function buildRowsForItem(item: {
 
 const MIN_ROWS_LAST_CHUNK = 6;
 
+/** Grupos de parámetros adicionales (la comparación ignora acentos) */
+const ADDITIONAL_PARAM_GROUPS = ["OBSERVACION", "NOTAS", "COMENTARIOS", "OBSERVACIONES"];
+
+function normalizeGroupNameForMatch(name: string): string {
+  return name
+    .trim()
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function isAdditionalParamGroup(groupName: string | null | undefined): boolean {
+  if (!groupName?.trim()) return false;
+  const norm = normalizeGroupNameForMatch(groupName);
+  return ADDITIONAL_PARAM_GROUPS.some((g) => normalizeGroupNameForMatch(g) === norm);
+}
+
+function getAdditionalParamCount(block: RenderRow[]): number {
+  if (block.length < 1) return 0;
+  const first = block[0];
+  if (first?.kind !== "group") return 0;
+  if (!isAdditionalParamGroup(first.groupName)) return 0;
+  return block.filter((r) => r.kind === "param").length;
+}
+
 /** Particiona filas en bloques por grupo (cada grupo = header + sus params) */
 function getGroupBlocks(rows: RenderRow[]): RenderRow[][] {
   const blocks: RenderRow[][] = [];
@@ -305,7 +335,21 @@ function getGroupBlocks(rows: RenderRow[]): RenderRow[][] {
   return blocks;
 }
 
-/** Divide filas por límite de capacidad, prefiriendo cortes en bordes de grupo */
+/** True si el último bloque tiene 2–3 params adicionales (evitar merge) */
+function lastBlockIsCompactAdditional(rows: RenderRow[]): boolean {
+  const blocks = getGroupBlocks(rows);
+  const last = blocks[blocks.length - 1];
+  if (!last) return false;
+  const n = getAdditionalParamCount(last);
+  return n >= 2 && n <= 3;
+}
+
+/** True si hay parámetros adicionales (1+): subir texto 20px para encajar */
+function hasAdditionalParams(rows: RenderRow[]): boolean {
+  return getGroupBlocks(rows).some((b) => getAdditionalParamCount(b) >= 1);
+}
+
+/** Divide filas por límite de capacidad. 4+ params adicionales → nueva hoja con datos paciente + firma. */
 function splitRowsForContinuation(rows: RenderRow[], maxRowsPerChunk: number): RenderRow[][] {
   if (rows.length === 0) return [];
   if (rows.length <= maxRowsPerChunk) return [rows];
@@ -317,6 +361,14 @@ function splitRowsForContinuation(rows: RenderRow[], maxRowsPerChunk: number): R
 
   for (const block of blocks) {
     const blockLen = block.length;
+    const addCount = getAdditionalParamCount(block);
+
+    if (addCount >= 4 && chunk.length > 0) {
+      chunks.push(chunk);
+      chunk = [];
+      used = 0;
+    }
+
     if (used + blockLen <= maxRowsPerChunk) {
       chunk.push(...block);
       used += blockLen;
@@ -348,6 +400,9 @@ function splitRowsForContinuation(rows: RenderRow[], maxRowsPerChunk: number): R
   if (filtered.length <= 1) return filtered;
   const last = filtered[filtered.length - 1];
   if (last && last.length < MIN_ROWS_LAST_CHUNK && filtered.length >= 2) {
+    const lastBlocks = getGroupBlocks(last);
+    const lastBlock = lastBlocks[lastBlocks.length - 1];
+    if (lastBlock && getAdditionalParamCount(lastBlock) >= 4) return filtered;
     const prev = filtered[filtered.length - 2];
     if (prev && prev.length + last.length <= maxRowsPerChunk) {
       prev.push(...last);
@@ -424,6 +479,7 @@ function buildPages(sections: Record<string, Array<{
     const flushCurrent = () => {
       if (currentPage.analyses.length > 0) {
         currentPage.hasReferredAnalyses = currentPage.analyses.some((a) => a.isReferred);
+        currentPage.hasCompactAdditionalParams = currentPage.analyses.some((a) => hasAdditionalParams(a.rows));
         pages.push(currentPage);
       }
       currentPage = { section: sectionName, analyses: [] };
@@ -468,6 +524,7 @@ function buildPages(sections: Record<string, Array<{
               },
             ],
             hasReferredAnalyses: itemIsReferred,
+            hasCompactAdditionalParams: hasAdditionalParams(chunkRows),
           });
         });
       currentPage = { section: sectionName, analyses: [] };
@@ -476,6 +533,7 @@ function buildPages(sections: Record<string, Array<{
 
     if (currentPage.analyses.length > 0) {
       currentPage.hasReferredAnalyses = currentPage.analyses.some((a) => a.isReferred);
+      currentPage.hasCompactAdditionalParams = currentPage.analyses.some((a) => hasAdditionalParams(a.rows));
       pages.push(currentPage);
     }
   }
@@ -628,10 +686,41 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
         pages.map((page, pageIndex) => (
           <div key={`${page.section}-${pageIndex}`} className="print-html-page relative mx-auto mb-4 bg-white shadow">
             <img
-              src="/watermark-clinica.png"
-              alt="Watermark"
-              className="print-watermark pointer-events-none select-none"
+              src="/print-watermark-corner-1.png"
+              alt=""
+              className="print-watermark-corner print-watermark-corner-tl pointer-events-none select-none"
+              aria-hidden
             />
+            <img
+              src="/print-watermark-corner-2.png"
+              alt=""
+              className="print-watermark-corner print-watermark-corner-tr pointer-events-none select-none"
+              aria-hidden
+            />
+            <img
+              src="/print-watermark-central.png"
+              alt=""
+              className="print-watermark-central pointer-events-none select-none"
+              aria-hidden
+            />
+            <footer className="print-pdf-footer">
+              <PrintImageWithFallback
+                src="/print-footer.png"
+                className="print-pdf-footer-img"
+                fallback={
+                  <div className="print-pdf-footer-html">
+                    <div className="print-pdf-footer-left">
+                      <span> Clinica Enfoque Salud</span>
+                      <span>TU SALUD NUESTRA PRIORIDAD</span>
+                    </div>
+                    <div className="print-pdf-footer-right">
+                      <span>992 928 248</span>
+                      <span>Calle Alfonso Ugarte #641</span>
+                    </div>
+                  </div>
+                }
+              />
+            </footer>
             {showReferredLogo && referredLabWithLogo && page.hasReferredAnalyses && (
               <div className="print-referred-lab-header">
                 <span className="print-referred-lab-label">Con el respaldo de</span>
@@ -643,28 +732,52 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                 />
               </div>
             )}
-            <div className="print-html-content relative z-10">
-              <div className="print-patient-grid">
-                <div><span className="label">PACIENTE :</span> {patientName}</div>
-                <div><span className="label">SEXO :</span> {formatSexDisplay(order.patient.sex)}</div>
-                <div><span className="label">EDAD :</span> {age} Años</div>
-                <div><span className="label">DNI :</span> {formatDniDisplay(order.patient.dni)}</div>
-                <div><span className="label">FECHA :</span> {formatDatePrint(order.createdAt)}</div>
-                <div><span className="label">INDICACIÓN :</span> {order.requestedBy || "MEDICO TRATANTE"}</div>
-                <div><span className="label">N°REGISTRO :</span> {order.orderCode}</div>
+            <div className={`print-html-content relative z-10 ${page.hasCompactAdditionalParams ? "print-html-content-compact" : ""}`}>
+              <div className="print-patient-block">
+                <div className="print-patient-title">Datos del paciente</div>
+                <div className="print-patient-grid">
+                  <div className="print-patient-item">
+                    <span className="print-patient-label">Paciente</span>
+                    <span className="print-patient-value">{patientName}</span>
+                  </div>
+                  <div className="print-patient-item">
+                    <span className="print-patient-label">Sexo</span>
+                    <span className="print-patient-value">{formatSexDisplay(order.patient.sex)}</span>
+                  </div>
+                  <div className="print-patient-item">
+                    <span className="print-patient-label">Edad</span>
+                    <span className="print-patient-value">{age} años</span>
+                  </div>
+                  <div className="print-patient-item">
+                    <span className="print-patient-label">DNI</span>
+                    <span className="print-patient-value">{formatDniDisplay(order.patient.dni)}</span>
+                  </div>
+                  <div className="print-patient-item">
+                    <span className="print-patient-label">Fecha</span>
+                    <span className="print-patient-value">{formatDatePrint(order.createdAt)}</span>
+                  </div>
+                  <div className="print-patient-item">
+                    <span className="print-patient-label">Indicación</span>
+                    <span className="print-patient-value">{order.requestedBy || "Médico tratante"}</span>
+                  </div>
+                  <div className="print-patient-item">
+                    <span className="print-patient-label">N° registro</span>
+                    <span className="print-patient-value">{order.orderCode}</span>
+                  </div>
+                </div>
               </div>
 
-              <div className="print-analisis-label">ANALISIS :</div>
-              <div className="print-section-title"> {page.section.toUpperCase()}</div>
+              <div className="print-analysis-section">
+                <div className="print-section-title">{page.section}</div>
 
-              {page.analyses.map((analysis) => (
-                <div key={analysis.itemId} className="print-analysis-block">
-                  <div className="print-analysis-name">
-                    {analysis.analysisName}
-                    {analysis.isContinuation ? " " : ""}
-                  </div>
+                {page.analyses.map((analysis) => (
+                  <div key={analysis.itemId} className="print-analysis-block">
+                    <div className="print-analysis-name">
+                      {analysis.analysisName}
+                      {analysis.isContinuation ? " " : ""}
+                    </div>
 
-                  <table className="print-report-table mt-2">
+                    <table className="print-report-table">
                     <colgroup>
                       <col className="col-analisis" />
                       <col className="col-resultados" />
@@ -708,7 +821,8 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                           </tbody>
                         </table>
                       </div>
-              ))}
+                ))}
+              </div>
             </div>
             {showStamp && (
               <div className="print-stamp-overlay">
