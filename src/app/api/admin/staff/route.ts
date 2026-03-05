@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   if (denied) return denied;
   try {
     const body = await request.json();
-    const { firstName, lastName, age, jobTitle, phone, address, salary, hireDate, isActive } = body as {
+    const { firstName, lastName, age, jobTitle, phone, address, salary, hireDate, isActive, paymentType, ratePerShift } = body as {
       firstName?: string;
       lastName?: string;
       age?: number | null;
@@ -39,11 +39,16 @@ export async function POST(request: Request) {
       salary?: number | null;
       hireDate?: string | null;
       isActive?: boolean;
+      paymentType?: string;
+      ratePerShift?: number | null;
     };
 
     const fn = firstName?.trim();
     const ln = lastName?.trim();
     if (!fn || !ln) return NextResponse.json({ error: "Nombre y apellido son obligatorios" }, { status: 400 });
+
+    const pt = paymentType === "POR_TURNOS" ? "POR_TURNOS" : "MENSUAL";
+    const rate = pt === "POR_TURNOS" && typeof ratePerShift === "number" && Number.isFinite(ratePerShift) && ratePerShift >= 0 ? ratePerShift : null;
 
     const item = await prisma.staffMember.create({
       data: {
@@ -56,6 +61,8 @@ export async function POST(request: Request) {
         salary: typeof salary === "number" && Number.isFinite(salary) && salary >= 0 ? salary : null,
         hireDate: hireDate ? new Date(hireDate) : null,
         isActive: typeof isActive === "boolean" ? isActive : true,
+        paymentType: pt,
+        ratePerShift: pt === "POR_TURNOS" ? rate : null,
       },
     });
     return NextResponse.json(item);

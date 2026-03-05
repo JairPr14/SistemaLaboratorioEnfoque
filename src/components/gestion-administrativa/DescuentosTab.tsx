@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Pencil, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +26,7 @@ type StaffDiscount = {
   periodMonth: number;
   periodQuincena: number;
   status: string;
+  payrollId?: string | null;
   staffMember: { id: string; firstName: string; lastName: string };
   discountType: { id: string; code: string; name: string };
 };
@@ -56,6 +57,10 @@ export function DescuentosTab() {
     periodMonth: new Date().getMonth() + 1,
     periodQuincena: 1,
   });
+  const [editItem, setEditItem] = useState<StaffDiscount | null>(null);
+  const [editForm, setEditForm] = useState({ discountTypeId: "", amount: "" });
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [anulandoId, setAnulandoId] = useState<string | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -133,6 +138,63 @@ export function DescuentosTab() {
     });
   };
 
+  const openEdit = (item: StaffDiscount) => {
+    if (item.payrollId) return;
+    setEditItem(item);
+    setEditForm({ discountTypeId: item.discountType.id, amount: String(item.amount) });
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editItem) return;
+    const amount = parseFloat(editForm.amount.replace(",", "."));
+    if (!editForm.discountTypeId || !Number.isFinite(amount) || amount <= 0) {
+      toast.error("Monto y tipo de descuento son obligatorios");
+      return;
+    }
+    setSavingEdit(true);
+    try {
+      const res = await fetch(`/api/admin/staff-discounts/${editItem.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ discountTypeId: editForm.discountTypeId, amount }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Error");
+      toast.success("Descuento actualizado");
+      setEditItem(null);
+      await loadData();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleAnular = async (item: StaffDiscount) => {
+    if (item.payrollId) {
+      toast.error("No se puede anular un descuento ya aplicado a planilla");
+      return;
+    }
+    if (!confirm(`¿Anular el descuento de ${item.staffMember.firstName} ${item.staffMember.lastName} (${item.discountType.name} - ${formatCurrency(item.amount)})?`)) return;
+    setAnulandoId(item.id);
+    try {
+      const res = await fetch(`/api/admin/staff-discounts/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "ANULADO" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Error");
+      toast.success("Descuento anulado");
+      await loadData();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error");
+    } finally {
+      setAnulandoId(null);
+    }
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4">
@@ -179,11 +241,12 @@ export function DescuentosTab() {
                   <TableHead>Período</TableHead>
                   <TableHead className="text-right">Monto</TableHead>
                   <TableHead>Estado</TableHead>
+                  <TableHead className="w-28 text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {items.map((item) => (
-                  <TableRow key={item.id}>
+                  <TableRow key={item.id} className={item.status === "ANULADO" ? "opacity-60" : undefined}>
                     <TableCell>
                       {item.staffMember.firstName} {item.staffMember.lastName}
                     </TableCell>
@@ -193,9 +256,38 @@ export function DescuentosTab() {
                     </TableCell>
                     <TableCell className="text-right">{formatCurrency(item.amount)}</TableCell>
                     <TableCell>
-                      <Badge variant={item.status === "APLICADO" ? "default" : "secondary"}>
-                        {item.status === "APLICADO" ? "Aplicado" : "Pendiente"}
+                      <Badge
+                        variant={
+                          item.status === "APLICADO" ? "default" : item.status === "ANULADO" ? "danger" : "secondary"
+                        }
+                      >
+                        {item.status === "APLICADO" ? "Aplicado" : item.status === "ANULADO" ? "Anulado" : "Pendiente"}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {item.status === "PENDIENTE" && !item.payrollId && (
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0"
+                            onClick={() => openEdit(item)}
+                            title="Editar"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400"
+                            onClick={() => handleAnular(item)}
+                            disabled={anulandoId === item.id}
+                            title="Anular"
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -297,6 +389,59 @@ export function DescuentosTab() {
               <Button type="submit" disabled={saving}>{saving ? "Guardando..." : "Guardar"}</Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editItem} onOpenChange={(o) => !o && setEditItem(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar descuento</DialogTitle>
+            {editItem && (
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                {editItem.staffMember.firstName} {editItem.staffMember.lastName} – {monthName(editItem.periodMonth)} {editItem.periodYear} Q{editItem.periodQuincena}
+              </p>
+            )}
+          </DialogHeader>
+          {editItem && (
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Tipo de descuento *</Label>
+                <select
+                  value={editForm.discountTypeId}
+                  onChange={(e) => setEditForm((p) => ({ ...p, discountTypeId: e.target.value }))}
+                  required
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 dark:border-slate-600 dark:bg-slate-800"
+                >
+                  <option value="">Seleccionar</option>
+                  {discountTypes.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                      {t.splitAcrossQuincenas ? " (se divide en ambas quincenas)" : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label>Monto *</Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  value={editForm.amount}
+                  onChange={(e) => setEditForm((p) => ({ ...p, amount: e.target.value }))}
+                  placeholder="Ej: 150.50"
+                  required
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setEditItem(null)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={savingEdit}>
+                  {savingEdit ? "Guardando..." : "Guardar"}
+                </Button>
+              </div>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
     </Card>

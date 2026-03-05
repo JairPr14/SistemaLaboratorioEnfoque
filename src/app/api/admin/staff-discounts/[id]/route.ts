@@ -19,15 +19,32 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { status } = body as { status?: string };
+    const { status, amount, discountTypeId } = body as {
+      status?: string;
+      amount?: number;
+      discountTypeId?: string;
+    };
 
     const existing = await prisma.staffDiscount.findUnique({ where: { id } });
     if (!existing) return NextResponse.json({ error: "Descuento no encontrado" }, { status: 404 });
     if (existing.payrollId) return NextResponse.json({ error: "No se puede modificar un descuento ya aplicado a planilla" }, { status: 400 });
 
+    const updateData: { status?: string; amount?: number; discountTypeId?: string } = {};
+
     const validStatus = ["PENDIENTE", "ANULADO"];
     if (status && validStatus.includes(status)) {
-      await prisma.staffDiscount.update({ where: { id }, data: { status } });
+      updateData.status = status;
+    }
+    if (typeof amount === "number" && Number.isFinite(amount) && amount > 0) {
+      updateData.amount = amount;
+    }
+    if (discountTypeId && typeof discountTypeId === "string" && discountTypeId.trim()) {
+      const typeExists = await prisma.discountType.findUnique({ where: { id: discountTypeId } });
+      if (typeExists) updateData.discountTypeId = discountTypeId;
+    }
+
+    if (Object.keys(updateData).length > 0) {
+      await prisma.staffDiscount.update({ where: { id }, data: updateData });
     }
     const item = await prisma.staffDiscount.findUnique({
       where: { id },

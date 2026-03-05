@@ -23,7 +23,7 @@ export async function GET(
     if (!period) return NextResponse.json({ error: "Período no encontrado" }, { status: 404 });
 
     const periodQuincena = period.quincena ?? 1;
-    const [staff, payrolls, pendingDiscounts] = await Promise.all([
+    const [staff, payrolls, pendingDiscounts, shiftCounts] = await Promise.all([
       prisma.staffMember.findMany({
         where: { isActive: true },
         select: {
@@ -32,6 +32,8 @@ export async function GET(
           lastName: true,
           jobTitle: true,
           salary: true,
+          paymentType: true,
+          ratePerShift: true,
         },
       }),
       prisma.payroll.findMany({
@@ -46,27 +48,39 @@ export async function GET(
           status: "PENDIENTE",
         },
       }),
+      prisma.staffShiftCount.findMany({
+        where: { payrollPeriodId: id },
+      }),
     ]);
 
     const payrollByStaff = new Map(payrolls.map((p) => [p.staffMemberId, p]));
+    const shiftsByStaff = new Map(shiftCounts.map((sc) => [sc.staffMemberId, sc.shiftsCount]));
 
     const lines = staff.map((s) => {
       const fullName = `${s.firstName} ${s.lastName}`.trim();
       const existing = payrollByStaff.get(s.id);
-      const monthlySalary = s.salary ?? 0;
-      const baseSalary = monthlySalary / 2;
+      const isPorTurnos = s.paymentType === "POR_TURNOS";
+      const shiftsCount = shiftsByStaff.get(s.id) ?? 0;
+      const ratePerShift = s.ratePerShift ?? 0;
+      const baseSalary = isPorTurnos
+        ? shiftsCount * ratePerShift
+        : (s.salary ?? 0) / 2;
 
+      // Pagos ya registrados mantienen el monto congelado (no se recalcula con el rate actual)
       if (existing) {
         return {
           id: existing.id,
           staffMemberId: s.id,
-          baseSalary,
+          baseSalary: existing.baseSalary,
           discountsTotal: existing.discountsTotal,
           netSalary: existing.netSalary,
           status: existing.status,
           paymentMethod: existing.paymentMethod,
           transferNumber: existing.transferNumber,
           paidAt: existing.paidAt,
+          paymentType: s.paymentType ?? "MENSUAL",
+          ratePerShift: s.ratePerShift ?? null,
+          shiftsCount: isPorTurnos ? shiftsCount : null,
           staffMember: { fullName, jobTitle: s.jobTitle ?? null },
         };
       }
@@ -86,6 +100,9 @@ export async function GET(
         paymentMethod: null,
         transferNumber: null,
         paidAt: null,
+        paymentType: s.paymentType ?? "MENSUAL",
+        ratePerShift: s.ratePerShift ?? null,
+        shiftsCount: isPorTurnos ? shiftsCount : null,
         staffMember: { fullName, jobTitle: s.jobTitle ?? null },
       };
     });

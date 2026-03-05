@@ -710,7 +710,7 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                       </div>
               ))}
             </div>
-            {showStamp && pageIndex === pages.length - 1 && (
+            {showStamp && (
               <div className="print-stamp-overlay">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -718,7 +718,7 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                   alt="Sello y firma"
                   className="print-stamp-img"
                 />
-            </div>
+              </div>
             )}
           </div>
         ))

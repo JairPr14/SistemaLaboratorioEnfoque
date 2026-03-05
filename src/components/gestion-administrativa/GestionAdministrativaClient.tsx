@@ -2,24 +2,26 @@
 
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Users, FileText, Percent } from "lucide-react";
+import { Users, FileText, Percent, BarChart3 } from "lucide-react";
 import { StaffManagementClient } from "./StaffManagementClient";
 import { PlanillaTab } from "./PlanillaTab";
 import { DescuentosTab } from "./DescuentosTab";
+import { ReporteDetalladoTab } from "./ReporteDetalladoTab";
 
-type TabValue = "personal" | "planilla" | "descuentos";
+type TabValue = "personal" | "planilla" | "descuentos" | "reporte";
 
 const tabConfig: Record<TabValue, { label: string; icon: typeof Users }> = {
   personal: { label: "Personal", icon: Users },
   planilla: { label: "Planilla", icon: FileText },
   descuentos: { label: "Descuentos", icon: Percent },
+  reporte: { label: "Reporte detallado", icon: BarChart3 },
 };
 
 export function GestionAdministrativaClient() {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab") ?? "personal";
   const tab: TabValue =
-    tabParam === "planilla" || tabParam === "descuentos" ? tabParam : "personal";
+    tabParam === "planilla" || tabParam === "descuentos" || tabParam === "reporte" ? tabParam : "personal";
 
   const buildHref = (t: TabValue) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -56,6 +58,7 @@ export function GestionAdministrativaClient() {
       {tab === "personal" && <StaffManagementClient />}
       {tab === "planilla" && <PlanillaTab />}
       {tab === "descuentos" && <DescuentosTab />}
+      {tab === "reporte" && <ReporteDetalladoTab />}
     </div>
   );
 }

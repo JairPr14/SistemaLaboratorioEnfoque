@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, DollarSign, Banknote, Smartphone, CreditCard, Eye, EyeOff } from "lucide-react";
+import { Plus, DollarSign, Banknote, Smartphone, CreditCard, Eye, EyeOff, Percent, Pencil, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +28,9 @@ type PayrollLine = {
   paymentMethod: string | null;
   transferNumber: string | null;
   paidAt: string | null;
+  paymentType?: string;
+  ratePerShift?: number | null;
+  shiftsCount?: number | null;
   staffMember: { fullName: string; jobTitle: string | null };
 };
 type PeriodDetail = PayrollPeriod & { payrolls: PayrollLine[] };
@@ -80,6 +83,16 @@ export function PlanillaTab() {
   const [transferNumber, setTransferNumber] = useState("");
   const [paying, setPaying] = useState(false);
   const [hideSalary, setHideSalary] = useState(false);
+  const [savingShifts, setSavingShifts] = useState<string | null>(null);
+  const [discountLine, setDiscountLine] = useState<PayrollLine | null>(null);
+  const [discountTypes, setDiscountTypes] = useState<Array<{ id: string; code: string; name: string; splitAcrossQuincenas: boolean }>>([]);
+  const [discountForm, setDiscountForm] = useState({ discountTypeId: "", amount: "" });
+  const [savingDiscount, setSavingDiscount] = useState(false);
+  const [editPayModal, setEditPayModal] = useState<PayrollLine | null>(null);
+  const [editPaymentMethod, setEditPaymentMethod] = useState<string>("EFECTIVO");
+  const [editTransferNumber, setEditTransferNumber] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
 
   const loadPeriods = async () => {
     setLoadingPeriods(true);
@@ -160,10 +173,128 @@ export function PlanillaTab() {
     }
   };
 
+  const handleShiftsChange = async (staffMemberId: string, shiftsCount: number) => {
+    if (!selectedPeriodId) return;
+    setSavingShifts(staffMemberId);
+    try {
+      const res = await fetch(`/api/admin/payroll/periods/${selectedPeriodId}/shifts`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: [{ staffMemberId, shiftsCount: Math.max(0, Math.floor(shiftsCount)) }],
+        }),
+      });
+      if (!res.ok) throw new Error("Error al guardar");
+      await loadDetail();
+    } catch {
+      toast.error("Error al guardar turnos");
+    } finally {
+      setSavingShifts(null);
+    }
+  };
+
   const openPay = (line: PayrollLine) => {
     setPayModal(line);
     setPaymentMethod("EFECTIVO");
     setTransferNumber("");
+  };
+
+  const openEditPay = (line: PayrollLine) => {
+    if (!line.id) return;
+    setEditPayModal(line);
+    setEditPaymentMethod(line.paymentMethod ?? "EFECTIVO");
+    setEditTransferNumber(line.transferNumber ?? "");
+  };
+
+  const handleRestorePay = async (line: PayrollLine) => {
+    if (!line.id) return;
+    if (!confirm(`¿Restaurar el pago de ${line.staffMember.fullName} a pendiente? Los descuentos aplicados volverán a estar pendientes.`)) return;
+    setRestoringId(line.id);
+    try {
+      const res = await fetch(`/api/admin/payroll/${line.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "PENDIENTE" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Error");
+      toast.success("Pago restaurado a pendiente");
+      await loadDetail();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error");
+    } finally {
+      setRestoringId(null);
+    }
+  };
+
+  const handleSaveEditPay = async () => {
+    if (!editPayModal?.id) return;
+    setSavingEdit(true);
+    try {
+      const res = await fetch(`/api/admin/payroll/${editPayModal.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          paymentMethod: editPaymentMethod,
+          transferNumber: editPaymentMethod === "TRANSFERENCIA" ? editTransferNumber : null,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Error");
+      toast.success("Pago actualizado");
+      setEditPayModal(null);
+      await loadDetail();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const openDiscount = async (line: PayrollLine) => {
+    setDiscountLine(line);
+    setDiscountForm({ discountTypeId: "", amount: "" });
+    try {
+      const res = await fetch("/api/admin/catalog/discount-types");
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) setDiscountTypes(data.items ?? data ?? []);
+    } catch {
+      toast.error("Error al cargar tipos de descuento");
+    }
+  };
+
+  const handleDiscountSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!discountLine || !periodDetail || !selectedPeriodId) return;
+    const amount = parseFloat(discountForm.amount.replace(",", "."));
+    if (!discountForm.discountTypeId || !Number.isFinite(amount) || amount <= 0) {
+      toast.error("Selecciona tipo de descuento e ingresa un monto válido");
+      return;
+    }
+    setSavingDiscount(true);
+    try {
+      const res = await fetch("/api/admin/staff-discounts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          staffMemberId: discountLine.staffMemberId,
+          discountTypeId: discountForm.discountTypeId,
+          amount,
+          periodYear: periodDetail.year,
+          periodMonth: periodDetail.month,
+          periodQuincena: periodDetail.quincena,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Error");
+      toast.success(data.created === 2 ? "Descuento aplicado en ambas quincenas (AFP/ONP)" : "Descuento registrado");
+      setDiscountLine(null);
+      await loadDetail();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error");
+    } finally {
+      setSavingDiscount(false);
+    }
   };
 
   const handlePay = async () => {
@@ -273,12 +404,15 @@ export function PlanillaTab() {
                 <TableRow>
                   <TableHead>Personal</TableHead>
                   <TableHead>Cargo</TableHead>
+                  {periodDetail.payrolls.some((l) => l.paymentType === "POR_TURNOS") && (
+                    <TableHead className="text-center w-24">Turnos</TableHead>
+                  )}
                   <TableHead className="text-right">Sueldo quincenal</TableHead>
                   <TableHead className="text-right">Descuentos</TableHead>
                   <TableHead className="text-right">Neto</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Método</TableHead>
-                  <TableHead className="w-24 text-right">Acción</TableHead>
+                    <TableHead className="min-w-[180px] text-right">Acción</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -286,6 +420,29 @@ export function PlanillaTab() {
                   <TableRow key={line.staffMemberId}>
                     <TableCell className="font-medium">{line.staffMember.fullName}</TableCell>
                     <TableCell>{line.staffMember.jobTitle ?? "—"}</TableCell>
+                    {periodDetail.payrolls.some((l) => l.paymentType === "POR_TURNOS") && (
+                      <TableCell className="text-center">
+                        {line.paymentType === "POR_TURNOS" ? (
+                          <Input
+                            key={`${line.staffMemberId}-${line.shiftsCount ?? 0}`}
+                            type="number"
+                            min={0}
+                            step={1}
+                            defaultValue={line.shiftsCount ?? 0}
+                            onBlur={(e) => {
+                              const v = parseInt(e.target.value, 10);
+                              if (!Number.isNaN(v) && v >= 0) {
+                                handleShiftsChange(line.staffMemberId, v);
+                              }
+                            }}
+                            disabled={line.status === "PAGADO" || savingShifts === line.staffMemberId}
+                            className="h-8 w-16 text-center"
+                          />
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </TableCell>
+                    )}
                     <TableCell className="text-right">
                       {hideSalary ? "·····" : formatCurrency(line.baseSalary)}
                     </TableCell>
@@ -313,10 +470,47 @@ export function PlanillaTab() {
                     </TableCell>
                     <TableCell className="text-right">
                       {line.status === "PENDIENTE" && (
-                        <Button size="sm" className="gap-1" onClick={() => openPay(line)}>
-                          <DollarSign className="h-4 w-4" />
-                          Pagar
-                        </Button>
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1"
+                            onClick={() => openDiscount(line)}
+                            title="Aplicar descuento"
+                          >
+                            <Percent className="h-4 w-4" />
+                            Descuento
+                          </Button>
+                          <Button size="sm" className="gap-1" onClick={() => openPay(line)}>
+                            <DollarSign className="h-4 w-4" />
+                            Pagar
+                          </Button>
+                        </div>
+                      )}
+                      {line.status === "PAGADO" && line.id && (
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="gap-1"
+                            onClick={() => openEditPay(line)}
+                            title="Editar método de pago"
+                          >
+                            <Pencil className="h-4 w-4" />
+                            Editar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1 text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-900/30"
+                            onClick={() => handleRestorePay(line)}
+                            disabled={restoringId === line.id}
+                            title="Restaurar a pendiente"
+                          >
+                            <RotateCcw className="h-4 w-4" />
+                            Restaurar
+                          </Button>
+                        </div>
                       )}
                     </TableCell>
                   </TableRow>
@@ -461,6 +655,116 @@ export function PlanillaTab() {
                 </Button>
                 <Button onClick={handlePay} disabled={paying}>
                   {paying ? "Procesando..." : "Confirmar pago"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!discountLine} onOpenChange={(o) => !o && setDiscountLine(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Descuento</DialogTitle>
+            {discountLine && periodDetail && (
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                {discountLine.staffMember.fullName} – {monthName(periodDetail.month)} {periodDetail.year} Q{periodDetail.quincena}
+              </p>
+            )}
+          </DialogHeader>
+          {discountLine && (
+            <form onSubmit={handleDiscountSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Tipo de descuento *</Label>
+                <select
+                  value={discountForm.discountTypeId}
+                  onChange={(e) => setDiscountForm((p) => ({ ...p, discountTypeId: e.target.value }))}
+                  required
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 dark:border-slate-600 dark:bg-slate-800"
+                >
+                  <option value="">Seleccionar</option>
+                  {discountTypes.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                      {t.splitAcrossQuincenas ? " (se divide en ambas quincenas)" : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label>Monto *</Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  value={discountForm.amount}
+                  onChange={(e) => setDiscountForm((p) => ({ ...p, amount: e.target.value }))}
+                  placeholder="Ej: 150.50"
+                  required
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setDiscountLine(null)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={savingDiscount}>
+                  {savingDiscount ? "Guardando..." : "Aplicar descuento"}
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editPayModal} onOpenChange={(o) => !o && setEditPayModal(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar pago</DialogTitle>
+            {editPayModal && (
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                {editPayModal.staffMember.fullName} – {formatCurrency(editPayModal.netSalary)}
+              </p>
+            )}
+          </DialogHeader>
+          {editPayModal && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Medio de pago</Label>
+                <div className="flex flex-wrap gap-2">
+                  {PAYMENT_METHODS.map((m) => {
+                    const Icon = m.icon;
+                    return (
+                      <Button
+                        key={m.value}
+                        type="button"
+                        variant={editPaymentMethod === m.value ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setEditPaymentMethod(m.value)}
+                        className="gap-1"
+                      >
+                        <Icon className="h-4 w-4" />
+                        {m.label}
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+              {editPaymentMethod === "TRANSFERENCIA" && (
+                <div className="space-y-2">
+                  <Label htmlFor="editTransferNumber">N° operación</Label>
+                  <Input
+                    id="editTransferNumber"
+                    value={editTransferNumber}
+                    onChange={(e) => setEditTransferNumber(e.target.value)}
+                    placeholder="Ej: 0123456789"
+                  />
+                </div>
+              )}
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setEditPayModal(null)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleSaveEditPay} disabled={savingEdit}>
+                  {savingEdit ? "Guardando..." : "Guardar"}
                 </Button>
               </div>
             </div>

@@ -26,6 +26,8 @@ type StaffMember = {
   phone: string | null;
   address: string | null;
   salary: number | null;
+  paymentType: string;
+  ratePerShift: number | null;
   hireDate: string | null;
   isActive: boolean;
 };
@@ -38,6 +40,8 @@ type Form = {
   phone: string;
   address: string;
   salary: string;
+  paymentType: string;
+  ratePerShift: string;
   hireDate: string;
 };
 
@@ -49,6 +53,8 @@ const emptyForm: Form = {
   phone: "",
   address: "",
   salary: "",
+  paymentType: "MENSUAL",
+  ratePerShift: "",
   hireDate: "",
 };
 
@@ -93,6 +99,8 @@ export function StaffManagementClient() {
       phone: item.phone ?? "",
       address: item.address ?? "",
       salary: item.salary != null ? String(item.salary) : "",
+      paymentType: item.paymentType === "POR_TURNOS" ? "POR_TURNOS" : "MENSUAL",
+      ratePerShift: item.ratePerShift != null ? String(item.ratePerShift) : "",
       hireDate: item.hireDate ? item.hireDate.slice(0, 10) : "",
     });
   };
@@ -112,16 +120,18 @@ export function StaffManagementClient() {
     }
     setSaving(true);
     try {
-      const payload = {
-        firstName: fn,
-        lastName: ln,
-        age: form.age ? parseNum(form.age) : null,
-        jobTitle: form.jobTitle.trim() || null,
-        phone: form.phone.trim() || null,
-        address: form.address.trim() || null,
-        salary: form.salary ? parseNum(form.salary) : null,
-        hireDate: form.hireDate || null,
-      };
+    const payload = {
+      firstName: fn,
+      lastName: ln,
+      age: form.age ? parseNum(form.age) : null,
+      jobTitle: form.jobTitle.trim() || null,
+      phone: form.phone.trim() || null,
+      address: form.address.trim() || null,
+      salary: form.paymentType === "MENSUAL" && form.salary ? parseNum(form.salary) : null,
+      paymentType: form.paymentType === "POR_TURNOS" ? "POR_TURNOS" : "MENSUAL",
+      ratePerShift: form.paymentType === "POR_TURNOS" && form.ratePerShift ? parseNum(form.ratePerShift) : null,
+      hireDate: form.hireDate || null,
+    };
       if (editing) {
         const res = await fetch(`/api/admin/staff/${editing.id}`, {
           method: "PATCH",
@@ -224,7 +234,11 @@ export function StaffManagementClient() {
                         {item.address ?? "—"}
                       </TableCell>
                       <TableCell className="text-right">
-                        {hideSalary ? "·····" : (item.salary != null ? formatCurrency(item.salary) : "—")}
+                        {hideSalary ? "·····" : (
+                          item.paymentType === "POR_TURNOS"
+                            ? (item.ratePerShift != null ? `${formatCurrency(item.ratePerShift)}/turno` : "—")
+                            : (item.salary != null ? formatCurrency(item.salary) : "—")
+                        )}
                       </TableCell>
                       <TableCell>{formatDate(item.hireDate)}</TableCell>
                       <TableCell className="flex items-center gap-1.5">
@@ -270,7 +284,11 @@ export function StaffManagementClient() {
                           <TableCell>{item.phone ?? "—"}</TableCell>
                           <TableCell>{item.address ?? "—"}</TableCell>
                           <TableCell className="text-right">
-                            {hideSalary ? "·····" : (item.salary != null ? formatCurrency(item.salary) : "—")}
+                            {hideSalary ? "·····" : (
+                              item.paymentType === "POR_TURNOS"
+                                ? (item.ratePerShift != null ? `${formatCurrency(item.ratePerShift)}/turno` : "—")
+                                : (item.salary != null ? formatCurrency(item.salary) : "—")
+                            )}
                           </TableCell>
                           <TableCell>{formatDate(item.hireDate)}</TableCell>
                           <TableCell>{formatTenure(item.hireDate)}</TableCell>
@@ -362,18 +380,60 @@ export function StaffManagementClient() {
                 placeholder="Ej: Av. Principal 123"
               />
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="salary">Sueldo (S/.)</Label>
-                <Input
-                  id="salary"
-                  type="text"
-                  inputMode="decimal"
-                  value={form.salary}
-                  onChange={(e) => setForm((p) => ({ ...p, salary: e.target.value }))}
-                  placeholder="S/. 0.00"
-                />
+            <div className="space-y-2">
+              <Label>Tipo de pago</Label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="paymentType"
+                    checked={form.paymentType === "MENSUAL"}
+                    onChange={() => setForm((p) => ({ ...p, paymentType: "MENSUAL" }))}
+                    className="rounded border-slate-300"
+                  />
+                  <span className="text-sm">Mensual</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="paymentType"
+                    checked={form.paymentType === "POR_TURNOS"}
+                    onChange={() => setForm((p) => ({ ...p, paymentType: "POR_TURNOS" }))}
+                    className="rounded border-slate-300"
+                  />
+                  <span className="text-sm">Por turnos</span>
+                </label>
               </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {form.paymentType === "MENSUAL" ? (
+                <div className="space-y-2">
+                  <Label htmlFor="salary">Sueldo mensual (S/.)</Label>
+                  <Input
+                    id="salary"
+                    type="text"
+                    inputMode="decimal"
+                    value={form.salary}
+                    onChange={(e) => setForm((p) => ({ ...p, salary: e.target.value }))}
+                    placeholder="S/. 0.00"
+                  />
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label htmlFor="ratePerShift">Pago por turno (S/.)</Label>
+                  <Input
+                    id="ratePerShift"
+                    type="text"
+                    inputMode="decimal"
+                    value={form.ratePerShift}
+                    onChange={(e) => setForm((p) => ({ ...p, ratePerShift: e.target.value }))}
+                    placeholder="Ej: 80"
+                  />
+                  <p className="text-xs text-slate-500">
+                    Valor por cada turno trabajado. Editable por gerencia.
+                  </p>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="hireDate">Fecha de ingreso</Label>
                 <Input

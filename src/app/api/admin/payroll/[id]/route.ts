@@ -46,11 +46,32 @@ export async function PATCH(
           paidAt: payroll.paidAt ?? new Date(),
         },
       });
-    } else if (status === "BORRADOR" || status === "CALCULADO") {
-      await prisma.payroll.update({
-        where: { id },
-        data: { status: status as "BORRADOR" | "CALCULADO", paymentMethod: null, transferNumber: null, paidAt: null },
+    } else if (status === "PENDIENTE" || status === "BORRADOR" || status === "CALCULADO") {
+      // Restaurar pago: volver a pendiente, revertir descuentos y resetear totales
+      const toRevert = await prisma.staffDiscount.findMany({
+        where: { payrollId: id },
+        select: { amount: true },
       });
+      const discountsSum = toRevert.reduce((s, d) => s + d.amount, 0);
+      const newNet = Math.max(0, payroll.baseSalary - discountsSum);
+
+      await prisma.$transaction([
+        prisma.payroll.update({
+          where: { id },
+          data: {
+            status: "PENDIENTE",
+            paymentMethod: null,
+            transferNumber: null,
+            paidAt: null,
+            discountsTotal: discountsSum,
+            netSalary: newNet,
+          },
+        }),
+        prisma.staffDiscount.updateMany({
+          where: { payrollId: id },
+          data: { status: "PENDIENTE", payrollId: null },
+        }),
+      ]);
     } else if (payroll.status === "PAGADO" && (paymentMethod || transferNumber !== undefined)) {
       // Editar método de pago en planilla ya pagada
       const method =

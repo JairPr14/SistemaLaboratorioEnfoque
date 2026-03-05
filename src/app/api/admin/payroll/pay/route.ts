@@ -44,13 +44,13 @@ export async function POST(request: Request) {
 
     const staff = await prisma.staffMember.findUnique({
       where: { id: staffMemberId, isActive: true },
-      select: { id: true, salary: true },
+      select: { id: true, salary: true, paymentType: true, ratePerShift: true },
     });
     if (!staff) return NextResponse.json({ error: "Trabajador no encontrado o inactivo" }, { status: 404 });
 
     const periodQuincena = period.quincena ?? 1;
 
-    const [existingPayroll, pendingDiscounts] = await Promise.all([
+    const [existingPayroll, pendingDiscounts, shiftCount] = await Promise.all([
       prisma.payroll.findUnique({
         where: { staffMemberId_payrollPeriodId: { staffMemberId: staffMemberId, payrollPeriodId: periodId } },
       }),
@@ -61,6 +61,11 @@ export async function POST(request: Request) {
           periodMonth: period.month,
           periodQuincena,
           status: "PENDIENTE",
+        },
+      }),
+      prisma.staffShiftCount.findUnique({
+        where: {
+          staffMemberId_payrollPeriodId: { staffMemberId, payrollPeriodId: periodId },
         },
       }),
     ]);
@@ -82,8 +87,10 @@ export async function POST(request: Request) {
       return NextResponse.json(updated);
     }
 
-    const monthlySalary = staff.salary ?? 0;
-    const baseSalary = monthlySalary / 2;
+    const isPorTurnos = staff.paymentType === "POR_TURNOS";
+    const baseSalary = isPorTurnos
+      ? (shiftCount?.shiftsCount ?? 0) * (staff.ratePerShift ?? 0)
+      : (staff.salary ?? 0) / 2;
     const discountsTotal = pendingDiscounts.reduce((sum, d) => sum + d.amount, 0);
     const netSalary = Math.max(0, baseSalary - discountsTotal);
 

@@ -361,23 +361,42 @@ model Branch {
 // ===========================================
 
 model StaffMember {
-  id            String         @id @default(cuid())
-  firstName     String         // Nombre
-  lastName      String         // Apellido
-  age           Int?           // Edad
-  jobTitle      String?        // Cargo
-  phone         String?        // Teléfono
-  address       String?        // Dirección
-  salary        Float?         // Sueldo mensual
-  hireDate      DateTime?      // Fecha de ingreso
-  isActive      Boolean        @default(true)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  staffDiscounts StaffDiscount[]
-  payrolls      Payroll[]
+  id              String           @id @default(cuid())
+  firstName       String           // Nombre
+  lastName        String           // Apellido
+  age             Int?             // Edad
+  jobTitle        String?          // Cargo
+  phone           String?          // Teléfono
+  address         String?          // Dirección
+  salary          Float?           // Sueldo mensual (si paymentType = MENSUAL)
+  paymentType     String           @default("MENSUAL") // MENSUAL | POR_TURNOS
+  ratePerShift    Float?           // S/. por turno (si paymentType = POR_TURNOS), editable por gerencia
+  hireDate        DateTime?        // Fecha de ingreso
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  staffDiscounts  StaffDiscount[]
+  payrolls        Payroll[]
+  shiftCounts     StaffShiftCount[]
 
   @@index([lastName])
   @@index([isActive])
+}
+
+/// * Turnos trabajados por personal con pago por turnos, por período
+model StaffShiftCount {
+  id              String        @id @default(cuid())
+  staffMemberId   String
+  payrollPeriodId String
+  shiftsCount     Int           @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  staffMember     StaffMember   @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
+  payrollPeriod   PayrollPeriod @relation(fields: [payrollPeriodId], references: [id], onDelete: Cascade)
+
+  @@unique([staffMemberId, payrollPeriodId])
+  @@index([staffMemberId])
+  @@index([payrollPeriodId])
 }
 
 // ===========================================
@@ -418,13 +437,14 @@ model StaffDiscount {
 }
 
 model PayrollPeriod {
-  id        String   @id @default(cuid())
-  year      Int
-  month     Int      // 1-12
-  quincena  Int      // 1 = días 1-15, 2 = días 16-fin (31 o 1)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  payrolls  Payroll[]
+  id           String             @id @default(cuid())
+  year         Int
+  month        Int                // 1-12
+  quincena     Int                // 1 = días 1-15, 2 = días 16-fin (31 o 1)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  payrolls     Payroll[]
+  shiftCounts  StaffShiftCount[]
 
   @@unique([year, month, quincena])
   @@index([year, month, quincena])
