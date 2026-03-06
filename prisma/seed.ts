@@ -20,6 +20,27 @@ async function main() {
       create: { code: r.code, name: r.name, description: r.description ?? null, isActive: true },
     });
   }
+
+  // Permisos por defecto para LAB y RECEPTION (solo si aún no tienen)
+  const labRole = await prisma.role.findUnique({ where: { code: "LAB" } });
+  if (labRole && labRole.permissions == null) {
+    const labPermissions = JSON.stringify([
+      "VER_CATALOGO", "VER_ORDENES", "QUICK_ACTIONS_ANALISTA", "CAPTURAR_RESULTADOS", "VALIDAR_RESULTADOS",
+      "IMPRIMIR_RESULTADOS", "VER_PACIENTES", "GESTIONAR_PLANTILLAS",
+    ]);
+    await prisma.role.update({ where: { id: labRole.id }, data: { permissions: labPermissions } });
+    console.log("Rol LAB: permisos por defecto asignados");
+  }
+  const receptionRole = await prisma.role.findUnique({ where: { code: "RECEPTION" } });
+  if (receptionRole && receptionRole.permissions == null) {
+    const receptionPermissions = JSON.stringify([
+      "VER_PACIENTES", "EDITAR_PACIENTES", "VER_CATALOGO", "VER_ORDENES", "QUICK_ACTIONS_RECEPCION",
+      "VER_PAGOS", "REGISTRAR_PAGOS", "IMPRIMIR_TICKET_PAGO",
+    ]);
+    await prisma.role.update({ where: { id: receptionRole.id }, data: { permissions: receptionPermissions } });
+    console.log("Rol RECEPTION: permisos por defecto asignados");
+  }
+
   const adminRole = await prisma.role.findUnique({ where: { code: "ADMIN" } });
   if (!adminRole) throw new Error("Rol ADMIN no encontrado tras seed");
 

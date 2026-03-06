@@ -9,13 +9,23 @@ function getDatabaseUrlWithConnectionLimit(): string | undefined {
   if (!url) return undefined;
   const separator = url.includes("?") ? "&" : "?";
   const params: string[] = [];
-  // Seenode y otros cloud Postgres requieren SSL
-  if (!url.includes("sslmode=") && (url.includes("seenode") || url.includes("neon.tech") || url.includes("run-on-seenode"))) {
+
+  const isManagedPostgres =
+    url.includes("seenode") || url.includes("neon.tech") || url.includes("run-on-seenode");
+
+  // Seenode, Neon y otros cloud Postgres suelen requerir SSL
+  if (!url.includes("sslmode=") && isManagedPostgres) {
     params.push("sslmode=require");
   }
+
   if (!url.includes("connection_limit=")) {
-    params.push(`connection_limit=${process.env.VERCEL ? 1 : 10}`);
+    // En bases administradas (Seenode/Neon) usamos SIEMPRE 1 conexión por instancia
+    // para no agotar el pool (tienen muy pocas conexiones permitidas).
+    // En Postgres propio (localhost/docker) permitimos algo más en desarrollo.
+    const limit = isManagedPostgres ? 1 : process.env.VERCEL ? 1 : 10;
+    params.push(`connection_limit=${limit}`);
   }
+
   return params.length > 0 ? `${url}${separator}${params.join("&")}` : url;
 }
 
