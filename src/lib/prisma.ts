@@ -1,36 +1,10 @@
 import { PrismaClient } from "@prisma/client";
+import { buildDatabaseUrlInfo } from "@/lib/database-url";
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
+  prismaManagedDbWarningShown?: boolean;
 };
-
-function getDatabaseUrlWithConnectionLimit(): string | undefined {
-  const url = process.env.DATABASE_URL?.trim();
-  if (!url) return undefined;
-  const separator = url.includes("?") ? "&" : "?";
-  const params: string[] = [];
-
-  const isManagedPostgres =
-    url.includes("seenode") || url.includes("neon.tech") || url.includes("run-on-seenode");
-
-  // Seenode, Neon y otros cloud Postgres suelen requerir SSL
-  if (!url.includes("sslmode=") && isManagedPostgres) {
-    params.push("sslmode=require");
-  }
-
-  if (!url.includes("connection_limit=")) {
-    // En serverless (Vercel), cada instancia crea su propio pool. Usar límite alto
-    // por instancia puede saturar rápido una BD gestionada.
-    // Managed Postgres:
-    // - Vercel: 1 conexión por instancia (más seguro contra "too many connections")
-    // - Local dev: 5 conexiones para trabajar con más fluidez
-    // Local (Docker): 10 conexiones.
-    const limit = isManagedPostgres ? (process.env.VERCEL ? 1 : 5) : process.env.VERCEL ? 5 : 10;
-    params.push(`connection_limit=${limit}`);
-  }
-
-  return params.length > 0 ? `${url}${separator}${params.join("&")}` : url;
-}
 
 const prismaOptions: ConstructorParameters<typeof PrismaClient>[0] = {
   log: [
@@ -39,9 +13,20 @@ const prismaOptions: ConstructorParameters<typeof PrismaClient>[0] = {
   ],
 };
 
-const dbUrlWithLimit = getDatabaseUrlWithConnectionLimit();
-if (dbUrlWithLimit) {
-  prismaOptions.datasources = { db: { url: dbUrlWithLimit } };
+const dbUrlInfo = buildDatabaseUrlInfo();
+if (dbUrlInfo.effectiveUrl) {
+  prismaOptions.datasources = { db: { url: dbUrlInfo.effectiveUrl } };
+}
+
+if (
+  process.env.NODE_ENV !== "production" &&
+  dbUrlInfo.isManagedPostgres &&
+  !globalForPrisma.prismaManagedDbWarningShown
+) {
+  console.warn(
+    "[Prisma] Desarrollo conectado a BD gestionada (Seenode/Neon). Para evitar saturación, usa Docker local en .env.",
+  );
+  globalForPrisma.prismaManagedDbWarningShown = true;
 }
 
 const prismaClient = globalForPrisma.prisma ?? new PrismaClient(prismaOptions);
