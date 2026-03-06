@@ -19,10 +19,13 @@ function getDatabaseUrlWithConnectionLimit(): string | undefined {
   }
 
   if (!url.includes("connection_limit=")) {
-    // Seenode Tier 2 permite hasta ~20 conexiones. Permitimos 5 por instancia
-    // para consultas en paralelo sin saturar el límite.
-    // Local (Docker): más conexiones para desarrollo.
-    const limit = isManagedPostgres ? 5 : process.env.VERCEL ? 5 : 10;
+    // En serverless (Vercel), cada instancia crea su propio pool. Usar límite alto
+    // por instancia puede saturar rápido una BD gestionada.
+    // Managed Postgres:
+    // - Vercel: 1 conexión por instancia (más seguro contra "too many connections")
+    // - Local dev: 5 conexiones para trabajar con más fluidez
+    // Local (Docker): 10 conexiones.
+    const limit = isManagedPostgres ? (process.env.VERCEL ? 1 : 5) : process.env.VERCEL ? 5 : 10;
     params.push(`connection_limit=${limit}`);
   }
 

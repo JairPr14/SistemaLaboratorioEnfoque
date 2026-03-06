@@ -14,6 +14,7 @@ import {
 } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getPaidTotalsByOrderIds } from "@/lib/payments";
+import { logger } from "@/lib/logger";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, ClipboardList, Calendar } from "lucide-react";
 import { MetricCard } from "@/components/dashboard/MetricCard";
@@ -69,117 +70,135 @@ export default async function DashboardPage({
   const hasQuickActions = hasReception || hasAnalyst || hasDelivery;
   const canRegisterPayment = !!session?.user && hasPermission(session, PERMISSION_REGISTRAR_PAGOS);
 
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let sections: Array<{ code: string; name: string }> = [];
+  let pendingCount = 0;
+  let ordersToday = 0;
+  let recentActivity: Array<{ id: string; orderId: string; patientName: string; text: string; createdAt: string }> = [];
+  let tableOrdersWithPayment: Parameters<typeof DashboardPendingTable>[0]["orders"] = [];
 
-  const sectionsPromise = prisma.labSection.findMany({
-    where: { isActive: true },
-    orderBy: { order: "asc" },
-  });
+  try {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-  const labDataPromise =
-    hasOrders || hasQuickActions
-      ? Promise.all([
-          hasPatients ? prisma.patient.count({ where: { deletedAt: null } }) : 0,
-          hasOrders ? prisma.labOrder.count({ where: { createdAt: { gte: startOfMonth } } }) : 0,
-          hasOrders ? prisma.labOrder.count({ where: { status: { in: ["PENDIENTE", "EN_PROCESO"] } } }) : 0,
-          hasCatalog ? prisma.labTest.count({ where: { deletedAt: null, isActive: true } }) : 0,
-          hasOrders ? prisma.labOrder.count({ where: { createdAt: { gte: startOfToday } } }) : 0,
-          hasOrders
-            ? prisma.labOrder.findMany({
-                where: { status: { in: ["PENDIENTE", "EN_PROCESO", "COMPLETADO", "ENTREGADO"] } },
-                include: {
-                  patient: true,
-                  items: { include: { labTest: { include: { section: true } } } },
-                },
-                orderBy: { createdAt: "desc" },
-                take: 80,
-              })
-            : [],
-          hasOrders
-            ? prisma.labOrder.findMany({
-                orderBy: { createdAt: "desc" },
-                take: 12,
-                include: { patient: true },
-              })
-            : [],
-        ])
-      : Promise.resolve([0, 0, 0, 0, 0, [], []] as const);
+    const sectionsPromise = prisma.labSection.findMany({
+      where: { isActive: true },
+      orderBy: { order: "asc" },
+      select: { code: true, name: true },
+    });
 
-  const [sections, labData] = await Promise.all([
-    sectionsPromise,
-    labDataPromise,
-  ]);
+    const labDataPromise =
+      hasOrders || hasQuickActions
+        ? Promise.all([
+            hasPatients ? prisma.patient.count({ where: { deletedAt: null } }) : 0,
+            hasOrders ? prisma.labOrder.count({ where: { createdAt: { gte: startOfMonth } } }) : 0,
+            hasOrders ? prisma.labOrder.count({ where: { status: { in: ["PENDIENTE", "EN_PROCESO"] } } }) : 0,
+            hasCatalog ? prisma.labTest.count({ where: { deletedAt: null, isActive: true } }) : 0,
+            hasOrders ? prisma.labOrder.count({ where: { createdAt: { gte: startOfToday } } }) : 0,
+            hasOrders
+              ? prisma.labOrder.findMany({
+                  where: { status: { in: ["PENDIENTE", "EN_PROCESO", "COMPLETADO", "ENTREGADO"] } },
+                  include: {
+                    patient: true,
+                    items: { include: { labTest: { include: { section: true } } } },
+                  },
+                  orderBy: { createdAt: "desc" },
+                  take: 80,
+                })
+              : [],
+            hasOrders
+              ? prisma.labOrder.findMany({
+                  orderBy: { createdAt: "desc" },
+                  take: 12,
+                  include: { patient: true },
+                })
+              : [],
+          ])
+        : Promise.resolve([0, 0, 0, 0, 0, [], []] as const);
 
-  const [, , pendingCount, , ordersToday, pendingOrders, recentOrdersForActivity] =
-    hasOrders || hasQuickActions
-      ? (labData as [number, number, number, number, number, unknown[], unknown[]])
-      : [0, 0, 0, 0, 0, [], []];
+    const [sectionsResult, labData] = await Promise.all([sectionsPromise, labDataPromise]);
+    sections = sectionsResult;
 
-  const patientName = (o: { patient: { firstName: string; lastName: string } }) =>
-    `${o.patient.lastName} ${o.patient.firstName}`.trim() || "Paciente";
+    const [, , pendingCountResult, , ordersTodayResult, pendingOrders, recentOrdersForActivity] =
+      hasOrders || hasQuickActions
+        ? (labData as [number, number, number, number, number, unknown[], unknown[]])
+        : [0, 0, 0, 0, 0, [], []];
+    pendingCount = pendingCountResult;
+    ordersToday = ordersTodayResult;
 
-  const recentActivity =
-    hasOrders && Array.isArray(recentOrdersForActivity)
-      ? (recentOrdersForActivity as Array<{ id: string; createdAt: Date; status: string; patient: { firstName: string; lastName: string } }>).map((o) => ({
-          id: `a-${o.id}`,
-          orderId: o.id,
-          patientName: patientName(o),
-          text:
-            o.status === "ENTREGADO"
-              ? `Se entregó a ${patientName(o)}`
-              : o.status === "COMPLETADO"
-                ? `Se completó para ${patientName(o)}`
-                : `Se creó orden para ${patientName(o)}`,
-          createdAt: (o as { createdAt: Date }).createdAt.toISOString(),
-        }))
+    const patientName = (o: { patient: { firstName: string; lastName: string } }) =>
+      `${o.patient.lastName} ${o.patient.firstName}`.trim() || "Paciente";
+
+    recentActivity =
+      hasOrders && Array.isArray(recentOrdersForActivity)
+        ? (recentOrdersForActivity as Array<{ id: string; createdAt: Date; status: string; patient: { firstName: string; lastName: string } }>).map((o) => ({
+            id: `a-${o.id}`,
+            orderId: o.id,
+            patientName: patientName(o),
+            text:
+              o.status === "ENTREGADO"
+                ? `Se entregó a ${patientName(o)}`
+                : o.status === "COMPLETADO"
+                  ? `Se completó para ${patientName(o)}`
+                  : `Se creó orden para ${patientName(o)}`,
+            createdAt: (o as { createdAt: Date }).createdAt.toISOString(),
+          }))
+        : [];
+
+    const tableOrders = Array.isArray(pendingOrders)
+      ? (pendingOrders as Array<{
+          id: string;
+          orderCode: string;
+          createdAt: Date;
+          deliveredAt?: Date | null;
+          status: string;
+          patient: { firstName: string; lastName: string };
+          items: Array<{ status: string; labTest: { section: { code: string }; name: string } }>;
+          requestedBy?: string | null;
+          totalPrice: unknown;
+        }>).map((o) => {
+          const totalTests = o.items.length;
+          const completedTests = o.items.filter((i) => i.status === "COMPLETADO").length;
+          const needsValidation =
+            completedTests === totalTests && !["COMPLETADO", "ENTREGADO"].includes(o.status);
+          return {
+            id: o.id,
+            orderCode: o.orderCode,
+            createdAt: o.createdAt,
+            deliveredAt: o.deliveredAt ?? undefined,
+            status: toDashboardOrderStatus(o.status),
+            patient: o.patient,
+            items: o.items,
+            requestedBy: o.requestedBy,
+            totalPrice: Number(o.totalPrice),
+            itemsSection: o.items[0]?.labTest?.section?.code ?? undefined,
+            totalTests,
+            completedTests,
+            needsValidation,
+            missingCount: totalTests - completedTests,
+          };
+        })
       : [];
 
-  const tableOrders = Array.isArray(pendingOrders)
-    ? (pendingOrders as Array<{
-        id: string;
-        orderCode: string;
-        createdAt: Date;
-        deliveredAt?: Date | null;
-        status: string;
-        patient: { firstName: string; lastName: string };
-        items: Array<{ status: string; labTest: { section: { code: string }; name: string } }>;
-        requestedBy?: string | null;
-        totalPrice: unknown;
-      }>).map((o) => {
-        const totalTests = o.items.length;
-        const completedTests = o.items.filter((i) => i.status === "COMPLETADO").length;
-        const needsValidation =
-          completedTests === totalTests && !["COMPLETADO", "ENTREGADO"].includes(o.status);
-        return {
-          id: o.id,
-          orderCode: o.orderCode,
-          createdAt: o.createdAt,
-          deliveredAt: o.deliveredAt ?? undefined,
-          status: toDashboardOrderStatus(o.status),
-          patient: o.patient,
-          items: o.items,
-          requestedBy: o.requestedBy,
-          totalPrice: Number(o.totalPrice),
-          itemsSection: o.items[0]?.labTest?.section?.code ?? undefined,
-          totalTests,
-          completedTests,
-          needsValidation,
-          missingCount: totalTests - completedTests,
-        };
-      })
-    : [];
+    const pendingOrderIds = tableOrders.map((o) => o.id);
+    const paidByOrder =
+      pendingOrderIds.length > 0 ? await getPaidTotalsByOrderIds(prisma, pendingOrderIds) : new Map<string, number>();
 
-  const pendingOrderIds = tableOrders.map((o) => o.id);
-  const paidByOrder =
-    pendingOrderIds.length > 0 ? await getPaidTotalsByOrderIds(prisma, pendingOrderIds) : new Map<string, number>();
-  const tableOrdersWithPayment = tableOrders.map((order) => {
-    const paid = paidByOrder.get(order.id) ?? 0;
-    const total = order.totalPrice;
-    const paymentStatus = paid <= 0 ? "PENDIENTE" : paid + 0.0001 < total ? "PARCIAL" : "PAGADO";
-    return { ...order, paymentStatus: paymentStatus as "PENDIENTE" | "PARCIAL" | "PAGADO" };
-  }) as Parameters<typeof DashboardPendingTable>[0]["orders"];
+    tableOrdersWithPayment = tableOrders.map((order) => {
+      const paid = paidByOrder.get(order.id) ?? 0;
+      const total = order.totalPrice;
+      const paymentStatus = paid <= 0 ? "PENDIENTE" : paid + 0.0001 < total ? "PARCIAL" : "PAGADO";
+      return { ...order, paymentStatus: paymentStatus as "PENDIENTE" | "PARCIAL" | "PAGADO" };
+    }) as Parameters<typeof DashboardPendingTable>[0]["orders"];
+  } catch (error) {
+    logger.error("Dashboard data load failed:", error);
+    // Fallback seguro: evitamos que la página entera caiga por errores transitorios de DB.
+    sections = [];
+    pendingCount = 0;
+    ordersToday = 0;
+    recentActivity = [];
+    tableOrdersWithPayment = [];
+  }
 
   const showAnyMetrics = hasOrders;
   const metricCards: React.ReactNode[] = [];
