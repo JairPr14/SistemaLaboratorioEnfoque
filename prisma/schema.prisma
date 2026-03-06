@@ -232,10 +232,12 @@ model LabOrder {
   patientType        String?
   branchId           String?
   preAnalyticNote    String?
-  /// * Origen: ADMISION (cobro directo al público) | LABORATORIO (recepción directa)
+  /// * Origen (legacy): ADMISION | LABORATORIO. Nuevas órdenes siempre LABORATORIO.
   orderSource        OrderSource          @default(LABORATORIO)
+  /// * Tipo de precio aplicado: Público o Convenio (destina al reporte correspondiente)
+  priceType          OrderPriceType       @default(PUBLICO)
   createdById        String?
-  /// * Fecha en que laboratorio cobró a admisión (precio convenio)
+  /// * Legacy: fecha en que laboratorio cobró a admisión (obsoleto al quitar admisión)
   admissionSettledAt DateTime?
   branch             Branch?              @relation(fields: [branchId], references: [id])
   patient            Patient              @relation(fields: [patientId], references: [id])
@@ -248,6 +250,7 @@ model LabOrder {
   @@index([patientType])
   @@index([branchId])
   @@index([orderSource])
+  @@index([priceType])
 }
 
 model Payment {
@@ -533,6 +536,12 @@ model NotificationRead {
 enum OrderSource {
   ADMISION
   LABORATORIO
+}
+
+/// * Tipo de precio al crear la orden: Público (lista) o Convenio
+enum OrderPriceType {
+  PUBLICO
+  CONVENIO
 }
 
 enum Sex {

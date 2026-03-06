@@ -6,12 +6,10 @@ import {
   hasAnyPermission,
   hasPermission,
   PERMISSION_ELIMINAR_REGISTROS,
-  PERMISSION_GESTIONAR_ADMISION,
   PERMISSION_QUICK_ACTIONS_ANALISTA,
   PERMISSION_QUICK_ACTIONS_ENTREGA,
   PERMISSION_QUICK_ACTIONS_RECEPCION,
   PERMISSION_REGISTRAR_PAGOS,
-  PERMISSION_VER_ADMISION,
   PERMISSION_VER_ORDENES,
 } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -28,7 +26,7 @@ import { OrderStatusSelect } from "@/components/orders/OrderStatusSelect";
 import { FilterDateRange } from "@/components/common/FilterDateRange";
 import { FilterSubmitReset } from "@/components/common/FilterSubmitReset";
 import { RegistrarpagoButton } from "@/components/pagos/RegistrarpagoButton";
-import { Search, Plus, Printer, Activity, CreditCard, FileText, ArrowUpDown, ArrowUp, ArrowDown, UserPlus } from "lucide-react";
+import { Search, Plus, Printer, Activity, CreditCard, FileText, ArrowUpDown, ArrowUp, ArrowDown, List } from "lucide-react";
 
 export default async function OrdersPage({
   searchParams,
@@ -42,6 +40,7 @@ export default async function OrdersPage({
     sortBy?: string;
     sortDir?: string;
     focusSearch?: string;
+    limit?: string;
   }>;
 }) {
   const params = await searchParams;
@@ -53,21 +52,22 @@ export default async function OrdersPage({
   const sortBy = params.sortBy?.trim() || "orderCode";
   const sortDir: Prisma.SortOrder = params.sortDir === "asc" ? "asc" : "desc";
   const focusSearch = params.focusSearch === "1";
+  const limitParam = params.limit?.trim();
+  const limitOptions = [5, 10, 25, 50, 100] as const;
+  const limit: number | undefined =
+    limitParam === "all" ? undefined : limitOptions.includes(Number(limitParam) as (typeof limitOptions)[number]) ? (Number(limitParam) as (typeof limitOptions)[number]) : 5;
   const session = await getServerSession();
   const canAccessOrders = hasAnyPermission(session, [
     PERMISSION_VER_ORDENES,
     PERMISSION_QUICK_ACTIONS_RECEPCION,
     PERMISSION_QUICK_ACTIONS_ANALISTA,
     PERMISSION_QUICK_ACTIONS_ENTREGA,
-    PERMISSION_GESTIONAR_ADMISION,
-    PERMISSION_VER_ADMISION,
   ]);
   if (!session?.user || !canAccessOrders) {
     redirect("/dashboard");
   }
   const canDeleteOrders = hasPermission(session, PERMISSION_ELIMINAR_REGISTROS);
   const canRegisterPayment = hasPermission(session, PERMISSION_REGISTRAR_PAGOS);
-  const canManageAdmission = hasPermission(session, PERMISSION_GESTIONAR_ADMISION);
 
   const dateFrom = from ? parseLocalDate(from, false) : null;
   const dateTo = to ? parseLocalDate(to, true) : null;
@@ -80,6 +80,7 @@ export default async function OrdersPage({
         : { createdAt: sortDir };
 
   const orders = await prisma.labOrder.findMany({
+    take: limit,
     where: {
       ...(status ? { status: status as never } : {}),
       ...(dateFrom ?? dateTo
@@ -144,15 +145,6 @@ export default async function OrdersPage({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {canRegisterPayment && <RegistrarpagoButton />}
-          {canManageAdmission && (
-            <Link
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-teal-600 bg-teal-50 px-4 text-sm font-medium text-teal-700 transition-colors hover:bg-teal-100 dark:border-teal-500 dark:bg-teal-950/50 dark:text-teal-400 dark:hover:bg-teal-900/50"
-              href="/admission/nueva"
-            >
-              <UserPlus className="h-4 w-4" />
-              Nueva admisión
-            </Link>
-          )}
           <Link
             className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-slate-900 px-4 text-sm font-medium text-white transition-colors hover:bg-slate-800 dark:bg-teal-600 dark:hover:bg-teal-700"
             href="/orders/new"
@@ -191,8 +183,27 @@ export default async function OrdersPage({
                 defaultTo={to}
               />
 
+              <div className="space-y-1.5">
+                <label htmlFor="limit-orders" className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">
+                  <List className="h-3.5 w-3.5" />
+                  Mostrar
+                </label>
+                <select
+                  id="limit-orders"
+                  name="limit"
+                  defaultValue={limit ?? "all"}
+                  className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm transition-colors focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-slate-500"
+                >
+                  <option value="5">5 órdenes</option>
+                  <option value="10">10 órdenes</option>
+                  <option value="25">25 órdenes</option>
+                  <option value="50">50 órdenes</option>
+                  <option value="100">100 órdenes</option>
+                  <option value="all">Todas</option>
+                </select>
+              </div>
                 <FilterSubmitReset
-                showReset={Boolean(search || status || paymentStatus || from || to || sortBy !== "orderCode" || sortDir !== "desc")}
+                showReset={Boolean(search || status || paymentStatus || from || to || sortBy !== "orderCode" || sortDir !== "desc" || limit !== 5)}
                 resetHref="/orders"
               />
             </div>
@@ -273,6 +284,9 @@ export default async function OrdersPage({
       {/* Tabla (mismo estilo que Pagos) */}
       <Card>
         <CardContent className="pt-4">
+          <p className="mb-2 text-sm text-slate-500 dark:text-slate-400">
+            {limit ? `Mostrando ${visibleOrders.length} órdenes` : `Mostrando todas las órdenes (${visibleOrders.length})`}
+          </p>
           <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
             <Table>
               <TableHeader>

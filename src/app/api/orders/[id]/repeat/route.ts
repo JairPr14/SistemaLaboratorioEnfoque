@@ -75,12 +75,14 @@ export async function POST(request: Request, { params }: Params) {
           requestedBy: doctorName,
           notes: indication,
           patientType: orderSource.patientType ?? null,
+          priceType: orderSource.priceType ?? "PUBLICO",
           totalPrice,
           items: {
             createMany: {
               data: items.map((i) => ({
                 labTestId: i.labTestId,
                 priceSnapshot: i.priceSnapshot,
+                priceConventionSnapshot: i.priceConventionSnapshot ?? undefined,
                 templateSnapshot: i.templateSnapshot ?? undefined,
               })),
             },

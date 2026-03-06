@@ -117,7 +117,7 @@ export function LabTestForm({ testId, defaultValues, sections, referredLabs }: P
         <div className="space-y-2">
           <Label>Precio público (S/)</Label>
           <Input type="number" step="0.01" {...form.register("price")} />
-          <p className="text-xs text-slate-500">Lo que cobra admisión al paciente</p>
+          <p className="text-xs text-slate-500">Precio público (lista)</p>
         </div>
         <div className="space-y-2">
           <Label>Precio convenio (S/)</Label>
@@ -127,7 +127,7 @@ export function LabTestForm({ testId, defaultValues, sections, referredLabs }: P
             placeholder="Opcional; si vacío = precio público"
             {...form.register("priceToAdmission")}
           />
-          <p className="text-xs text-slate-500">Lo que cobra el laboratorio a admisión</p>
+          <p className="text-xs text-slate-500">Precio convenio</p>
         </div>
         <div className="space-y-2">
           <Label>Tiempo estimado (min)</Label>

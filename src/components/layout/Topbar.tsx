@@ -16,7 +16,6 @@ import {
   PanelLeftClose,
   Settings,
   Stethoscope,
-  UserPlus,
 } from "lucide-react";
 import { GlobalSearch } from "@/components/dashboard/GlobalSearch";
 import { NotificationBell } from "@/components/layout/NotificationBell";
@@ -25,7 +24,6 @@ import {
   ADMIN_ROLE_CODE,
   hasPermission,
   PERMISSION_CAPTURAR_RESULTADOS,
-  PERMISSION_GESTIONAR_ADMISION,
   PERMISSION_QUICK_ACTIONS_ANALISTA,
   PERMISSION_QUICK_ACTIONS_ENTREGA,
   PERMISSION_QUICK_ACTIONS_RECEPCION,
@@ -46,7 +44,6 @@ export function Topbar({
   const canReception = hasPermission(session ?? null, PERMISSION_QUICK_ACTIONS_RECEPCION);
   const canAnalyst = hasPermission(session ?? null, PERMISSION_QUICK_ACTIONS_ANALISTA);
   const canDelivery = hasPermission(session ?? null, PERMISSION_QUICK_ACTIONS_ENTREGA);
-  const canManageAdmission = hasPermission(session ?? null, PERMISSION_GESTIONAR_ADMISION);
   const canCapture = hasPermission(session ?? null, PERMISSION_CAPTURAR_RESULTADOS);
 
   const captureNext = async () => {
@@ -73,113 +70,133 @@ export function Topbar({
 
   return (
     <>
-    <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/85 px-4 py-3 backdrop-blur-md transition-colors duration-200 dark:border-slate-700/80 dark:bg-slate-900/80 sm:px-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 sm:flex-nowrap sm:gap-4">
-      <div className="flex min-w-0 shrink-0 items-center gap-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onToggleSidebar}
-          title={sidebarOpen ? "Ocultar barra lateral" : "Mostrar barra lateral"}
-          className="h-9 w-9 shrink-0 rounded-xl border border-slate-200/70 text-slate-500 transition-all duration-200 hover:scale-[1.03] hover:border-teal-300 hover:text-teal-700 dark:border-slate-700/70 dark:text-slate-400 dark:hover:border-teal-700 dark:hover:text-teal-300"
-        >
-          {sidebarOpen ? (
-            <PanelLeftClose className="h-4 w-4" />
-          ) : (
-            <PanelLeft className="h-4 w-4" />
-          )}
-        </Button>
-      <div className="min-w-0">
-        <h1 className="truncate text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100 sm:text-lg">
-          Gestión de Laboratorio
-        </h1>
-        <p className="hidden truncate text-xs text-slate-500 dark:text-slate-400 sm:block">
-          Control de pacientes, órdenes y resultados
-        </p>
-      </div>
-      </div>
-      <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 sm:flex-nowrap sm:gap-3">
-        {(canReception || canAnalyst || canDelivery || canManageAdmission) && (
-          <div className="hidden shrink-0 lg:flex items-center gap-1.5 rounded-2xl border border-slate-200/90 bg-gradient-to-r from-white to-slate-50 px-2 py-1.5 shadow-sm dark:border-slate-700/80 dark:from-slate-900 dark:to-slate-800">
-            <span className="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
-              <Bolt className="h-3.5 w-3.5" />
-              1 clic
-            </span>
-            {canManageAdmission && (
-              <Link href="/admission/nueva">
-                <Button size="sm" variant="ghost" className="h-8 gap-1.5 rounded-xl transition-all hover:bg-teal-50 hover:text-teal-700 dark:hover:bg-teal-900/30 dark:hover:text-teal-300">
-                  <UserPlus className="h-3.5 w-3.5" />
-                  Nueva atención
-                </Button>
-              </Link>
+    <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur-md dark:border-slate-700/80 dark:bg-slate-900/90">
+      <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-3 sm:gap-6 sm:px-6">
+        {/* Izquierda: toggle + título */}
+        <div className="flex min-w-0 shrink-0 items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggleSidebar}
+            title={sidebarOpen ? "Ocultar barra lateral" : "Mostrar barra lateral"}
+            className="h-10 w-10 shrink-0 rounded-xl border border-slate-200/70 text-slate-500 transition-all duration-200 hover:border-teal-300 hover:text-teal-700 dark:border-slate-700/70 dark:text-slate-400 dark:hover:border-teal-700 dark:hover:text-teal-300"
+          >
+            {sidebarOpen ? (
+              <PanelLeftClose className="h-4 w-4" />
+            ) : (
+              <PanelLeft className="h-4 w-4" />
             )}
-            {canReception && (
-              <Button size="sm" variant="ghost" className="h-8 gap-1.5 rounded-xl transition-all hover:bg-teal-50 hover:text-teal-700 dark:hover:bg-teal-900/30 dark:hover:text-teal-300" onClick={() => setQuickOrderOpen(true)}>
-                <Stethoscope className="h-3.5 w-3.5" />
-                Nueva orden
-              </Button>
-            )}
-            {canAnalyst && canCapture && (
-              <Button size="sm" variant="ghost" className="h-8 gap-1.5 rounded-xl transition-all hover:bg-teal-50 hover:text-teal-700 dark:hover:bg-teal-900/30 dark:hover:text-teal-300" onClick={() => void captureNext()} disabled={loading}>
-                <ClipboardList className="h-3.5 w-3.5" />
-                Capturar siguiente
-              </Button>
-            )}
-            {canDelivery && (
-              <Link href="/orders?status=COMPLETADO&focusSearch=1">
-                <Button size="sm" variant="ghost" className="h-8 gap-1.5 rounded-xl transition-all hover:bg-teal-50 hover:text-teal-700 dark:hover:bg-teal-900/30 dark:hover:text-teal-300">
-                  <FileSearch className="h-3.5 w-3.5" />
-                  Entrega
-                </Button>
-              </Link>
-            )}
+          </Button>
+          <div className="min-w-0 border-l border-slate-200/60 pl-4 dark:border-slate-700/60">
+            <h1 className="truncate text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100 sm:text-lg">
+              Gestión de Laboratorio
+            </h1>
+            <p className="hidden truncate text-xs text-slate-500 dark:text-slate-400 sm:block">
+              Control de pacientes, órdenes y resultados
+            </p>
           </div>
-        )}
-        <div className="hidden min-w-0 shrink sm:block sm:w-auto sm:max-w-md md:flex-1">
-          <GlobalSearch />
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <NotificationBell session={session ?? null} />
-          <ThemeToggle />
-        {session?.user && (
-          <div className="flex items-center gap-2 border-l border-slate-200/80 pl-3 dark:border-slate-600/80">
-            <div className="hidden items-center gap-2 rounded-xl border border-slate-200/80 bg-slate-50 px-2.5 py-1.5 dark:border-slate-700/70 dark:bg-slate-800 sm:flex">
-              <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-teal-600 to-cyan-500 text-[11px] font-bold uppercase text-white">
-                {(session.user.name ?? session.user.email ?? "U").slice(0, 1)}
+
+        {/* Centro: acciones rápidas */}
+        <div className="flex min-w-0 flex-1 flex-wrap items-center justify-center gap-2 lg:justify-end lg:gap-4">
+          {(canReception || canAnalyst || canDelivery) && (
+            <nav className="hidden shrink-0 lg:flex items-center gap-1 rounded-2xl border border-slate-200/90 bg-slate-50/80 px-3 py-2 dark:border-slate-700/80 dark:bg-slate-800/50" aria-label="Acciones rápidas">
+              <span className="mr-2 flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+                <Bolt className="h-3.5 w-3.5" aria-hidden />
+                1 clic
               </span>
-              <div className="min-w-0">
-                <p className="max-w-[160px] truncate text-sm font-medium text-slate-700 dark:text-slate-200">
-                  {session.user.name ?? session.user.email}
-                </p>
-                <p className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
-                  <Clock3 className="h-3 w-3" />
-                  Sesión activa
-                </p>
+              <div className="flex items-center gap-1">
+                {canReception && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-9 min-w-[44px] gap-2 rounded-lg px-3 transition-all hover:bg-teal-50 hover:text-teal-700 dark:hover:bg-teal-900/30 dark:hover:text-teal-300"
+                    onClick={() => setQuickOrderOpen(true)}
+                  >
+                    <Stethoscope className="h-4 w-4 shrink-0" aria-hidden />
+                    <span className="hidden xl:inline">Nueva orden</span>
+                  </Button>
+                )}
+                {canAnalyst && canCapture && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-9 min-w-[44px] gap-2 rounded-lg px-3 transition-all hover:bg-teal-50 hover:text-teal-700 dark:hover:bg-teal-900/30 dark:hover:text-teal-300"
+                    onClick={() => void captureNext()}
+                    disabled={loading}
+                  >
+                    <ClipboardList className="h-4 w-4 shrink-0" aria-hidden />
+                    <span className="hidden xl:inline">Capturar</span>
+                  </Button>
+                )}
+                {canDelivery && (
+                  <Link href="/orders?status=COMPLETADO&focusSearch=1">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-9 min-w-[44px] gap-2 rounded-lg px-3 transition-all hover:bg-teal-50 hover:text-teal-700 dark:hover:bg-teal-900/30 dark:hover:text-teal-300"
+                    >
+                      <FileSearch className="h-4 w-4 shrink-0" aria-hidden />
+                      <span className="hidden xl:inline">Entrega</span>
+                    </Button>
+                  </Link>
+                )}
               </div>
-            </div>
-            {session.user.roleCode === ADMIN_ROLE_CODE && (
-              <Link
-                href="/configuracion"
-                title="Configuración"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/70 text-slate-500 transition-all duration-200 hover:scale-[1.03] hover:border-teal-300 hover:text-teal-700 dark:border-slate-700/70 dark:text-slate-400 dark:hover:border-teal-700 dark:hover:text-teal-300"
-              >
-                <Settings className="h-4 w-4" />
-              </Link>
-            )}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => signOut({ callbackUrl: "/login" })}
-              title="Cerrar sesión"
-              className="h-9 w-9 rounded-xl border border-slate-200/70 text-slate-500 transition-all duration-200 hover:scale-[1.03] hover:border-rose-300 hover:text-rose-700 dark:border-slate-700/70 dark:text-slate-400 dark:hover:border-rose-800 dark:hover:text-rose-300"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
+            </nav>
+          )}
+          <div className="hidden min-w-0 shrink sm:block sm:w-64 md:w-80 lg:mx-4">
+            <GlobalSearch />
           </div>
-        )}
+        </div>
+
+        {/* Derecha: notificaciones, tema, usuario */}
+        <div className="flex shrink-0 items-center gap-3">
+          <div className="flex items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg">
+              <NotificationBell session={session ?? null} />
+            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg">
+              <ThemeToggle />
+            </div>
+          </div>
+          {session?.user && (
+            <div className="flex items-center gap-3 border-l border-slate-200/80 pl-4 dark:border-slate-700/80">
+              <div className="hidden items-center gap-3 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2 dark:border-slate-700/70 dark:bg-slate-800/50 sm:flex">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-teal-600 to-cyan-500 text-xs font-bold uppercase text-white">
+                  {(session.user.name ?? session.user.email ?? "U").slice(0, 1)}
+                </span>
+                <div className="min-w-0">
+                  <p className="max-w-[140px] truncate text-sm font-medium text-slate-700 dark:text-slate-200">
+                    {session.user.name ?? session.user.email}
+                  </p>
+                  <p className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
+                    <Clock3 className="h-3 w-3 shrink-0" aria-hidden />
+                    Sesión activa
+                  </p>
+                </div>
+              </div>
+              {session.user.roleCode === ADMIN_ROLE_CODE && (
+                <Link
+                  href="/configuracion"
+                  title="Configuración"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200/70 text-slate-500 transition-all duration-200 hover:border-teal-300 hover:text-teal-700 dark:border-slate-700/70 dark:text-slate-400 dark:hover:border-teal-700 dark:hover:text-teal-300"
+                >
+                  <Settings className="h-4 w-4" aria-hidden />
+                </Link>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => signOut({ callbackUrl: "/login" })}
+                title="Cerrar sesión"
+                className="h-10 w-10 shrink-0 rounded-xl border border-slate-200/70 text-slate-500 transition-all duration-200 hover:border-rose-300 hover:text-rose-700 dark:border-slate-700/70 dark:text-slate-400 dark:hover:border-rose-800 dark:hover:text-rose-300"
+              >
+                <LogOut className="h-4 w-4" aria-hidden />
+              </Button>
+            </div>
+          )}
         </div>
       </div>
-    </div>
     </header>
     <QuickOrderModal open={quickOrderOpen} onOpenChange={setQuickOrderOpen} />
     </>

@@ -23,7 +23,7 @@ type Props = {
   orderCode: string;
   orderTotal: number;
   paidTotal: number;
-  /** Si la orden es de admisión, monto a cobrar (precio convenio). Se usa para pre-rellenar el campo Monto. */
+  /** Monto sugerido (ej. saldo pendiente). Se usa para pre-rellenar el campo Monto. */
   defaultAmount?: number | null;
   disabled?: boolean;
   onPaymentSaved?: (summary: { total: number; paid: number; balance: number }) => void;
@@ -110,7 +110,7 @@ export function PaymentDialog({
             Orden {orderCode} - Total {formatCurrency(orderTotal)} - Saldo pendiente {formatCurrency(balance)}
             {defaultAmount != null && defaultAmount > 0 && (
               <span className="mt-1 block text-emerald-600 dark:text-emerald-400">
-                Orden de admisión: cobrar precio convenio {formatCurrency(defaultAmount)}.
+                Monto sugerido: {formatCurrency(defaultAmount)}.
               </span>
             )}
           </DialogDescription>

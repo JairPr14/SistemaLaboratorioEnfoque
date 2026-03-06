@@ -17,7 +17,7 @@ import {
   toYYYYMMDD,
   type SearchParams,
 } from "@/lib/reportes-utils";
-import { CalendarDays, DollarSign, FileText, UserPlus, FlaskConical } from "lucide-react";
+import { CalendarDays, DollarSign, FileText, FlaskConical } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -36,9 +36,8 @@ export default async function ReportesFinanzasPage({
     orderItems,
     revenueResult,
     ordersList,
-    admissionSummary,
+    priceTypeSummary,
     referredLabPayments,
-    admissionPendingSettlement,
   ] = await Promise.all([
     prisma.labOrderItem.findMany({
       where: { order: orderWhere },
@@ -62,27 +61,14 @@ export default async function ReportesFinanzasPage({
       select: { id: true },
     }),
     prisma.labOrder.groupBy({
-      by: ["orderSource"],
-      where: {
-        orderSource: "ADMISION",
-        createdAt: { gte: dateFrom, lte: dateTo },
-      },
+      by: ["priceType"],
+      where: orderWhere,
       _count: { id: true },
       _sum: { totalPrice: true },
     }),
     prisma.referredLabPayment.findMany({
       where: { order: orderWhere },
       include: { referredLab: { select: { id: true, name: true } } },
-    }),
-    prisma.labOrder.aggregate({
-      where: {
-        orderSource: "ADMISION",
-        admissionSettledAt: null,
-        status: { not: "ANULADO" },
-        createdAt: { gte: dateFrom, lte: dateTo },
-      },
-      _count: { id: true },
-      _sum: { totalPrice: true },
     }),
   ]);
 
@@ -139,7 +125,7 @@ export default async function ReportesFinanzasPage({
     <div className={pageLayoutClasses.wrapper}>
       <PageHeader
         title="Reportes financieros"
-        description="Facturación, cobros, admisión y terciarización"
+        description="Facturación, cobros por tipo de precio y terciarización"
       />
 
       <Card>
@@ -226,32 +212,6 @@ export default async function ReportesFinanzasPage({
           </CardContent>
         </Card>
 
-        {(admissionPendingSettlement._count.id ?? 0) > 0 && (
-          <Link href="/cobro-admision">
-            <Card className="overflow-hidden border-violet-200 transition-colors hover:border-violet-400 dark:border-violet-800 dark:hover:border-violet-600">
-              <div className="h-1 bg-violet-500" />
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30">
-                    <UserPlus className="h-6 w-6 text-violet-600 dark:text-violet-400" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                      Pend. cobro admisión
-                    </p>
-                    <p className="text-xl font-bold text-violet-600 dark:text-violet-400">
-                      {formatCurrency(Number(admissionPendingSettlement._sum.totalPrice ?? 0))}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {admissionPendingSettlement._count.id} órdenes →
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-        )}
-
         {totalExternalLabCost > 0 && (
           <Card className="overflow-hidden">
             <div className="h-1 bg-amber-500" />
@@ -284,33 +244,34 @@ export default async function ReportesFinanzasPage({
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
-            <UserPlus className="h-4 w-4 text-slate-500" />
-            <CardTitle className="text-base">Órdenes de Admisión</CardTitle>
+            <DollarSign className="h-4 w-4 text-slate-500" />
+            <CardTitle className="text-base">Órdenes por tipo de precio</CardTitle>
           </div>
           <p className="mt-1 text-sm text-slate-500">
-            Órdenes creadas desde admisión (cobro directo al público) en el período.
+            Desglose de facturación por precio público o convenio en el período.
           </p>
         </CardHeader>
         <CardContent>
-          {admissionSummary.length === 0 ? (
-            <p className="text-sm text-slate-500">Sin órdenes de admisión en el período</p>
+          {priceTypeSummary.length === 0 ? (
+            <p className="text-sm text-slate-500">Sin órdenes en el período</p>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-1">
-              {admissionSummary.map((row) => {
+            <div className="grid gap-4 sm:grid-cols-2">
+              {priceTypeSummary.map((row) => {
                 const total = Number(row._sum.totalPrice ?? 0);
+                const label = row.priceType === "CONVENIO" ? "Precio convenio" : "Precio público";
                 return (
                   <div
-                    key={row.orderSource}
-                    className="rounded-xl border border-slate-200 bg-emerald-50 p-4 dark:border-slate-700 dark:bg-emerald-900/20"
+                    key={row.priceType}
+                    className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50"
                   >
-                    <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
-                      Órdenes de admisión
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                      {label}
                     </p>
-                    <p className="mt-2 text-2xl font-bold text-emerald-700 dark:text-emerald-400">
-                      {row._count.id}
+                    <p className="mt-2 text-2xl font-bold text-teal-600 dark:text-teal-400">
+                      {row._count.id} órdenes
                     </p>
                     <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                      {formatCurrency(total)} facturado (precio público)
+                      {formatCurrency(total)} facturado
                     </p>
                   </div>
                 );

@@ -3,12 +3,11 @@ import { Suspense } from "react";
 
 
 import { redirect } from "next/navigation";
-import { getServerSession, hasPermission, PERMISSION_IMPRIMIR_TICKET_PAGO, PERMISSION_REGISTRAR_PAGOS, PERMISSION_VER_PAGOS, PERMISSION_VER_ADMISION } from "@/lib/auth";
+import { getServerSession, hasPermission, PERMISSION_IMPRIMIR_TICKET_PAGO, PERMISSION_REGISTRAR_PAGOS, PERMISSION_VER_PAGOS } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getPaidTotalsByOrderIds } from "@/lib/payments";
 import { formatCurrency, formatDate, formatPatientDisplayName } from "@/lib/format";
 import { PAYMENT_METHOD_LABELS } from "@/lib/constants";
-import { calculateConventionTotal } from "@/lib/order-pricing";
 import { parseLocalDate } from "@/lib/date";
 import { PAYMENT_ROW_HOVER_CLASS } from "@/lib/table-row-styles";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +20,7 @@ import { StatusBadge } from "@/components/common/StatusBadge";
 import { FilterDateRange } from "@/components/common/FilterDateRange";
 import { FilterSubmitReset } from "@/components/common/FilterSubmitReset";
 import { MetricCard } from "@/components/dashboard/MetricCard";
-import { Search, Eye, Printer, Receipt, Building2, DollarSign, FileText, CreditCard, UserPlus, FlaskConical, Wallet } from "lucide-react";
+import { Search, Eye, Printer, Receipt, Building2, DollarSign, FileText, CreditCard, FlaskConical, Wallet } from "lucide-react";
 
 type TabValue = "pendientes" | "parcial" | "cobrados";
 
@@ -49,7 +48,6 @@ export default async function PagosPage({
   if (!canAccessPagos) redirect("/dashboard");
   const canRegisterPayment = hasPermission(session, PERMISSION_REGISTRAR_PAGOS);
   const canPrintTicket = hasPermission(session, PERMISSION_IMPRIMIR_TICKET_PAGO) || canAccessPagos;
-  const canViewAdmision = hasPermission(session, PERMISSION_VER_ADMISION);
 
   const dateFrom = from ? parseLocalDate(from, false) : null;
   const dateTo = to ? parseLocalDate(to, true) : null;
@@ -136,42 +134,13 @@ export default async function PagosPage({
   });
 
   const orderIds = orders.map((o) => o.id);
-  const [paidByOrder, admissionPendingOrders, referredLabPayments] = await Promise.all([
+  const [paidByOrder, referredLabPayments] = await Promise.all([
     getPaidTotalsByOrderIds(prisma, orderIds),
-    canViewAdmision
-      ? prisma.labOrder.findMany({
-          where: {
-            orderSource: "ADMISION",
-            admissionSettledAt: null,
-            status: { not: "ANULADO" },
-            ...(dateFrom ?? dateTo
-              ? {
-                  createdAt: {
-                    ...(dateFrom ? { gte: dateFrom } : {}),
-                    ...(dateTo ? { lte: dateTo } : {}),
-                  },
-                }
-              : {}),
-          },
-          select: {
-            id: true,
-            items: {
-              select: {
-                priceConventionSnapshot: true,
-                priceSnapshot: true,
-              },
-            },
-          },
-        })
-      : [],
     prisma.referredLabPayment.findMany({
       where: { orderId: { in: orderIds } },
       select: { orderId: true, amount: true },
     }),
   ]);
-
-  const admissionPendingTotal = admissionPendingOrders.reduce((s, order) => s + calculateConventionTotal(order.items), 0);
-  const admissionPendingCount = admissionPendingOrders.length;
 
   let totalExternalCost = 0;
   const paidToLabs = referredLabPayments.reduce((s, p) => s + Number(p.amount), 0);
@@ -182,15 +151,9 @@ export default async function PagosPage({
   });
   const referredBalance = Math.max(0, totalExternalCost - paidToLabs);
 
-  const conventionTotalForOrder = (order: (typeof orders)[0]) => {
-    if (order.orderSource !== "ADMISION") return null;
-    return calculateConventionTotal(order.items);
-  };
-
   const ordersWithPayment = orders.map((order) => {
     const paid = paidByOrder.get(order.id) ?? 0;
-    const conventionTotal = conventionTotalForOrder(order);
-    const total = conventionTotal != null ? conventionTotal : Number(order.totalPrice);
+    const total = Number(order.totalPrice);
     const paymentStatus =
       paid <= 0 ? "PENDIENTE" : paid + 0.0001 < total ? "PARCIAL" : "PAGADO";
     return {
@@ -337,23 +300,6 @@ export default async function PagosPage({
           icon={<FileText className="h-5 w-5" />}
           accent="emerald"
         />
-        {canViewAdmision && admissionPendingCount > 0 && (
-          <Link
-            href="/cobro-admision"
-            className="rounded-xl border border-violet-200 bg-gradient-to-br from-violet-50 to-violet-100/50 p-4 transition-colors hover:shadow-md dark:border-violet-800/50 dark:from-violet-900/20 dark:to-violet-800/10"
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-900/50">
-                <UserPlus className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-              </div>
-              <div>
-                <p className="text-xs font-medium text-violet-600/70 dark:text-violet-400/70">Cobro admisión ({admissionPendingCount})</p>
-                <p className="text-lg font-bold text-violet-700 dark:text-violet-300">{formatCurrency(admissionPendingTotal)}</p>
-                <p className="text-[10px] text-violet-600/80 dark:text-violet-400/80">Ver pendientes →</p>
-              </div>
-            </div>
-          </Link>
-        )}
         {totalExternalCost > 0 && (
           <div className="rounded-xl border border-amber-200/80 bg-gradient-to-br from-amber-50/80 to-amber-100/30 p-4 dark:border-amber-800/50 dark:from-amber-900/10 dark:to-amber-800/5">
             <div className="flex items-center gap-3">
@@ -443,7 +389,7 @@ export default async function PagosPage({
                   visibleOrders.map((order) => {
                     const sinDatosCapturados = order.status === "PENDIENTE" || order.status === "EN_PROCESO";
                     const branchName = order.branch?.name ?? order.patientType ?? "Sin sede";
-                    const fromAdmission = order.orderSource === "ADMISION";
+                    const isConvention = order.priceType === "CONVENIO";
                     const hasReferred = order.items.some((i) => i.labTest.isReferred && i.labTest.externalLabCost);
                     return (
                       <TableRow
@@ -489,9 +435,9 @@ export default async function PagosPage({
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-1">
-                            {fromAdmission && (
-                              <span className="inline-flex items-center rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-medium text-violet-700 dark:bg-violet-900/40 dark:text-violet-300" title="Orden de admisión">
-                                <UserPlus className="h-3 w-3" />
+                            {isConvention && (
+                              <span className="inline-flex items-center rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-medium text-violet-700 dark:bg-violet-900/40 dark:text-violet-300" title="Precio convenio">
+                                Conv.
                               </span>
                             )}
                             {hasReferred && (
@@ -499,7 +445,7 @@ export default async function PagosPage({
                                 <FlaskConical className="h-3 w-3" />
                               </span>
                             )}
-                            {!fromAdmission && !hasReferred && <span className="text-slate-400">—</span>}
+                            {!isConvention && !hasReferred && <span className="text-slate-400">—</span>}
                           </div>
                         </TableCell>
                         <TableCell className="text-right">

@@ -2,8 +2,12 @@
   "name": "sistema-lab",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "dev": "next dev",
+    "dev:clean": "node -e \"try{require('fs').rmSync('.next',{recursive:true,force:true})}catch(e){}\" && next dev",
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
@@ -17,6 +21,7 @@
     "db:seed:patients": "tsx scripts/seed-patients.ts",
     "db:seed:templates:complete": "tsx scripts/seed-complete-templates.ts",
     "db:copy-production": "tsx scripts/copy-production-to-docker.ts",
+    "db:setup-from-production": "pnpm docker:up && pnpm db:copy-production",
     "db:restore-to-production": "tsx scripts/restore-backup-to-production.ts",
     "studio:local": "tsx scripts/prisma-studio-local.ts"
   },

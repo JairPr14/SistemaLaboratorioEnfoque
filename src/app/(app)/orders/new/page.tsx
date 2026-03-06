@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getServerSession, hasPermission, PERMISSION_VER_ORDENES, PERMISSION_GESTIONAR_ADMISION } from "@/lib/auth";
+import { getServerSession, hasPermission, PERMISSION_VER_ORDENES } from "@/lib/auth";
 import { toPatientSelectOption } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { OrderForm } from "@/components/forms/OrderForm";
@@ -9,9 +9,7 @@ type Props = { searchParams: Promise<{ patientId?: string }> };
 
 export default async function NewOrderPage({ searchParams }: Props) {
   const session = await getServerSession();
-  const canCreate =
-    session?.user &&
-    (hasPermission(session, PERMISSION_VER_ORDENES) || hasPermission(session, PERMISSION_GESTIONAR_ADMISION));
+  const canCreate = session?.user && hasPermission(session, PERMISSION_VER_ORDENES);
   if (!canCreate) {
     redirect("/dashboard");
   }
@@ -53,6 +51,7 @@ export default async function NewOrderPage({ searchParams }: Props) {
       name: i.labTest.name,
       section: i.labTest.section?.code ?? "",
       price: Number(i.labTest.price),
+      priceToAdmission: i.labTest.priceToAdmission != null ? Number(i.labTest.priceToAdmission) : Number(i.labTest.price),
     })),
   }));
 
@@ -75,6 +74,7 @@ export default async function NewOrderPage({ searchParams }: Props) {
               section: t.section?.code ?? "",
               sectionLabel: t.section?.name ?? t.section?.code ?? "",
               price: Number(t.price),
+              priceToAdmission: t.priceToAdmission != null ? Number(t.priceToAdmission) : Number(t.price),
               hasTemplate: !!t.template,
               templateTitle: t.template?.title ?? null,
             }))}

@@ -4,7 +4,7 @@ import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { orderCreateSchema } from "@/features/lab/schemas";
-import { getServerSession, hasAnyPermission, PERMISSION_GESTIONAR_ADMISION, PERMISSION_VER_ORDENES } from "@/lib/auth";
+import { getServerSession, hasAnyPermission, PERMISSION_VER_ORDENES } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import {
   buildOrderCode,
@@ -17,10 +17,7 @@ export async function GET(request: Request) {
   if (!session?.user) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
-  const canAccess = hasAnyPermission(session, [
-    PERMISSION_VER_ORDENES,
-    PERMISSION_GESTIONAR_ADMISION,
-  ]);
+  const canAccess = hasAnyPermission(session, [PERMISSION_VER_ORDENES]);
   if (!canAccess) {
     return NextResponse.json({ error: "Sin permiso para ver órdenes" }, { status: 403 });
   }
@@ -68,16 +65,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const payload = await request.json().catch(() => ({}));
-  const isAdmissionOrder = payload?.orderSource === "ADMISION";
-  const canCreate = isAdmissionOrder
-    ? hasAnyPermission(session, [PERMISSION_GESTIONAR_ADMISION])
-    : hasAnyPermission(session, [PERMISSION_VER_ORDENES, PERMISSION_GESTIONAR_ADMISION]);
+  const canCreate = hasAnyPermission(session, [PERMISSION_VER_ORDENES]);
   if (!canCreate) {
     return NextResponse.json({ error: "Sin permiso para crear órdenes" }, { status: 403 });
   }
 
   try {
+    const payload = await request.json().catch(() => ({}));
     const parsed = orderCreateSchema.parse(payload);
 
     const fullInclude = {
@@ -137,14 +131,15 @@ export async function POST(request: Request) {
           : null;
       for (const test of profileTests) {
         fromProfileTestIds.add(test.id);
-        const price = priceEach ?? Number(test.price);
-        const convention = test.priceToAdmission != null ? Number(test.priceToAdmission) : price;
+        const publicPrice = priceEach ?? Number(test.price);
+        const conventionPrice = test.priceToAdmission != null ? Number(test.priceToAdmission) : publicPrice;
+        const useConvention = parsed.priceType === "CONVENIO";
         testsFromProfiles.push({
           test,
-          priceSnapshot: price,
-          priceConventionSnapshot: parsed.orderSource === "ADMISION" ? convention : undefined,
-          referredLabId: parsed.orderSource === "ADMISION" && test.isReferred ? (test.referredLabId ?? undefined) : undefined,
-          externalLabCostSnapshot: parsed.orderSource === "ADMISION" && test.externalLabCost != null ? Number(test.externalLabCost) : undefined,
+          priceSnapshot: useConvention ? conventionPrice : publicPrice,
+          priceConventionSnapshot: useConvention ? conventionPrice : undefined,
+          referredLabId: test.isReferred ? (test.referredLabId ?? undefined) : undefined,
+          externalLabCostSnapshot: test.externalLabCost != null ? Number(test.externalLabCost) : undefined,
           promotionId: profile.id,
           promotionName: profile.name,
         });
@@ -154,15 +149,16 @@ export async function POST(request: Request) {
     const individualTestIds = labTestIds.filter((id) => !fromProfileTestIds.has(id));
     const individualTestsFiltered = individualTests.filter((t) => individualTestIds.includes(t.id));
 
+    const useConvention = parsed.priceType === "CONVENIO";
     const onlyIndividual: OrderItemPayload[] = individualTestsFiltered.map((test) => {
-      const price = Number(test.price);
-      const convention = test.priceToAdmission != null ? Number(test.priceToAdmission) : price;
+      const publicPrice = Number(test.price);
+      const conventionPrice = test.priceToAdmission != null ? Number(test.priceToAdmission) : publicPrice;
       return {
         test,
-        priceSnapshot: price,
-        priceConventionSnapshot: parsed.orderSource === "ADMISION" ? convention : undefined,
-        referredLabId: parsed.orderSource === "ADMISION" && test.isReferred ? (test.referredLabId ?? undefined) : undefined,
-        externalLabCostSnapshot: parsed.orderSource === "ADMISION" && test.externalLabCost != null ? Number(test.externalLabCost) : undefined,
+        priceSnapshot: useConvention ? conventionPrice : publicPrice,
+        priceConventionSnapshot: useConvention ? conventionPrice : undefined,
+        referredLabId: test.isReferred ? (test.referredLabId ?? undefined) : undefined,
+        externalLabCostSnapshot: test.externalLabCost != null ? Number(test.externalLabCost) : undefined,
       };
     });
     const orderItemsPayload: OrderItemPayload[] = [...testsFromProfiles, ...onlyIndividual];
@@ -207,8 +203,9 @@ export async function POST(request: Request) {
             notes: parsed.notes ?? null,
             patientType: parsed.patientType ?? null,
             branchId: parsed.branchId ?? undefined,
-            orderSource: parsed.orderSource === "ADMISION" ? "ADMISION" : "LABORATORIO",
-            createdById: parsed.orderSource === "ADMISION" ? session.user.id : undefined,
+            orderSource: "LABORATORIO",
+            priceType: parsed.priceType ?? "PUBLICO",
+            createdById: session.user.id,
             totalPrice,
             createdAt: dayStart,
             items: {
@@ -253,16 +250,6 @@ export async function POST(request: Request) {
           },
           include: { items: true },
         });
-        if (parsed.orderSource === "ADMISION" && parsed.initialPayment) {
-          await prisma.payment.create({
-            data: {
-              orderId: order!.id,
-              amount: parsed.initialPayment.amount,
-              method: parsed.initialPayment.method,
-              recordedById: session.user.id,
-            },
-          });
-        }
         revalidatePath("/orders");
         revalidatePath("/dashboard");
         break;

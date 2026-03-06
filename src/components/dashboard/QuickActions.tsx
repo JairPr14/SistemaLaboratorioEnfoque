@@ -6,14 +6,13 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import {
-  Bolt,
-  ClipboardList,
   FileCheck2,
   FileSearch,
   PackageCheck,
+  Plus,
   Printer,
   Receipt,
-  Stethoscope,
+  Users,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -40,9 +39,10 @@ import { CashierDialog } from "@/components/pagos/CashierDialog";
 
 type Props = {
   sectionOptions: Array<{ value: string; label: string }>;
+  hasPatients?: boolean;
 };
 
-export function QuickActions({ sectionOptions }: Props) {
+export function QuickActions({ sectionOptions, hasPatients }: Props) {
   const { data: session } = useSession();
   const router = useRouter();
   const [quickOrderOpen, setQuickOrderOpen] = useState(false);
@@ -60,13 +60,13 @@ export function QuickActions({ sectionOptions }: Props) {
   const canPrint = hasPermission(session ?? null, PERMISSION_IMPRIMIR_RESULTADOS);
   const canRegisterPayment = hasPermission(session ?? null, PERMISSION_REGISTRAR_PAGOS);
 
+  const hasAny = canReception || canAnalyst || canDelivery || canRegisterPayment || hasPatients;
+  if (!hasAny) return null;
+
   const goNext = async (type: "capture" | "validate") => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({
-        type,
-        today: "1",
-      });
+      const params = new URLSearchParams({ type, today: "1" });
       if (analystSection) params.set("section", analystSection);
       const res = await fetch(`/api/queue/next?${params.toString()}`);
       const data = await res.json().catch(() => ({}));
@@ -80,9 +80,9 @@ export function QuickActions({ sectionOptions }: Props) {
       }
       if (type === "capture" && data.item.itemId) {
         router.push(`/orders/${data.item.orderId}?captureItem=${data.item.itemId}`);
-        return;
+      } else {
+        router.push(`/orders/${data.item.orderId}`);
       }
-      router.push(`/orders/${data.item.orderId}`);
     } catch {
       toast.error("Error de conexión");
     } finally {
@@ -107,7 +107,6 @@ export function QuickActions({ sectionOptions }: Props) {
         toast.error("No se encontró una orden con ese código");
         return;
       }
-
       const updateRes = await fetch(`/api/orders/${match.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -131,115 +130,112 @@ export function QuickActions({ sectionOptions }: Props) {
 
   return (
     <>
-      <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-50/80 to-white p-4 dark:border-slate-700/80 dark:from-slate-800/50 dark:to-slate-900/30">
-        <div className="mb-3 flex items-center gap-2">
-          <div className="rounded-lg bg-teal-100 p-1.5 dark:bg-teal-900/30">
-            <Bolt className="h-4 w-4 text-teal-600 dark:text-teal-400" />
-          </div>
-          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Acciones rápidas</p>
-        </div>
-
-        <div className="flex min-w-0 flex-wrap gap-2">
-          {canReception && (
-            <>
-              <Button size="sm" className="gap-2" onClick={() => setQuickOrderOpen(true)}>
-                <Stethoscope className="h-4 w-4" />
-                Nueva orden (rápida)
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        {/* Recepción */}
+        {canReception && (
+          <>
+            <Link href="/orders/new">
+              <Button size="sm" className="gap-1.5">
+                <Plus className="h-4 w-4" />
+                Nueva orden
               </Button>
-              {canPrint && (
-                <Link href="/orders">
-                  <Button size="sm" variant="outline" className="gap-2">
-                    <Printer className="h-4 w-4" />
-                    Imprimir etiquetas
-                  </Button>
-                </Link>
-              )}
-              {canRegisterPayment && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-2"
-                  onClick={() => setCashierOpen(true)}
-                >
-                  <Receipt className="h-4 w-4" />
-                  Cobrar / Registrar pago
-                </Button>
-              )}
-            </>
-          )}
-
-          {canAnalyst && (
-            <>
-              <div className="flex items-center gap-2">
-                <select
-                  value={analystSection}
-                  onChange={(e) => setAnalystSection(e.target.value)}
-                  className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-                  title="Filtrar por sección para acciones de analista"
-                >
-                  <option value="">Todas las secciones</option>
-                  {sectionOptions.map((s) => (
-                    <option key={s.value} value={s.value}>
-                      {s.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <Link
-                href={`/dashboard?pendingStatus=PENDIENTE&pendingDate=today${analystSection ? `&pendingSection=${encodeURIComponent(analystSection)}` : ""}`}
-              >
-                <Button size="sm" variant="outline" className="gap-2">
-                  <ClipboardList className="h-4 w-4" />
-                  Abrir cola de pendientes
+            </Link>
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setQuickOrderOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Orden rápida
+            </Button>
+            {canRegisterPayment && (
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setCashierOpen(true)}>
+                <Receipt className="h-4 w-4" />
+                Cobrar
+              </Button>
+            )}
+            {canPrint && (
+              <Link href="/orders">
+                <Button size="sm" variant="ghost" className="gap-1.5">
+                  <Printer className="h-4 w-4" />
+                  Etiquetas
                 </Button>
               </Link>
-              {canCapture && (
-                <Button size="sm" variant="outline" className="gap-2" onClick={() => void goNext("capture")} disabled={loading}>
-                  <FileSearch className="h-4 w-4" />
-                  Capturar siguiente
-                </Button>
-              )}
-              {canValidate && (
-                <Button size="sm" variant="outline" className="gap-2" onClick={() => void goNext("validate")} disabled={loading}>
-                  <FileCheck2 className="h-4 w-4" />
-                  Validar siguiente
-                </Button>
-              )}
-            </>
-          )}
+            )}
+          </>
+        )}
 
-          {canDelivery && (
-            <>
-              <Link href="/orders?status=COMPLETADO&focusSearch=1">
-                <Button size="sm" variant="outline" className="gap-2">
-                  <FileSearch className="h-4 w-4" />
-                  Buscar para entrega
+        {/* Pacientes */}
+        {hasPatients && (
+          <Link href="/patients">
+            <Button size="sm" variant="ghost" className="gap-1.5">
+              <Users className="h-4 w-4" />
+              Pacientes
+            </Button>
+          </Link>
+        )}
+
+        {/* Analista */}
+        {canAnalyst && (
+          <>
+            <select
+              value={analystSection}
+              onChange={(e) => setAnalystSection(e.target.value)}
+              className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              title="Sección"
+            >
+              <option value="">Todas</option>
+              {sectionOptions.map((s) => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </select>
+            {canCapture && (
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => void goNext("capture")} disabled={loading}>
+                <FileSearch className="h-4 w-4" />
+                Capturar
+              </Button>
+            )}
+            {canValidate && (
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => void goNext("validate")} disabled={loading}>
+                <FileCheck2 className="h-4 w-4" />
+                Validar
+              </Button>
+            )}
+          </>
+        )}
+
+        {/* Entrega */}
+        {canDelivery && (
+          <>
+            <Link href="/orders?status=COMPLETADO&focusSearch=1">
+              <Button size="sm" variant="outline" className="gap-1.5">
+                <FileSearch className="h-4 w-4" />
+                Buscar entrega
+              </Button>
+            </Link>
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setMarkDeliveredOpen(true)}>
+              <PackageCheck className="h-4 w-4" />
+              Marcar ENTREGADO
+            </Button>
+            {canPrint && (
+              <Link href="/orders?status=COMPLETADO">
+                <Button size="sm" variant="ghost" className="gap-1.5">
+                  <Printer className="h-4 w-4" />
+                  Imprimir
                 </Button>
               </Link>
-              {canPrint && (
-                <Link href="/orders?status=COMPLETADO">
-                  <Button size="sm" variant="outline" className="gap-2">
-                    <Printer className="h-4 w-4" />
-                    Imprimir resultado
-                  </Button>
-                </Link>
-              )}
-              <Button size="sm" className="gap-2" onClick={() => setMarkDeliveredOpen(true)}>
-                <PackageCheck className="h-4 w-4" />
-                Marcar como ENTREGADO
-              </Button>
-            </>
-          )}
-        </div>
+            )}
+          </>
+        )}
+
+        {/* Cobrar sin recepción (ej: solo permisos de pago) */}
+        {!canReception && canRegisterPayment && (
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setCashierOpen(true)}>
+            <Receipt className="h-4 w-4" />
+            Cobrar
+          </Button>
+        )}
       </div>
 
       <QuickOrderModal open={quickOrderOpen} onOpenChange={setQuickOrderOpen} />
 
-      <CashierDialog
-        open={cashierOpen}
-        onOpenChange={setCashierOpen}
-        onSuccess={() => router.refresh()}
-      />
+      <CashierDialog open={cashierOpen} onOpenChange={setCashierOpen} onSuccess={() => router.refresh()} />
 
       <Dialog open={markDeliveredOpen} onOpenChange={setMarkDeliveredOpen}>
         <DialogContent>
@@ -254,17 +250,10 @@ export function QuickActions({ sectionOptions }: Props) {
               value={orderCode}
               onChange={(e) => setOrderCode(e.target.value)}
             />
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Se marcará como entregada si la orden existe.
-            </p>
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setMarkDeliveredOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={() => void markDeliveredByCode()} disabled={loading}>
-              Confirmar
-            </Button>
+            <Button variant="outline" onClick={() => setMarkDeliveredOpen(false)}>Cancelar</Button>
+            <Button onClick={() => void markDeliveredByCode()} disabled={loading}>Confirmar</Button>
           </div>
         </DialogContent>
       </Dialog>

@@ -15,13 +15,11 @@ import {
   FlaskConical,
   Home,
   Layers,
-  Microscope,
   Settings,
   ShoppingBag,
   Tags,
   TestTube2,
   UserRound,
-  UserPlus,
   Users,
   Wallet,
 } from "lucide-react";
@@ -32,22 +30,18 @@ import {
   hasAnyPermission,
   hasPermission,
   hasRoleWithPermissions,
-  isAdmissionOnlyProfile,
   PERMISSION_CAPTURAR_RESULTADOS,
   PERMISSION_EDITAR_PACIENTES,
   PERMISSION_EDITAR_PRECIO_CATALOGO,
-  PERMISSION_GESTIONAR_ADMISION,
   PERMISSION_GESTIONAR_CATALOGO,
   PERMISSION_GESTIONAR_PLANTILLAS,
   PERMISSION_IMPRIMIR_RESULTADOS,
   PERMISSION_QUICK_ACTIONS_ANALISTA,
   PERMISSION_QUICK_ACTIONS_ENTREGA,
   PERMISSION_QUICK_ACTIONS_RECEPCION,
-  PERMISSION_COBRO_ADMISION,
   PERMISSION_REGISTRAR_PAGOS,
   PERMISSION_REPORTES,
   PERMISSION_VALIDAR_RESULTADOS,
-  PERMISSION_VER_ADMISION,
   PERMISSION_VER_CATALOGO,
   PERMISSION_VER_CONFIGURACION,
   PERMISSION_VER_ORDENES,
@@ -61,7 +55,6 @@ type NavItem = {
   label: string;
   icon: ComponentType<{ className?: string }>;
   requiredPermissions: string[];
-  hideWhenOnlyAdmission?: boolean;
   adminOnly?: boolean;
 };
 
@@ -72,7 +65,6 @@ type NavSingle = {
   label: string;
   icon: ComponentType<{ className?: string }>;
   requiredPermissions: string[];
-  hideWhenOnlyAdmission?: boolean;
   adminOnly?: boolean;
 };
 
@@ -87,7 +79,7 @@ type NavGroupItem = {
 type NavEntry = NavSingle | NavGroupItem;
 
 const navStructure: NavEntry[] = [
-  { type: "single", href: "/dashboard", label: "Dashboard", icon: Home, requiredPermissions: [], hideWhenOnlyAdmission: true },
+  { type: "single", href: "/dashboard", label: "Dashboard", icon: Home, requiredPermissions: [] },
   { type: "single", href: "/patients", label: "Pacientes", icon: Users, requiredPermissions: [PERMISSION_VER_PACIENTES, PERMISSION_EDITAR_PACIENTES] },
   {
     type: "group",
@@ -101,13 +93,10 @@ const navStructure: NavEntry[] = [
   },
   {
     type: "group",
-    label: "Órdenes y admisión",
+    label: "Órdenes",
     icon: ClipboardList,
     items: [
-      { href: "/orders", label: "Órdenes", icon: ClipboardList, requiredPermissions: [PERMISSION_VER_ORDENES, PERMISSION_QUICK_ACTIONS_RECEPCION, PERMISSION_QUICK_ACTIONS_ANALISTA, PERMISSION_QUICK_ACTIONS_ENTREGA, PERMISSION_GESTIONAR_ADMISION, PERMISSION_VER_ADMISION] },
-      { href: "/admission", label: "Admisión", icon: UserPlus, requiredPermissions: [PERMISSION_VER_ADMISION, PERMISSION_GESTIONAR_ADMISION] },
-      { href: "/laboratorio", label: "Laboratorio", icon: Microscope, requiredPermissions: [PERMISSION_VER_ORDENES, PERMISSION_VER_ADMISION] },
-      { href: "/cobro-admision", label: "Lab cobra admisión", icon: DollarSign, requiredPermissions: [PERMISSION_COBRO_ADMISION] },
+      { href: "/orders", label: "Órdenes", icon: ClipboardList, requiredPermissions: [PERMISSION_VER_ORDENES, PERMISSION_QUICK_ACTIONS_RECEPCION, PERMISSION_QUICK_ACTIONS_ANALISTA, PERMISSION_QUICK_ACTIONS_ENTREGA] },
     ],
   },
   {
@@ -142,8 +131,7 @@ const navStructure: NavEntry[] = [
 
 ];
 
-function filterItem(item: NavItem, session: { user?: { roleCode?: string | null; permissions?: string[] } } | null, hasRole: boolean, isAdmin: boolean, hasAdmissionOnly: boolean): boolean {
-  if (item.hideWhenOnlyAdmission && hasAdmissionOnly) return false;
+function filterItem(item: NavItem, session: { user?: { roleCode?: string | null; permissions?: string[] } } | null, hasRole: boolean, isAdmin: boolean): boolean {
   if (item.adminOnly && !isAdmin) return false;
   if (item.requiredPermissions.length === 0) return true;
   if (!hasRole) return false;
@@ -163,7 +151,6 @@ export function Sidebar({
   const { data: session } = useSession();
   const hasRole = hasRoleWithPermissions(session ?? null);
   const isAdmin = session?.user?.roleCode === ADMIN_ROLE_CODE;
-  const hasAdmissionOnly = isAdmissionOnlyProfile(session ?? null);
 
   // Grupos expandidos: por defecto expandir el que contiene la ruta actual
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
@@ -243,7 +230,7 @@ export function Sidebar({
       <nav className="flex-1 space-y-1 overflow-y-auto scrollbar-hide px-2.5 py-3">
         {navStructure.map((entry) => {
           if (entry.type === "single") {
-            if (!filterItem(entry, session ?? null, hasRole, !!isAdmin, hasAdmissionOnly)) return null;
+            if (!filterItem(entry, session ?? null, hasRole, !!isAdmin)) return null;
             const Icon = entry.icon;
             const active = pathname.startsWith(entry.href);
             return (
@@ -263,7 +250,7 @@ export function Sidebar({
           }
 
           // Grupo colapsable
-          const visibleChildren = entry.items.filter((i) => filterItem(i, session ?? null, hasRole, !!isAdmin, hasAdmissionOnly));
+          const visibleChildren = entry.items.filter((i) => filterItem(i, session ?? null, hasRole, !!isAdmin));
           if (visibleChildren.length === 0) return null;
 
           const isExpanded = expandedGroups.has(entry.label);

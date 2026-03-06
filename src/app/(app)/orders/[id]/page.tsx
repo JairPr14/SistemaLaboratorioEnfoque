@@ -2,24 +2,22 @@ import { notFound, redirect } from "next/navigation";
 
 
 import {
-  getServerSession, hasAnyPermission,
+  getServerSession,
+  hasAnyPermission,
   hasPermission,
   PERMISSION_CAPTURAR_RESULTADOS,
   PERMISSION_ELIMINAR_REGISTROS,
-  PERMISSION_GESTIONAR_ADMISION,
   PERMISSION_IMPRIMIR_TICKET_PAGO,
   PERMISSION_QUICK_ACTIONS_ANALISTA,
   PERMISSION_QUICK_ACTIONS_ENTREGA,
   PERMISSION_QUICK_ACTIONS_RECEPCION,
   PERMISSION_REGISTRAR_PAGOS,
-  PERMISSION_VER_ADMISION,
   PERMISSION_VER_ORDENES,
   PERMISSION_VER_PAGOS,
 } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency, formatDate, formatDniDisplay, formatPatientDisplayName } from "@/lib/format";
 import { getPaidTotalByOrderId } from "@/lib/payments";
-import { calculateConventionTotal } from "@/lib/order-pricing";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { OrderStatusActions } from "@/components/orders/OrderStatusActions";
@@ -43,8 +41,6 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
     PERMISSION_QUICK_ACTIONS_RECEPCION,
     PERMISSION_QUICK_ACTIONS_ANALISTA,
     PERMISSION_QUICK_ACTIONS_ENTREGA,
-    PERMISSION_GESTIONAR_ADMISION,
-    PERMISSION_VER_ADMISION,
   ]);
   if (!session?.user || !canAccessOrder) {
     redirect("/dashboard");
@@ -96,11 +92,6 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
   const balance = Math.max(0, Number(order.totalPrice) - paidTotal);
   const paymentStatus =
     paidTotal <= 0 ? "PENDIENTE" : paidTotal + 0.0001 < Number(order.totalPrice) ? "PARCIAL" : "PAGADO";
-
-  const isFromAdmission = order.orderSource === "ADMISION";
-  const conventionTotal = isFromAdmission
-    ? calculateConventionTotal(order.items)
-    : null;
 
   return (
     <div className="space-y-6">
@@ -179,29 +170,11 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
               </p>
             </div>
             <div>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                {isFromAdmission ? "Total orden (público)" : "Total"}
-              </p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Total</p>
               <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                 {formatCurrency(Number(order.totalPrice))}
               </p>
-              {isFromAdmission && (
-                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                  Lo que cobró admisión al paciente
-                </p>
-              )}
             </div>
-            {isFromAdmission && conventionTotal != null && (
-              <div>
-                <p className="text-sm text-slate-500 dark:text-slate-400">A cobrar a admisión (convenio)</p>
-                <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                  {formatCurrency(conventionTotal)}
-                </p>
-                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                  Lo que el laboratorio cobra a admisión
-                </p>
-              </div>
-            )}
             <div>
               <p className="text-sm text-slate-500 dark:text-slate-400">Sede de atención</p>
               <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
@@ -241,7 +214,6 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
         orderId={order.id}
         orderCode={order.orderCode}
         orderTotal={Number(order.totalPrice)}
-        conventionTotal={conventionTotal}
         canRegisterPayment={canRegisterPayment}
         canPrintTicket={canPrintTicket}
       />
