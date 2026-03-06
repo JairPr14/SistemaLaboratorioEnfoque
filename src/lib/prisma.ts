@@ -19,10 +19,10 @@ function getDatabaseUrlWithConnectionLimit(): string | undefined {
   }
 
   if (!url.includes("connection_limit=")) {
-    // En bases administradas (Seenode/Neon) usamos SIEMPRE 1 conexión por instancia
-    // para no agotar el pool (tienen muy pocas conexiones permitidas).
-    // En Postgres propio (localhost/docker) permitimos algo más en desarrollo.
-    const limit = isManagedPostgres ? 1 : process.env.VERCEL ? 1 : 10;
+    // Seenode Tier 2 permite hasta ~20 conexiones. Permitimos 5 por instancia
+    // para consultas en paralelo sin saturar el límite.
+    // Local (Docker): más conexiones para desarrollo.
+    const limit = isManagedPostgres ? 5 : process.env.VERCEL ? 5 : 10;
     params.push(`connection_limit=${limit}`);
   }
 

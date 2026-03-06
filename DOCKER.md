@@ -59,3 +59,24 @@ pnpm dev
 - **Producción:** usa `DATABASE_URL` apuntando a tu servidor real (Seenode, Neon, etc.)
 
 No mezcles ambas. Mantén la BD de producción fuera del `.env` en despliegues (usa variables de entorno del host/Vercel/Railway, etc.).
+
+## Copiar la BD de producción a Docker (local)
+
+**Importante:** El script solo **lee** de producción y **escribe** en Docker. No modifica Seenode.  
+Durante el proceso, **.env debe tener `DATABASE_URL` apuntando a localhost (Docker)**, no a Seenode, para no ejecutar por error `migrate reset`, `db:seed`, etc. contra producción.
+
+Para traer una copia de la base de datos de producción (Seenode/Neon) a tu Postgres local:
+
+1. **Postgres local arriba:** `docker compose up -d`
+2. **Define la URL de producción** (solo en esta sesión, no la pongas en `.env`):
+   - **PowerShell:**  
+     `$env:PRODUCTION_DATABASE_URL="postgresql://usuario:contraseña@host:5432/nombre_bd?sslmode=require"`
+   - **Bash:**  
+     `export PRODUCTION_DATABASE_URL="postgresql://usuario:contraseña@host:5432/nombre_bd?sslmode=require"`
+3. **Ejecuta el script:**
+   ```bash
+   pnpm db:copy-production
+   ```
+   (o `pnpm tsx scripts/copy-production-to-docker.ts`)
+
+El script hace un volcado de producción, lo guarda en `backup-production.sql` y lo restaura en la BD local. La BD local queda **reemplazada** por la copia. Puedes borrar `backup-production.sql` después.

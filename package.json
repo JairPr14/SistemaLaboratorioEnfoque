@@ -15,7 +15,9 @@
     "migrate:dev": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
     "db:seed:patients": "tsx scripts/seed-patients.ts",
-    "db:seed:templates:complete": "tsx scripts/seed-complete-templates.ts"
+    "db:seed:templates:complete": "tsx scripts/seed-complete-templates.ts",
+    "db:copy-production": "tsx scripts/copy-production-to-docker.ts",
+    "db:restore-to-production": "tsx scripts/restore-backup-to-production.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
