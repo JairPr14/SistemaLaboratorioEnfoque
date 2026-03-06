@@ -1,11 +1,21 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
-import { requireAnyPermission, requirePermission, PERMISSION_GESTIONAR_ROLES, PERMISSION_VER_CONFIGURACION } from "@/lib/auth";
+import {
+  requireAnyPermission,
+  requirePermission,
+  PERMISSION_GESTIONAR_ROLES,
+  PERMISSION_GESTIONAR_USUARIOS,
+  PERMISSION_VER_CONFIGURACION,
+} from "@/lib/auth";
 import { logger } from "@/lib/logger";
 
 export async function GET() {
-  const auth = await requireAnyPermission([PERMISSION_VER_CONFIGURACION, PERMISSION_GESTIONAR_ROLES]);
+  const auth = await requireAnyPermission([
+    PERMISSION_VER_CONFIGURACION,
+    PERMISSION_GESTIONAR_ROLES,
+    PERMISSION_GESTIONAR_USUARIOS,
+  ]);
   if (auth.response) return auth.response;
 
   try {

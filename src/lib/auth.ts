@@ -96,12 +96,52 @@ export const authOptions: NextAuthOptions = {
   pages: { signIn: "/login" },
   callbacks: {
     async jwt({ token, user }) {
+      const now = Date.now();
       if (user) {
         token.id = user.id;
         token.email = user.email;
         token.name = user.name;
         token.roleCode = user.roleCode ?? null;
         token.permissions = user.permissions ?? [];
+        token.permissionsSyncedAt = now;
+        return token;
+      }
+
+      // Refresca permisos/rol periódicamente para reflejar cambios sin forzar relogin inmediato.
+      if (token.id) {
+        const lastSync = typeof token.permissionsSyncedAt === "number" ? token.permissionsSyncedAt : 0;
+        const shouldRefresh = now - lastSync >= 5 * 60 * 1000;
+        if (shouldRefresh) {
+          try {
+            const dbUser = await prisma.user.findUnique({
+              where: { id: token.id as string },
+              include: { role: { select: { code: true, permissions: true } } },
+            });
+
+            if (!dbUser || !dbUser.isActive) {
+              token.roleCode = null;
+              token.permissions = [];
+              token.permissionsSyncedAt = now;
+              return token;
+            }
+
+            let permissions: string[] = [];
+            if (dbUser.role?.permissions) {
+              try {
+                const parsed = JSON.parse(dbUser.role.permissions) as unknown;
+                permissions = Array.isArray(parsed) && parsed.every((p) => typeof p === "string") ? parsed : [];
+              } catch {
+                permissions = [];
+              }
+            }
+
+            token.roleCode = dbUser.role?.code ?? null;
+            token.permissions = permissions;
+            token.permissionsSyncedAt = now;
+          } catch {
+            // Mantener token actual si falla la actualización (evita cortar sesión por error transitorio).
+          }
+        }
       }
       return token;
     },

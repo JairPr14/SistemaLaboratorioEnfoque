@@ -29,5 +29,6 @@ declare module "next-auth/jwt" {
     name?: string | null;
     roleCode?: string | null;
     permissions?: string[];
+    permissionsSyncedAt?: number;
   }
 }

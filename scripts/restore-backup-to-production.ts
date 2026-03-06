@@ -22,7 +22,10 @@ const BACKUP_FILE = path.join(process.cwd(), "backup-production.sql");
 const PROD_URL_FILE = path.join(process.cwd(), ".prod-url.txt");
 
 function run(cmd: string) {
-  execSync(cmd, { stdio: "inherit", shell: true });
+  execSync(cmd, {
+    stdio: "inherit",
+    shell: process.platform === "win32" ? "cmd.exe" : "/bin/sh",
+  });
 }
 
 function ask(question: string): Promise<boolean> {
