@@ -4,6 +4,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { buildDatabaseUrlInfo } from "@/lib/database-url";
 
 import {
   hasPermission,
@@ -97,6 +98,7 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       const now = Date.now();
+      const dbInfo = buildDatabaseUrlInfo();
       if (user) {
         token.id = user.id;
         token.email = user.email;
@@ -109,8 +111,15 @@ export const authOptions: NextAuthOptions = {
 
       // Refresca permisos/rol periódicamente para reflejar cambios sin forzar relogin inmediato.
       if (token.id) {
+        // En desarrollo, si estás conectado a Seenode/Neon, evitamos consultas extra
+        // de refresco de sesión para no añadir presión de conexiones.
+        if (process.env.NODE_ENV !== "production" && dbInfo.isManagedPostgres) {
+          return token;
+        }
+
         const lastSync = typeof token.permissionsSyncedAt === "number" ? token.permissionsSyncedAt : 0;
-        const shouldRefresh = now - lastSync >= 5 * 60 * 1000;
+        const refreshEveryMs = dbInfo.isManagedPostgres ? 15 * 60 * 1000 : 5 * 60 * 1000;
+        const shouldRefresh = now - lastSync >= refreshEveryMs;
         if (shouldRefresh) {
           try {
             const dbUser = await prisma.user.findUnique({

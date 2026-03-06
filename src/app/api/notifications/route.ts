@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { getServerSession, hasAnyPermission } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import {
   PERMISSION_VER_ORDENES,
   PERMISSION_QUICK_ACTIONS_RECEPCION,
@@ -28,16 +29,22 @@ export async function GET() {
 
   const canSeeLabNotifications = hasAnyPermission(session, LAB_PERMISSIONS);
 
-  const notifications = await prisma.notification.findMany({
-    where: {
-      ...(canSeeLabNotifications ? {} : { type: { not: "ADMISSION_CONVERTED" } }),
-      reads: {
-        none: { userId: session.user.id },
+  try {
+    const notifications = await prisma.notification.findMany({
+      where: {
+        ...(canSeeLabNotifications ? {} : { type: { not: "ADMISSION_CONVERTED" } }),
+        reads: {
+          none: { userId: session.user.id },
+        },
       },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 20,
-  });
+      orderBy: { createdAt: "desc" },
+      take: 20,
+    });
 
-  return NextResponse.json({ items: notifications });
+    return NextResponse.json({ items: notifications });
+  } catch (error) {
+    logger.error("Notifications query failed:", error);
+    // Evita romper la UI por saturación transitoria de conexiones.
+    return NextResponse.json({ items: [] }, { status: 200 });
+  }
 }

@@ -15,6 +15,7 @@ import {
 import type { Session } from "next-auth";
 
 const POPUP_SHOWN_KEY = "notification-popup-shown-ids";
+const NOTIFICATIONS_POLL_MS = 30_000;
 
 function getPopupShownIds(): Set<string> {
   if (typeof window === "undefined") return new Set();
@@ -104,7 +105,9 @@ export function NotificationBell({ session }: { session: Session | null }) {
   useEffect(() => {
     if (!session?.user || !canSeeLab) return;
     let mounted = true;
+    let timer: ReturnType<typeof setTimeout> | null = null;
     const fetchNotifications = async () => {
+      if (document.visibilityState !== "visible") return;
       try {
         const res = await fetch("/api/notifications");
         const data = await res.json().catch(() => ({}));
@@ -126,17 +129,23 @@ export function NotificationBell({ session }: { session: Session | null }) {
         isFirstFetch.current = false;
       } catch {
         if (mounted) setItems([]);
+      } finally {
+        if (mounted) {
+          timer = setTimeout(fetchNotifications, NOTIFICATIONS_POLL_MS);
+        }
       }
     };
     void fetchNotifications();
-    const interval = setInterval(fetchNotifications, 5_000);
     const onVisibility = () => {
-      if (document.visibilityState === "visible") void fetchNotifications();
+      if (document.visibilityState === "visible") {
+        if (timer) clearTimeout(timer);
+        void fetchNotifications();
+      }
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
       mounted = false;
-      clearInterval(interval);
+      if (timer) clearTimeout(timer);
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [session?.user, canSeeLab]);

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { FileDown, ArrowLeft, ImagePlus, ImageMinus } from "lucide-react";
+import { FileDown, ArrowLeft, ImagePlus, ImageMinus, EyeOff } from "lucide-react";
 
 const WHATSAPP_SVG = (
   <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden>
@@ -29,6 +29,10 @@ type PrintToolbarProps = {
   showLogoButton?: boolean;
   /** Si el logo está actualmente visible */
   logoVisible?: boolean;
+  /** Callback para alternar marca de agua y footer */
+  onToggleWatermarkFooter?: () => void;
+  /** Si la marca de agua y footer están ocultos */
+  watermarkFooterHidden?: boolean;
 };
 
 /** Genera nombre de archivo PDF: Nombre-Apellido-codigoOrden (ej. CesarJair-PalaciosRodas-ENF001) */
@@ -61,6 +65,8 @@ export function PrintToolbar({
   toggleLogoUrl,
   showLogoButton,
   logoVisible = true,
+  onToggleWatermarkFooter,
+  watermarkFooterHidden = false,
 }: PrintToolbarProps) {
   const router = useRouter();
 
@@ -114,6 +120,18 @@ export function PrintToolbar({
         </Button>
       )}
       <div className="flex flex-wrap items-center gap-2">
+        {onToggleWatermarkFooter && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onToggleWatermarkFooter}
+            className="inline-flex items-center gap-1"
+          >
+            <EyeOff className="h-4 w-4" />
+            {watermarkFooterHidden ? "Mostrar marca de agua y footer" : "Quitar marca de agua y footer"}
+          </Button>
+        )}
         {showLogoButton && toggleLogoUrl && (
           <Button type="button" variant="outline" size="sm" asChild>
             <Link href={toggleLogoUrl} className="inline-flex items-center gap-1">

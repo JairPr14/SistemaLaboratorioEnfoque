@@ -43,11 +43,12 @@ export function buildDatabaseUrlInfo(): DatabaseUrlInfo {
   const extraParams: string[] = [];
 
   const configuredLimit = readNumericEnv("PRISMA_CONNECTION_LIMIT");
-  const defaultLimit = isManagedPostgres ? (isVercelRuntime ? 1 : 2) : isVercelRuntime ? 5 : 10;
+  // Managed DB + desarrollo local: usar 1 conexión por proceso para minimizar saturación.
+  const defaultLimit = isManagedPostgres ? 1 : isVercelRuntime ? 5 : 10;
   const connectionLimit = configuredLimit ?? defaultLimit;
 
   const configuredPoolTimeout = readNumericEnv("PRISMA_POOL_TIMEOUT");
-  const defaultPoolTimeout = isManagedPostgres ? 20 : 10;
+  const defaultPoolTimeout = isManagedPostgres ? 10 : 10;
   const poolTimeout = configuredPoolTimeout ?? defaultPoolTimeout;
 
   const configuredConnectTimeout = readNumericEnv("PRISMA_CONNECT_TIMEOUT");

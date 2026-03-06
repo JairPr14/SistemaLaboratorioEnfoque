@@ -488,6 +488,19 @@ export function OrderReportPDF(props: OrderReportPDFProps) {
                 }
                 return "General";
               };
+              const normalizeGroupNameForMatch = (name: string) =>
+                name
+                  .trim()
+                  .toUpperCase()
+                  .normalize("NFD")
+                  .replace(/[\u0300-\u036f]/g, "");
+              const isAdditionalParamGroup = (groupName: string | null | undefined) => {
+                if (!groupName?.trim()) return false;
+                const norm = normalizeGroupNameForMatch(groupName);
+                if (norm.startsWith("GRUPO ADICIONAL")) return true;
+                const fallbackGroups = ["OBSERVACION", "NOTAS", "COMENTARIOS", "OBSERVACIONES"];
+                return fallbackGroups.some((g) => normalizeGroupNameForMatch(g) === norm);
+              };
               const getItemOrder = (templateItemId: string | null) => {
                 const snapItem = snapItems.find((t) => t.id === templateItemId);
                 if (snapItem != null && typeof snapItem.order === "number") return snapItem.order;
@@ -558,7 +571,9 @@ export function OrderReportPDF(props: OrderReportPDFProps) {
                         const groupItems = rawItems.sort(
                           (a, b) => getItemOrder(a.templateItemId) - getItemOrder(b.templateItemId)
                         );
-                        const showGroupHeader = groupName !== "General" && groupItems.length > 1;
+                        const showGroupHeader =
+                          groupName !== "General" &&
+                          (groupItems.length > 1 || isAdditionalParamGroup(groupName));
                         return (
                           <View key={groupName}>
                             {showGroupHeader && (

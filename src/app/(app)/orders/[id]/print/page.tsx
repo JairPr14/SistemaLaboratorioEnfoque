@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getPrintConfig } from "@/lib/print-config";
 import { formatDatePrint, formatDniDisplay, formatPatientDisplayName, formatSexDisplay } from "@/lib/format";
-import { PrintToolbar } from "@/components/orders/PrintToolbar";
+import { PrintViewClient } from "@/components/orders/PrintViewClient";
 import { PrintImageWithFallback } from "@/components/orders/PrintImageWithFallback";
 
 type Props = {
@@ -308,6 +308,7 @@ function normalizeGroupNameForMatch(name: string): string {
 function isAdditionalParamGroup(groupName: string | null | undefined): boolean {
   if (!groupName?.trim()) return false;
   const norm = normalizeGroupNameForMatch(groupName);
+  if (norm.startsWith("GRUPO ADICIONAL")) return true;
   return ADDITIONAL_PARAM_GROUPS.some((g) => normalizeGroupNameForMatch(g) === norm);
 }
 
@@ -659,22 +660,22 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
     return qs ? `/orders/${id}/print?${qs}` : `/orders/${id}/print`;
   };
 
-  return (
-    <div className="print-module-root bg-slate-100 p-4">
-      <PrintToolbar
-        patientName={patientName}
-        patientPhone={order.patient.phone}
-        analysesNames={analysesNames}
-        date={date}
-        orderCode={order.orderCode}
-        patientFirstName={order.patient.firstName}
-        patientLastName={order.patient.lastName}
-        backHref={`/orders/${id}`}
-        toggleLogoUrl={buildPrintUrl(!showReferredLogo)}
-        showLogoButton={!!referredLabWithLogo}
-        logoVisible={showReferredLogo}
-      />
+  const toolbarProps = {
+    patientName,
+    patientPhone: order.patient.phone,
+    analysesNames,
+    date,
+    orderCode: order.orderCode,
+    patientFirstName: order.patient.firstName,
+    patientLastName: order.patient.lastName,
+    backHref: `/orders/${id}`,
+    toggleLogoUrl: buildPrintUrl(!showReferredLogo),
+    showLogoButton: !!referredLabWithLogo,
+    logoVisible: showReferredLogo,
+  };
 
+  return (
+    <PrintViewClient toolbarProps={toolbarProps}>
       {pages.length === 0 ? (
         <div className="mx-auto w-[210mm] bg-white p-10 text-center text-slate-600">
           <p className="font-medium">No hay análisis para imprimir.</p>
@@ -837,6 +838,6 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
           </div>
         ))
       )}
-    </div>
+    </PrintViewClient>
   );
 }

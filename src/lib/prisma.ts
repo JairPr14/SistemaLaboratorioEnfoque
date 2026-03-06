@@ -33,8 +33,9 @@ const prismaClient = globalForPrisma.prisma ?? new PrismaClient(prismaOptions);
 
 // Filtrar P2002 (unique constraint) para no llenar la consola; es un caso esperado (ej. DNI duplicado)
 prismaClient.$on("error" as never, (e: { message?: string }) => {
-  const msg = String(e?.message ?? e);
-  if (msg.includes("P2002") || msg.includes("Unique constraint failed")) return;
+  const msg = String(e?.message ?? e).toLowerCase();
+  if (msg.includes("p2002") || msg.includes("unique constraint failed")) return;
+  if (msg.includes("too many database connections opened") || msg.includes("too many connections for role")) return;
   console.error("[Prisma]", msg);
 });
 

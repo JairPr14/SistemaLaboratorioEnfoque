@@ -83,6 +83,22 @@ function formatRefRange(range: RefRange): string {
   return criteria.length > 0 ? `${criteria.join(" + ")}: ${rangeDisplay}` : rangeDisplay;
 }
 
+function normalizeGroupNameForMatch(name: string): string {
+  return name
+    .trim()
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function isAdditionalParamGroup(groupName: string | null | undefined): boolean {
+  if (!groupName?.trim()) return false;
+  const norm = normalizeGroupNameForMatch(groupName);
+  if (norm.startsWith("GRUPO ADICIONAL")) return true;
+  const fallbackGroups = ["OBSERVACION", "NOTAS", "COMENTARIOS", "OBSERVACIONES"];
+  return fallbackGroups.some((g) => normalizeGroupNameForMatch(g) === norm);
+}
+
 export function ResultForm({
   orderId,
   itemId,
@@ -524,9 +540,11 @@ export function ResultForm({
         <div className="relative z-10 p-4 space-y-4">
           {groupNames.map((groupName) => {
             const items = groupedItemsSorted[groupName] ?? [];
+            const showGroupHeader =
+              groupName !== "General" && (items.length > 1 || isAdditionalParamGroup(groupName));
             return (
             <div key={`${groupName}-${groupNames.indexOf(groupName)}`} className="space-y-2">
-              {items.length > 1 && (
+              {showGroupHeader && (
                 <div className="bg-slate-700 px-3 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-white dark:bg-slate-600 rounded-t">
                   {groupName}
                 </div>
