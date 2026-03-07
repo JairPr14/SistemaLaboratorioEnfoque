@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { getServerSession, hasPermission, PERMISSION_GESTIONAR_PLANTILLAS, PERMISSION_CAPTURAR_RESULTADOS } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { withDbRetry } from "@/lib/db-retry";
 import { pageLayoutClasses } from "@/components/layout/PageHeader";
 import { TemplateForm } from "@/components/forms/TemplateForm";
 import { TemplatesList } from "@/components/templates/TemplatesList";
@@ -14,7 +15,7 @@ export default async function TemplatesPage() {
   if (!canView) {
     redirect("/dashboard");
   }
-  const [templates, tests] = await Promise.all([
+  const [templates, tests] = await withDbRetry(() => Promise.all([
     prisma.labTemplate.findMany({
       include: { labTest: true, items: true },
       orderBy: { createdAt: "desc" },
@@ -23,7 +24,7 @@ export default async function TemplatesPage() {
       where: { deletedAt: null, isActive: true },
       orderBy: { name: "asc" },
     }),
-  ]);
+  ]));
 
   const templatesForClient = templates.map((t) => ({
     id: t.id,

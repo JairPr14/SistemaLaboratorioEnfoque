@@ -33,7 +33,6 @@ model User {
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   roleId              String?
-  notificationReads   NotificationRead[]
   payments            Payment[]
   referredLabPayments ReferredLabPayment[]
   validatedResults    LabResult[]
@@ -514,32 +513,6 @@ model LabResultItem {
   isHighlighted     Boolean          @default(false)
   result            LabResult        @relation(fields: [resultId], references: [id])
   templateItem      LabTemplateItem? @relation(fields: [templateItemId], references: [id])
-}
-
-model Notification {
-  id             String             @id @default(cuid())
-  type           String
-  title          String
-  message        String?
-  linkTo         String?
-  relatedOrderId String?
-  createdAt      DateTime           @default(now())
-  reads          NotificationRead[]
-
-  @@index([type])
-  @@index([createdAt])
-}
-
-model NotificationRead {
-  id             String       @id @default(cuid())
-  notificationId String
-  userId         String
-  readAt         DateTime     @default(now())
-  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([notificationId, userId])
-  @@index([userId])
 }
 
 enum OrderSource {

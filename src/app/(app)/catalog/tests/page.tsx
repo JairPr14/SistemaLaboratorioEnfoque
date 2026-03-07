@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getServerSession, hasPermission, PERMISSION_VER_CATALOGO, PERMISSION_GESTIONAR_CATALOGO, PERMISSION_EDITAR_PRECIO_CATALOGO } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { withDbRetry } from "@/lib/db-retry";
 import { LabTestForm } from "@/components/forms/LabTestForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { pageLayoutClasses } from "@/components/layout/PageHeader";
@@ -37,46 +38,48 @@ export default async function TestsPage() {
   let referredLabsRes: Array<{ id: string; name: string }> = [];
 
   try {
-    const tests = await prisma.labTest.findMany({
-      where: { deletedAt: null },
-      include: {
-        section: true,
-        template: {
-          select: {
-            id: true,
-            isVerified: true,
+    await withDbRetry(async () => {
+      const tests = await prisma.labTest.findMany({
+        where: { deletedAt: null },
+        include: {
+          section: true,
+          template: {
+            select: {
+              id: true,
+              isVerified: true,
+            },
           },
         },
-      },
-      orderBy: [{ section: { order: "asc" } }, { name: "asc" }],
+        orderBy: [{ section: { order: "asc" } }, { name: "asc" }],
+      });
+
+      testsForClient = tests.map((t) => ({
+        id: t.id,
+        code: t.code,
+        name: t.name,
+        section: t.section?.code ?? "",
+        sectionName: t.section?.name ?? "",
+        sectionId: t.sectionId,
+        price: Number(t.price),
+        hasTemplate: !!t.template,
+        isTemplateVerified: !!t.template?.isVerified,
+        templateId: t.template?.id ?? null,
+      }));
+
+      const [sectionsRes, referredLabs] = await Promise.all([
+        prisma.labSection.findMany({
+          where: { isActive: true },
+          orderBy: { order: "asc" },
+        }),
+        prisma.referredLab.findMany({
+          where: { isActive: true },
+          orderBy: { name: "asc" },
+          select: { id: true, name: true },
+        }),
+      ]);
+      sections = sectionsRes.map((s) => ({ id: s.id, code: s.code, name: s.name }));
+      referredLabsRes = referredLabs;
     });
-
-    testsForClient = tests.map((t) => ({
-      id: t.id,
-      code: t.code,
-      name: t.name,
-      section: t.section?.code ?? "",
-      sectionName: t.section?.name ?? "",
-      sectionId: t.sectionId,
-      price: Number(t.price),
-      hasTemplate: !!t.template,
-      isTemplateVerified: !!t.template?.isVerified,
-      templateId: t.template?.id ?? null,
-    }));
-
-    const [sectionsRes, referredLabs] = await Promise.all([
-      prisma.labSection.findMany({
-        where: { isActive: true },
-        orderBy: { order: "asc" },
-      }),
-      prisma.referredLab.findMany({
-        where: { isActive: true },
-        orderBy: { name: "asc" },
-        select: { id: true, name: true },
-      }),
-    ]);
-    sections = sectionsRes.map((s) => ({ id: s.id, code: s.code, name: s.name }));
-    referredLabsRes = referredLabs;
   } catch (err) {
     logger.error("Error al cargar catálogo de análisis:", err);
     throw new Error(

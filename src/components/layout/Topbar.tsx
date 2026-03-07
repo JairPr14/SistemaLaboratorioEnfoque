@@ -26,7 +26,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { NotificationBell } from "@/components/layout/NotificationBell";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import {
   ADMIN_ROLE_CODE,
@@ -180,12 +179,9 @@ export function Topbar({
           </div>
         </div>
 
-        {/* Derecha: notificaciones, tema, usuario */}
+        {/* Derecha: tema, usuario */}
         <div className="flex shrink-0 items-center gap-3">
           <div className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg">
-              <NotificationBell session={session ?? null} />
-            </div>
             <div className="flex h-10 w-10 items-center justify-center rounded-lg">
               <ThemeToggle />
             </div>

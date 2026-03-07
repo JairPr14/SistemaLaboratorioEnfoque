@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getServerSession, hasPermission, PERMISSION_VER_ORDENES } from "@/lib/auth";
 import { toPatientSelectOption } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { withDbRetry } from "@/lib/db-retry";
 import { OrderForm } from "@/components/forms/OrderForm";
 import { PageHeader, pageLayoutClasses } from "@/components/layout/PageHeader";
 
@@ -14,7 +15,7 @@ export default async function NewOrderPage({ searchParams }: Props) {
     redirect("/dashboard");
   }
   const { patientId: defaultPatientId } = await searchParams;
-  const [patients, recentPatients, tests, profilesData] = await Promise.all([
+  const [patients, recentPatients, tests, profilesData] = await withDbRetry(() => Promise.all([
     prisma.patient.findMany({
       where: { deletedAt: null },
       orderBy: { lastName: "asc" },
@@ -39,7 +40,7 @@ export default async function NewOrderPage({ searchParams }: Props) {
       },
       orderBy: { name: "asc" },
     }),
-  ]);
+  ]));
 
   const profiles = profilesData.map((p) => ({
     id: p.id,

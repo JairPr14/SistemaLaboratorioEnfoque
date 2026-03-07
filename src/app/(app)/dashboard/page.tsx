@@ -11,6 +11,7 @@ import {
   PERMISSION_REGISTRAR_PAGOS,
 } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { withDbRetry } from "@/lib/db-retry";
 import { getPaidTotalsByOrderIds } from "@/lib/payments";
 import { logger } from "@/lib/logger";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -70,11 +71,12 @@ export default async function DashboardPage({
   let tableOrdersWithPayment: Parameters<typeof DashboardPendingTable>[0]["orders"] = [];
 
   try {
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    await withDbRetry(async () => {
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-    sections = await prisma.labSection.findMany({
+      sections = await prisma.labSection.findMany({
       where: { isActive: true },
       orderBy: { order: "asc" },
       select: { code: true, name: true },
@@ -169,6 +171,7 @@ export default async function DashboardPage({
       const paymentStatus = paid <= 0 ? "PENDIENTE" : paid + 0.0001 < total ? "PARCIAL" : "PAGADO";
       return { ...order, paymentStatus: paymentStatus as "PENDIENTE" | "PARCIAL" | "PAGADO" };
     }) as Parameters<typeof DashboardPendingTable>[0]["orders"];
+    });
   } catch (error) {
     logger.error("Dashboard data load failed:", error);
     // Fallback seguro: evitamos que la página entera caiga por errores transitorios de DB.

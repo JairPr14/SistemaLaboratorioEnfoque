@@ -43,9 +43,11 @@ export function buildDatabaseUrlInfo(): DatabaseUrlInfo {
   const extraParams: string[] = [];
 
   const configuredLimit = readNumericEnv("PRISMA_CONNECTION_LIMIT");
-  // Managed DB + desarrollo local: usar 1 conexión por proceso para minimizar saturación.
+  // Managed DB (Seenode/Neon): 1 conexión por proceso para evitar "too many connections"
   const defaultLimit = isManagedPostgres ? 1 : isVercelRuntime ? 5 : 10;
   const connectionLimit = configuredLimit ?? defaultLimit;
+  // Desarrollo local + Seenode: forzar 1 aunque el usuario ponga más (evitar saturación)
+  const effectiveLimit = isManagedPostgres && !isVercelRuntime ? Math.min(connectionLimit, 1) : connectionLimit;
 
   const configuredPoolTimeout = readNumericEnv("PRISMA_POOL_TIMEOUT");
   const defaultPoolTimeout = isManagedPostgres ? 10 : 10;
@@ -59,7 +61,7 @@ export function buildDatabaseUrlInfo(): DatabaseUrlInfo {
     extraParams.push("sslmode=require");
   }
   if (!hasParam(baseUrl, "connection_limit")) {
-    extraParams.push(`connection_limit=${connectionLimit}`);
+    extraParams.push(`connection_limit=${effectiveLimit}`);
   }
   if (!hasParam(baseUrl, "pool_timeout")) {
     extraParams.push(`pool_timeout=${poolTimeout}`);
@@ -76,7 +78,7 @@ export function buildDatabaseUrlInfo(): DatabaseUrlInfo {
     effectiveUrl,
     isManagedPostgres,
     isVercelRuntime,
-    connectionLimit,
+    connectionLimit: effectiveLimit,
     poolTimeout,
     connectTimeout,
     sslMode: isManagedPostgres ? "require" : null,
