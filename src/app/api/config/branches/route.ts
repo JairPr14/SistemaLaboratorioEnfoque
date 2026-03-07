@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getServerSession, hasPermission, PERMISSION_GESTIONAR_SEDES, ADMIN_ROLE_CODE } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { withDbRetry } from "@/lib/db-retry";
 
 export async function GET() {
   const session = await getServerSession();
@@ -12,7 +13,7 @@ export async function GET() {
     const branches = await prisma.branch.findMany({
       orderBy: [{ order: "asc" }, { name: "asc" }],
       select: { id: true, code: true, name: true, address: true, phone: true, order: true, isActive: true },
-    });
+    }));
     return NextResponse.json(branches);
   } catch (error) {
     console.error("[api/config/branches]", error);
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const existing = await prisma.branch.findUnique({ where: { code } });
+    const existing = await withDbRetry(() => prisma.branch.findUnique({ where: { code } }));
     if (existing) {
       return NextResponse.json(
         { error: "Ya existe una sede con ese código" },
@@ -46,7 +47,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const branch = await prisma.branch.create({
+    const branch = await withDbRetry(() => prisma.branch.create({
       data: {
         code: code.toUpperCase(),
         name,
@@ -55,7 +56,7 @@ export async function POST(request: Request) {
         order: order ?? 0,
         isActive: isActive ?? true,
       },
-    });
+    }));
 
     return NextResponse.json(branch);
   } catch (error) {

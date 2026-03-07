@@ -171,7 +171,7 @@ export default async function DashboardPage({
       const paymentStatus = paid <= 0 ? "PENDIENTE" : paid + 0.0001 < total ? "PARCIAL" : "PAGADO";
       return { ...order, paymentStatus: paymentStatus as "PENDIENTE" | "PARCIAL" | "PAGADO" };
     }) as Parameters<typeof DashboardPendingTable>[0]["orders"];
-    });
+    }, { maxRetries: 8, baseDelayMs: 3000 });
   } catch (error) {
     logger.error("Dashboard data load failed:", error);
     // Fallback seguro: evitamos que la página entera caiga por errores transitorios de DB.

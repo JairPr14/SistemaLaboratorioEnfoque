@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { withDbRetry } from "./db-retry";
 
 export type PrintConfig = {
   stampEnabled: boolean;
@@ -15,10 +16,10 @@ export async function getPrintConfig(): Promise<PrintConfig> {
   if (typeof (prisma as { appConfig?: unknown }).appConfig !== "object") {
     return { stampEnabled: false, stampImageUrl: null };
   }
-  const [enabled, url] = await Promise.all([
+  const [enabled, url] = await withDbRetry(() => Promise.all([
     prisma.appConfig.findUnique({ where: { key: KEYS.STAMP_ENABLED } }),
     prisma.appConfig.findUnique({ where: { key: KEYS.STAMP_IMAGE_URL } }),
-  ]);
+  ]));
   return {
     stampEnabled: enabled?.value === "true",
     stampImageUrl: url?.value && url.value !== "" ? url.value : null,
@@ -27,21 +28,21 @@ export async function getPrintConfig(): Promise<PrintConfig> {
 
 export async function updatePrintConfig(data: Partial<PrintConfig>): Promise<PrintConfig> {
   if (typeof data.stampEnabled === "boolean") {
-    await prisma.appConfig.upsert({
+    await withDbRetry(() => prisma.appConfig.upsert({
       where: { key: KEYS.STAMP_ENABLED },
       create: { key: KEYS.STAMP_ENABLED, value: String(data.stampEnabled) },
       update: { value: String(data.stampEnabled) },
-    });
+    }));
   }
   if (data.stampImageUrl !== undefined) {
     const value = data.stampImageUrl?.trim() || "";
-    await prisma.appConfig.upsert({
+    await withDbRetry(() => prisma.appConfig.upsert({
       where: { key: KEYS.STAMP_IMAGE_URL },
       create: { key: KEYS.STAMP_IMAGE_URL, value },
       update: { value },
-    });
+    }));
     if (value === "") {
-      await prisma.storedImage.deleteMany({ where: { key: "print_stamp" } }).catch(() => {});
+      await withDbRetry(() => prisma.storedImage.deleteMany({ where: { key: "print_stamp" } })).catch(() => {});
     }
   }
   return getPrintConfig();

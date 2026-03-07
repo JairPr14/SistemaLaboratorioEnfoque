@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { withDbRetry } from "@/lib/db-retry";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import {
   requireAnyPermission,
@@ -19,10 +20,10 @@ export async function GET() {
   if (auth.response) return auth.response;
 
   try {
-    const roles = await prisma.role.findMany({
+    const roles = await withDbRetry(() => prisma.role.findMany({
       orderBy: { code: "asc" },
       include: { _count: { select: { users: true } } },
-    });
+    }));
     return NextResponse.json({ items: roles });
   } catch (error) {
     logger.error("Error fetching roles:", error);
@@ -58,7 +59,7 @@ export async function POST(request: Request) {
         ? JSON.stringify(permissions)
         : null;
 
-    const role = await prisma.role.create({
+    const role = await withDbRetry(() => prisma.role.create({
       data: {
         code: code.trim().toUpperCase(),
         name: name.trim(),
@@ -66,7 +67,7 @@ export async function POST(request: Request) {
         isActive: isActive ?? true,
         permissions: permissionsJson,
       },
-    });
+    }));
 
     return NextResponse.json(role, { status: 201 });
   } catch (error) {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { hash } from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { withDbRetry } from "@/lib/db-retry";
 import { requireAnyPermission, requirePermission, PERMISSION_GESTIONAR_USUARIOS, PERMISSION_VER_CONFIGURACION } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 
@@ -9,7 +10,7 @@ export async function GET() {
   if (auth.response) return auth.response;
 
   try {
-    const users = await prisma.user.findMany({
+    const users = await withDbRetry(() => prisma.user.findMany({
       orderBy: { email: "asc" },
       select: {
         id: true,
@@ -19,7 +20,7 @@ export async function GET() {
         roleId: true,
         role: { select: { id: true, code: true, name: true } },
       },
-    });
+    }));
     return NextResponse.json({ items: users });
   } catch (error) {
     logger.error("Error fetching users:", error);
@@ -48,9 +49,9 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
-    const existing = await prisma.user.findUnique({
+    const existing = await withDbRetry(() => prisma.user.findUnique({
       where: { email: emailTrim },
-    });
+    }));
     if (existing) {
       return NextResponse.json(
         { error: "Ya existe un usuario con ese email" },
@@ -58,7 +59,7 @@ export async function POST(request: Request) {
       );
     }
     const passwordHash = await hash(password, 10);
-    const user = await prisma.user.create({
+    const user = await withDbRetry(() => prisma.user.create({
       data: {
         email: emailTrim,
         passwordHash,
@@ -74,7 +75,7 @@ export async function POST(request: Request) {
         roleId: true,
         role: { select: { id: true, code: true, name: true } },
       },
-    });
+    }));
     return NextResponse.json(user);
   } catch (error) {
     logger.error("Error creating user:", error);
