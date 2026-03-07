@@ -41,8 +41,7 @@ function dockerComposeUp(): boolean {
   });
   if (r.status !== 0) return false;
   console.log("⏳ Esperando 5 segundos a que Postgres esté listo...");
-  const waitCmd = process.platform === "win32" ? "timeout /t 5 /nobreak > nul" : "sleep 5";
-  execSync(waitCmd, { stdio: "ignore", shell: process.platform === "win32" ? "cmd.exe" : "/bin/sh" });
+  execSync('node -e "const d=Date.now();while(Date.now()-d<5000);"', { stdio: "ignore" });
   return true;
 }
 

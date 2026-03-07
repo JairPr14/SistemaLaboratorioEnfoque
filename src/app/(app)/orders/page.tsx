@@ -157,7 +157,7 @@ export default async function OrdersPage({
 
       {/* Filtros (mismo estilo que Pagos) */}
       <Card className="border-slate-200 dark:border-slate-700">
-        <CardContent className="pt-4">
+        <CardContent className="pt-7 sm:pt-7">
           <form className="space-y-4" method="GET">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {/* Búsqueda */}
