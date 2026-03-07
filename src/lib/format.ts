@@ -12,7 +12,24 @@ const PERU_TIMEZONE = "America/Lima";
 export function formatDate(date?: Date | string | null) {
   if (!date) return "-";
   const d = typeof date === "string" ? new Date(date) : date;
+  if (typeof d.getTime !== "function" || isNaN(d.getTime())) return "-";
   return d.toLocaleDateString("es-PE", { timeZone: PERU_TIMEZONE });
+}
+
+/**
+ * Convierte fecha a formato YYYY-MM-DD para inputs.
+ * Nunca lanza; devuelve "2000-01-01" si la fecha es inválida.
+ */
+export function safeDateToInput(date?: Date | string | null): string {
+  if (!date) return "2000-01-01";
+  const d = typeof date === "string" ? new Date(date) : date;
+  if (typeof d.getTime !== "function" || isNaN(d.getTime())) return "2000-01-01";
+  try {
+    const s = d.toISOString().split("T")[0];
+    return s && /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : "2000-01-01";
+  } catch {
+    return "2000-01-01";
+  }
 }
 
 /** Fecha corta para impresión: D/M/YYYY (ej. 26/2/2026). Usa zona Perú para fecha exacta. */
@@ -48,6 +65,7 @@ export function formatDatePrint(date?: Date | string | null): string {
 export function formatDateTime(date?: Date | string | null) {
   if (!date) return "-";
   const d = typeof date === "string" ? new Date(date) : date;
+  if (typeof d.getTime !== "function" || isNaN(d.getTime())) return "-";
   return d.toLocaleString("es-PE", {
     timeZone: PERU_TIMEZONE,
     day: "2-digit",

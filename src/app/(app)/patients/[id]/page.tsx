@@ -6,7 +6,8 @@ import { notFound, redirect } from "next/navigation";
 
 import { getServerSession, hasPermission, PERMISSION_EDITAR_PACIENTES, PERMISSION_VER_PACIENTES } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatDate } from "@/lib/format";
+import { formatDate, safeDateToInput } from "@/lib/format";
+import { logger } from "@/lib/logger";
 import { PatientForm } from "@/components/forms/PatientForm";
 import { RestorePatientButton } from "@/components/common/RestorePatientButton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,12 +27,12 @@ export default async function PatientDetailPage({ params }: Props) {
 
   let id: string;
   let patient: Awaited<ReturnType<typeof prisma.patient.findFirst>>;
-  let orders: Array<{ id: string; orderCode: string; status: string; createdAt: Date; items: Array<{ id: string; labTest?: { code?: string; name?: string; section?: { name?: string; code?: string } }; result?: { items?: unknown[] } }> }>;
+  let orders: Array<{ id: string; orderCode?: string; status?: string; createdAt: Date | string; items?: Array<{ id: string; labTest?: { code?: string; name?: string; section?: { name?: string; code?: string } }; result?: { items?: unknown[] } }> }>;
 
   try {
     const resolved = await params;
-    id = typeof resolved?.id === "string" ? resolved.id.trim() : "";
-    if (!id) {
+    id = typeof resolved?.id === "string" ? String(resolved.id).trim() : "";
+    if (!id || id.length < 2) {
       notFound();
     }
 
@@ -50,10 +51,10 @@ export default async function PatientDetailPage({ params }: Props) {
         orderBy: { createdAt: "desc" },
       }),
     ]);
-    patient = p;
-    orders = o as typeof orders;
+    patient = p ?? null;
+    orders = Array.isArray(o) ? (o as typeof orders) : [];
   } catch (error) {
-    console.error("[patients/[id]] Error loading patient:", error);
+    logger.error("[patients/[id]] Error loading patient:", error);
     notFound();
   }
 
@@ -61,12 +62,7 @@ export default async function PatientDetailPage({ params }: Props) {
     notFound();
   }
 
-  const birthDate =
-    patient.birthDate instanceof Date
-      ? patient.birthDate.toISOString().split("T")[0]
-      : patient.birthDate
-        ? new Date(patient.birthDate).toISOString().split("T")[0]
-        : "2000-01-01";
+  const birthDate = safeDateToInput(patient.birthDate);
   const isDeleted = !!patient.deletedAt;
 
   return (
@@ -83,17 +79,17 @@ export default async function PatientDetailPage({ params }: Props) {
         <PatientForm
             patientId={patient.id}
             canEdit={canEditPatient && !isDeleted}
-            createdAt={patient.createdAt}
+            createdAt={patient?.createdAt ?? new Date()}
             defaultValues={{
-              code: patient.code,
-              dni: patient.dni ?? "",
-              firstName: patient.firstName,
-              lastName: patient.lastName,
+              code: patient?.code ?? "",
+              dni: patient?.dni ?? "",
+              firstName: patient?.firstName ?? "",
+              lastName: patient?.lastName ?? "",
               birthDate,
-              sex: patient.sex,
-              phone: patient.phone ?? "",
-              address: patient.address ?? "",
-              email: patient.email ?? "",
+              sex: patient?.sex ?? "M",
+              phone: patient?.phone ?? "",
+              address: patient?.address ?? "",
+              email: patient?.email ?? "",
             }}
           />
       </div>
@@ -142,14 +138,14 @@ export default async function PatientDetailPage({ params }: Props) {
                       href={`/orders/${order.id}`}
                       className="font-semibold text-slate-900 dark:text-slate-100 hover:underline"
                     >
-                      {order.orderCode}
+                      {order.orderCode ?? order.id}
                     </Link>
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary" className="text-xs">
-                        {order.status}
+                        {order.status ?? "—"}
                       </Badge>
                       <span className="text-xs text-slate-500 dark:text-slate-400">
-                        {formatDate(order.createdAt)}
+                        {formatDate(order.createdAt ?? null)}
                       </span>
                       <Link
                         href={`/orders/${order.id}/print`}
@@ -179,7 +175,7 @@ export default async function PatientDetailPage({ params }: Props) {
                           <TableRow key={item.id}>
                             <TableCell className="text-slate-500 dark:text-slate-400 text-sm">{idx + 1}</TableCell>
                             <TableCell className="font-medium text-slate-900 dark:text-slate-100">
-                              {labTest ? `${labTest.code} - ${labTest.name}` : "-"}
+                              {labTest ? `${labTest.code ?? ""} - ${labTest.name ?? ""}`.trim() || "-" : "-"}
                             </TableCell>
                             <TableCell>
                               <Badge variant="secondary" className="text-xs">
