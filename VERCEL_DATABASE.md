@@ -66,12 +66,19 @@ El sistema está preparado para **al menos 3 usuarios concurrentes** sin saturar
 - **Caché:** Las páginas y datos se revalidan cada 30 s y hay caché de rutas dinámicas/estáticas, así se reduce la carga a la base de datos.
 - **Comprobar que responde:** Abre `https://TU-DOMINIO.vercel.app/api/health` en el navegador; debe devolver `{ "database": "connected" }`. Si 3 usuarios usan la app a la vez y no ves errores de “too many connections” en Vercel/Seenode, el acceso concurrente está bien configurado.
 
+## Evitar saturación (important para Seenode)
+
+Si ves errores tipo "too many connections" o fallos aleatorios en `/catalog/tests`:
+
+1. **Añade en Vercel → Environment Variables:**
+   - `PRISMA_CONNECTION_LIMIT` = `1`
+
+2. La app ya limita las conexiones por instancia; esta variable refuerza el límite.
+
 ## Ajustes opcionales de pool (avanzado)
 
-Puedes ajustar el pool sin tocar código usando variables de entorno:
-
-- `PRISMA_CONNECTION_LIMIT` (ej: `1`, `2`, `5`)
+- `PRISMA_CONNECTION_LIMIT` (ej: `1` para Seenode, `5` para Neon)
 - `PRISMA_POOL_TIMEOUT` (segundos)
 - `PRISMA_CONNECT_TIMEOUT` (segundos)
 
-Si no se configuran, la app usa valores seguros por defecto según entorno.
+Si no se configuran, la app usa 1 conexión para Seenode/Neon por defecto.
