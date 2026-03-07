@@ -6,7 +6,7 @@ import {
   getNextOrderSequenceAsync,
 } from "@/features/lab/order-utils";
 
-import { logger } from "@/lib/logger";
+import { handleApiError } from "@/lib/api-errors";
 import { getServerSession } from "@/lib/auth";
 
 type Params = { params: Promise<{ id: string }> };
@@ -110,10 +110,6 @@ export async function POST(request: Request, { params }: Params) {
       code: result.orderCode,
     });
   } catch (error) {
-    logger.error("Error repeating order:", error);
-    return NextResponse.json(
-      { error: "Error al repetir la orden" },
-      { status: 500 }
-    );
+    return handleApiError(error, "Error al repetir la orden");
   }
 }

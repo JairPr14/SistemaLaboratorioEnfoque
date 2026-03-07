@@ -18,14 +18,23 @@ export default async function PaymentTicketPage({ params }: Props) {
     hasPermission(session, PERMISSION_REGISTRAR_PAGOS);
   if (!canPrintTicket) redirect("/dashboard");
 
-  const order = await prisma.labOrder.findFirst({
-    where: { id },
-    include: { patient: true },
-  });
+  let order;
+  try {
+    order = await prisma.labOrder.findFirst({
+      where: { id },
+      include: { patient: true },
+    });
+    if (!order) notFound();
+  } catch {
+    notFound();
+  }
 
-  if (!order) notFound();
-
-  const paidTotal = await getPaidTotalByOrderId(prisma, order.id);
+  let paidTotal: number;
+  try {
+    paidTotal = await getPaidTotalByOrderId(prisma, order.id);
+  } catch {
+    notFound();
+  }
   const total = Number(order.totalPrice);
   const balance = Math.max(0, total - paidTotal);
   const paymentStatus =
@@ -46,13 +55,13 @@ export default async function PaymentTicketPage({ params }: Props) {
     // Tabla Payment puede no existir
   }
 
-  const patientName = formatPatientDisplayName(order.patient.firstName, order.patient.lastName);
+  const patientName = formatPatientDisplayName(order.patient?.firstName, order.patient?.lastName);
 
   return (
     <PaymentTicketClient
       orderCode={order.orderCode}
       patientName={patientName}
-      patientDni={order.patient.dni ?? null}
+      patientDni={order.patient?.dni ?? null}
       createdAt={order.createdAt}
       total={total}
       paidTotal={paidTotal}

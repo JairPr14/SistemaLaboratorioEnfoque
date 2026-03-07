@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { resultDraftSchema } from "@/features/lab/schemas";
 import { requirePermission, PERMISSION_CAPTURAR_RESULTADOS } from "@/lib/auth";
-import { logger } from "@/lib/logger";
+import { handleApiError } from "@/lib/api-errors";
 
 type Params = { params: Promise<{ id: string; itemId: string }> };
 
@@ -86,16 +86,12 @@ export async function PUT(request: Request, { params }: Params) {
       isDraft: true,
     });
   } catch (error) {
-    logger.error("Error saving draft:", error);
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
         { error: "Datos inválidos", details: error },
         { status: 400 }
       );
     }
-    return NextResponse.json(
-      { error: "Error al guardar borrador" },
-      { status: 500 }
-    );
+    return handleApiError(error, "Error al guardar borrador");
   }
 }

@@ -18,33 +18,55 @@ import { cn } from "@/lib/utils";
 type Props = { params: Promise<{ id: string }> };
 
 export default async function PatientDetailPage({ params }: Props) {
-  const { id } = await params;
   const session = await getServerSession();
   if (!session?.user || !hasPermission(session, PERMISSION_VER_PACIENTES)) {
     redirect("/dashboard");
   }
   const canEditPatient = hasPermission(session, PERMISSION_EDITAR_PACIENTES);
-  const [patient, orders] = await Promise.all([
-    prisma.patient.findFirst({ where: { id } }),
-    prisma.labOrder.findMany({
-      where: { patientId: id },
-      include: {
-        items: {
-          include: {
-            labTest: { include: { section: true } },
-            result: { include: { items: true } },
+
+  let id: string;
+  let patient: Awaited<ReturnType<typeof prisma.patient.findFirst>>;
+  let orders: Array<{ id: string; orderCode: string; status: string; createdAt: Date; items: Array<{ id: string; labTest?: { code?: string; name?: string; section?: { name?: string; code?: string } }; result?: { items?: unknown[] } }> }>;
+
+  try {
+    const resolved = await params;
+    id = typeof resolved?.id === "string" ? resolved.id.trim() : "";
+    if (!id) {
+      notFound();
+    }
+
+    const [p, o] = await Promise.all([
+      prisma.patient.findFirst({ where: { id } }),
+      prisma.labOrder.findMany({
+        where: { patientId: id },
+        include: {
+          items: {
+            include: {
+              labTest: { include: { section: true } },
+              result: { include: { items: true } },
+            },
           },
         },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-  ]);
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
+    patient = p;
+    orders = o as typeof orders;
+  } catch (error) {
+    console.error("[patients/[id]] Error loading patient:", error);
+    notFound();
+  }
 
   if (!patient) {
     notFound();
   }
 
-  const birthDate = patient.birthDate.toISOString().split("T")[0];
+  const birthDate =
+    patient.birthDate instanceof Date
+      ? patient.birthDate.toISOString().split("T")[0]
+      : patient.birthDate
+        ? new Date(patient.birthDate).toISOString().split("T")[0]
+        : "2000-01-01";
   const isDeleted = !!patient.deletedAt;
 
   return (
@@ -149,28 +171,33 @@ export default async function PatientDetailPage({ params }: Props) {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {order.items.map((item, idx) => (
-                        <TableRow key={item.id}>
-                          <TableCell className="text-slate-500 dark:text-slate-400 text-sm">{idx + 1}</TableCell>
-                          <TableCell className="font-medium text-slate-900 dark:text-slate-100">
-                            {item.labTest.code} - {item.labTest.name}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="secondary" className="text-xs">
-                              {item.labTest.section?.name ?? item.labTest.section?.code ?? ""}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {item.result && (item.result.items?.length ?? 0) > 0 ? (
-                              <Badge variant="success" className="text-xs">
-                                {item.result.items?.length ?? 0} parámetros
+                      {(order.items ?? []).map((item, idx) => {
+                        const labTest = item.labTest;
+                        const section = labTest?.section;
+                        const resultItems = item.result?.items;
+                        return (
+                          <TableRow key={item.id}>
+                            <TableCell className="text-slate-500 dark:text-slate-400 text-sm">{idx + 1}</TableCell>
+                            <TableCell className="font-medium text-slate-900 dark:text-slate-100">
+                              {labTest ? `${labTest.code} - ${labTest.name}` : "-"}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className="text-xs">
+                                {section?.name ?? section?.code ?? "-"}
                               </Badge>
-                            ) : (
-                              <span className="text-xs text-slate-400 dark:text-slate-500">Pendiente</span>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                            </TableCell>
+                            <TableCell>
+                              {resultItems && resultItems.length > 0 ? (
+                                <Badge variant="success" className="text-xs">
+                                  {resultItems.length} parámetros
+                                </Badge>
+                              ) : (
+                                <span className="text-xs text-slate-400 dark:text-slate-500">Pendiente</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>

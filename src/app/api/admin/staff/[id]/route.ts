@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession, ADMIN_ROLE_CODE } from "@/lib/auth";
-import { logger } from "@/lib/logger";
+import { handleApiError } from "@/lib/api-errors";
 
 async function ensureAdmin() {
   const session = await getServerSession();
@@ -58,8 +58,7 @@ export async function PATCH(
     });
     return NextResponse.json(item);
   } catch (error) {
-    logger.error("Error updating staff:", error);
-    return NextResponse.json({ error: "Error al actualizar personal" }, { status: 500 });
+    return handleApiError(error, "Error al actualizar personal");
   }
 }
 
@@ -77,7 +76,6 @@ export async function DELETE(
     });
     return NextResponse.json({ ok: true });
   } catch (error) {
-    logger.error("Error deleting staff:", error);
-    return NextResponse.json({ error: "Error al eliminar personal" }, { status: 500 });
+    return handleApiError(error, "Error al eliminar personal");
   }
 }

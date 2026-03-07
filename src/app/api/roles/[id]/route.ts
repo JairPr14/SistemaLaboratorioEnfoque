@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { requirePermission, PERMISSION_GESTIONAR_ROLES } from "@/lib/auth";
-import { logger } from "@/lib/logger";
+import { handleApiError } from "@/lib/api-errors";
 
 export async function PATCH(
   _request: Request,
@@ -38,19 +37,7 @@ export async function PATCH(
     });
     return NextResponse.json(role);
   } catch (error) {
-    logger.error("Error updating role:", error);
-    if (error instanceof PrismaClientKnownRequestError) {
-      if (error.code === "P2025") {
-        return NextResponse.json(
-          { error: "Rol no encontrado" },
-          { status: 404 },
-        );
-      }
-    }
-    return NextResponse.json(
-      { error: "Error al actualizar el rol" },
-      { status: 500 },
-    );
+    return handleApiError(error, "Error al actualizar el rol");
   }
 }
 
@@ -90,18 +77,6 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    logger.error("Error deleting role:", error);
-    if (error instanceof PrismaClientKnownRequestError) {
-      if (error.code === "P2025") {
-        return NextResponse.json(
-          { error: "Rol no encontrado" },
-          { status: 404 },
-        );
-      }
-    }
-    return NextResponse.json(
-      { error: "Error al eliminar el rol" },
-      { status: 500 },
-    );
+    return handleApiError(error, "Error al eliminar el rol");
   }
 }

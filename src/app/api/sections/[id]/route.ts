@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { labSectionSchema } from "@/features/lab/schemas";
 import { requirePermission, PERMISSION_GESTIONAR_SECCIONES } from "@/lib/auth";
-import { logger } from "@/lib/logger";
+import { handleApiError } from "@/lib/api-errors";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -19,11 +19,7 @@ export async function GET(_request: Request, { params }: Params) {
     }
     return NextResponse.json({ section });
   } catch (error) {
-    logger.error("Error fetching section:", error);
-    return NextResponse.json(
-      { error: "Error al obtener sección" },
-      { status: 500 },
-    );
+    return handleApiError(error, "Error al obtener sección");
   }
 }
 
@@ -60,17 +56,13 @@ export async function PUT(request: Request, { params }: Params) {
     });
     return NextResponse.json({ section });
   } catch (error) {
-    logger.error("Error updating section:", error);
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
         { error: "Datos inválidos", details: error },
         { status: 400 },
       );
     }
-    return NextResponse.json(
-      { error: "Error al actualizar sección" },
-      { status: 500 },
-    );
+    return handleApiError(error, "Error al actualizar sección");
   }
 }
 
@@ -98,10 +90,6 @@ export async function DELETE(_request: Request, { params }: Params) {
     await prisma.labSection.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {
-    logger.error("Error deleting section:", error);
-    return NextResponse.json(
-      { error: "Error al eliminar sección" },
-      { status: 500 },
-    );
+    return handleApiError(error, "Error al eliminar sección");
   }
 }

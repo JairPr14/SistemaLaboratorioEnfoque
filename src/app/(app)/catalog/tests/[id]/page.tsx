@@ -17,27 +17,37 @@ export default async function TestDetailPage({ params }: Props) {
     redirect("/catalog/tests");
   }
   const { id } = await params;
-  const [test, sections, referredLabsRes] = await Promise.all([
-    prisma.labTest.findFirst({
-      where: { id, deletedAt: null },
-      include: {
-        section: true,
-        referredLab: true,
-        referredLabOptions: true,
-      },
-    }),
-    prisma.labSection.findMany({
-      where: { isActive: true },
-      orderBy: { order: "asc" },
-    }),
-    prisma.referredLab.findMany({
-      where: { isActive: true },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true },
-    }),
-  ]);
-
-  if (!test) {
+  let test: NonNullable<Awaited<ReturnType<typeof prisma.labTest.findFirst<{
+    where: { id: string; deletedAt: null };
+    include: { section: true; referredLab: true; referredLabOptions: true };
+  }>>>>;
+  let sections: Awaited<ReturnType<typeof prisma.labSection.findMany>>;
+  let referredLabsRes: { id: string; name: string }[];
+  try {
+    const [t, s, r] = await Promise.all([
+      prisma.labTest.findFirst({
+        where: { id, deletedAt: null },
+        include: {
+          section: true,
+          referredLab: true,
+          referredLabOptions: true,
+        },
+      }),
+      prisma.labSection.findMany({
+        where: { isActive: true },
+        orderBy: { order: "asc" },
+      }),
+      prisma.referredLab.findMany({
+        where: { isActive: true },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true },
+      }),
+    ]);
+    if (!t) notFound();
+    test = t as NonNullable<typeof t>;
+    sections = s;
+    referredLabsRes = r;
+  } catch {
     notFound();
   }
 

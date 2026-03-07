@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
+import { handleApiError } from "@/lib/api-errors";
 import { parseDateTimePeru } from "@/lib/date";
 import { getServerSession, requirePermission, PERMISSION_REGISTRAR_PAGOS } from "@/lib/auth";
 import { orderPaymentSchema } from "@/features/lab/schemas";
@@ -108,8 +109,7 @@ export async function GET(_request: Request, { params }: Params) {
         },
       });
     }
-    logger.error("Error fetching order payments:", error);
-    return NextResponse.json({ error: "Error al obtener pagos" }, { status: 500 });
+    return handleApiError(error, "Error al obtener pagos");
   }
 }
 
@@ -205,10 +205,9 @@ export async function POST(request: Request, { params }: Params) {
         { status: 503 },
       );
     }
-    logger.error("Error registering order payment:", error);
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json({ error: "Datos inválidos", details: error }, { status: 400 });
     }
-    return NextResponse.json({ error: "Error al registrar pago" }, { status: 500 });
+    return handleApiError(error, "Error al registrar pago");
   }
 }

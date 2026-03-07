@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getServerSession, hasPermission, PERMISSION_GESTIONAR_SEDES, ADMIN_ROLE_CODE } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { handleApiError } from "@/lib/api-errors";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -14,8 +15,7 @@ export async function GET(_request: Request, context: RouteContext) {
     }
     return NextResponse.json(branch);
   } catch (error) {
-    console.error("Error fetching branch:", error);
-    return NextResponse.json({ error: "Error al obtener sede" }, { status: 500 });
+    return handleApiError(error, "Error al obtener sede");
   }
 }
 
@@ -62,8 +62,7 @@ export async function PUT(request: Request, context: RouteContext) {
 
     return NextResponse.json(branch);
   } catch (error) {
-    console.error("Error updating branch:", error);
-    return NextResponse.json({ error: "Error al actualizar sede" }, { status: 500 });
+    return handleApiError(error, "Error al actualizar sede");
   }
 }
 
@@ -89,7 +88,6 @@ export async function DELETE(_request: Request, context: RouteContext) {
     await prisma.branch.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting branch:", error);
-    return NextResponse.json({ error: "Error al eliminar sede" }, { status: 500 });
+    return handleApiError(error, "Error al eliminar sede");
   }
 }

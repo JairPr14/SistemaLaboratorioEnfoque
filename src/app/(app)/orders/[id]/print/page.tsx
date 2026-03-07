@@ -547,9 +547,11 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
   const { items: itemsParam, showReferredLogo: showReferredLogoParam } = await searchParams;
   const showReferredLogo = showReferredLogoParam === "0" ? false : true;
 
-  const order = await prisma.labOrder.findFirst({
-    where: { id },
-    include: {
+  let order;
+  try {
+    order = await prisma.labOrder.findFirst({
+      where: { id },
+      include: {
       patient: true,
       items: {
         include: {
@@ -578,8 +580,10 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
       },
     },
   });
-
-  if (!order) notFound();
+    if (!order) notFound();
+  } catch {
+    notFound();
+  }
 
   if (order.status === "ANULADO") {
     return (

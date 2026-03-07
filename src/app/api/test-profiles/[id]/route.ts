@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { testProfileSchema } from "@/features/lab/schemas";
 import { requirePermission, PERMISSION_GESTIONAR_CATALOGO } from "@/lib/auth";
-import { logger } from "@/lib/logger";
+import { handleApiError } from "@/lib/api-errors";
 import { mapTestProfile, testProfileIncludeItems } from "@/lib/test-profiles";
 
 export async function GET(
@@ -22,11 +22,7 @@ export async function GET(
     }
     return NextResponse.json({ profile: mapTestProfile(profile) });
   } catch (error) {
-    logger.error("Error fetching test profile:", error);
-    return NextResponse.json(
-      { error: "Error al obtener la promoción" },
-      { status: 500 }
-    );
+    return handleApiError(error, "Error al obtener la promoción");
   }
 }
 
@@ -68,17 +64,13 @@ export async function PATCH(
     }
     return NextResponse.json({ profile: mapTestProfile(profile) });
   } catch (error) {
-    logger.error("Error updating test profile:", error);
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
         { error: "Datos inválidos", details: error },
         { status: 400 }
       );
     }
-    return NextResponse.json(
-      { error: "Error al actualizar la promoción" },
-      { status: 500 }
-    );
+    return handleApiError(error, "Error al actualizar la promoción");
   }
 }
 
@@ -94,10 +86,6 @@ export async function DELETE(
     await prisma.testProfile.delete({ where: { id } });
     return NextResponse.json({ ok: true });
   } catch (error) {
-    logger.error("Error deleting test profile:", error);
-    return NextResponse.json(
-      { error: "Error al eliminar la promoción" },
-      { status: 500 }
-    );
+    return handleApiError(error, "Error al eliminar la promoción");
   }
 }

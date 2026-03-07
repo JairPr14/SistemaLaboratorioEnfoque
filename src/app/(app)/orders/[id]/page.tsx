@@ -52,43 +52,51 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
     hasPermission(session, PERMISSION_IMPRIMIR_TICKET_PAGO) ||
     hasPermission(session, PERMISSION_VER_PAGOS) ||
     hasPermission(session, PERMISSION_REGISTRAR_PAGOS);
-  const order = await prisma.labOrder.findFirst({
-    where: { id },
-    include: {
-      patient: true,
-      branch: true,
-      items: {
-        include: {
-          labTest: {
-            include: {
-              section: true,
-              referredLabOptions: {
-                include: {
-                  referredLab: true,
+
+  let order;
+  try {
+    order = await prisma.labOrder.findFirst({
+      where: { id },
+      include: {
+        patient: true,
+        branch: true,
+        items: {
+          include: {
+            labTest: {
+              include: {
+                section: true,
+                referredLabOptions: {
+                  include: {
+                    referredLab: true,
+                  },
                 },
-              },
-              template: { 
-                include: { 
-                  items: {
-                    include: {
-                      refRanges: true
+                template: { 
+                  include: { 
+                    items: {
+                      include: {
+                        refRanges: true
+                      }
                     }
                   }
                 } 
               } 
-            } 
+            },
+            result: { include: { items: { orderBy: { order: "asc" } } } },
           },
-          result: { include: { items: { orderBy: { order: "asc" } } } },
         },
       },
-    },
-  });
-
-  if (!order) {
+    });
+    if (!order) notFound();
+  } catch {
     notFound();
   }
 
-  const paidTotal = await getPaidTotalByOrderId(prisma, order.id);
+  let paidTotal: number;
+  try {
+    paidTotal = await getPaidTotalByOrderId(prisma, order.id);
+  } catch {
+    notFound();
+  }
   const balance = Math.max(0, Number(order.totalPrice) - paidTotal);
   const paymentStatus =
     paidTotal <= 0 ? "PENDIENTE" : paidTotal + 0.0001 < Number(order.totalPrice) ? "PARCIAL" : "PAGADO";
@@ -132,7 +140,7 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
             />
             <RepeatOrderButton
               orderId={order.id}
-              patientName={formatPatientDisplayName(order.patient.firstName, order.patient.lastName)}
+              patientName={formatPatientDisplayName(order.patient?.firstName, order.patient?.lastName)}
             />
             <OrderStatusActions orderId={order.id} currentStatus={order.status} />
           </div>
@@ -142,13 +150,13 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
             <div>
               <p className="text-sm text-slate-500 dark:text-slate-400">Paciente</p>
               <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                {formatPatientDisplayName(order.patient.firstName, order.patient.lastName)}
+                {formatPatientDisplayName(order.patient?.firstName, order.patient?.lastName)}
               </p>
             </div>
             <div>
               <p className="text-sm text-slate-500 dark:text-slate-400">DNI</p>
               <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                {formatDniDisplay(order.patient.dni)}
+                {formatDniDisplay(order.patient?.dni)}
               </p>
             </div>
             <div>

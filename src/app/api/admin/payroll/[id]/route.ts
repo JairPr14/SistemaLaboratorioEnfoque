@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession, ADMIN_ROLE_CODE } from "@/lib/auth";
-import { logger } from "@/lib/logger";
+import { handleApiError } from "@/lib/api-errors";
 
 async function ensureAdmin() {
   const session = await getServerSession();
@@ -99,7 +99,6 @@ export async function PATCH(
     });
     return NextResponse.json(updated);
   } catch (error) {
-    logger.error("Error updating payroll:", error);
-    return NextResponse.json({ error: "Error al actualizar planilla" }, { status: 500 });
+    return handleApiError(error, "Error al actualizar planilla");
   }
 }

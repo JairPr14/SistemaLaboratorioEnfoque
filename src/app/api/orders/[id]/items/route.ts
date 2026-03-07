@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { orderAddItemsSchema } from "@/features/lab/schemas";
 
 import { getServerSession } from "@/lib/auth";
-import { logger } from "@/lib/logger";
+import { handleApiError } from "@/lib/api-errors";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -163,16 +163,12 @@ export async function POST(request: Request, { params }: Params) {
       newTotal,
     });
   } catch (error) {
-    logger.error("Error adding items to order:", error);
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
         { error: "Datos inválidos", details: error },
         { status: 400 },
       );
     }
-    return NextResponse.json(
-      { error: "Error al añadir análisis a la orden" },
-      { status: 500 },
-    );
+    return handleApiError(error, "Error al añadir análisis a la orden");
   }
 }

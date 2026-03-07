@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getServerSession, hasPermission, PERMISSION_GESTIONAR_CATALOGO, PERMISSION_GESTIONAR_LAB_REFERIDOS } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { logger } from "@/lib/logger";
+import { handleApiError } from "@/lib/api-errors";
 
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
@@ -102,10 +102,6 @@ export async function POST(request: Request, { params }: Params) {
       message: `${type === "logo" ? "Logo" : "Sello"} subido correctamente`,
     });
   } catch (error) {
-    logger.error("Error uploading referred lab image:", error);
-    return NextResponse.json(
-      { error: "Error al subir la imagen" },
-      { status: 500 },
-    );
+    return handleApiError(error, "Error al subir la imagen");
   }
 }

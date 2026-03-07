@@ -18,24 +18,33 @@ export default async function TemplateDetailPage({ params }: Props) {
     redirect("/dashboard");
   }
   const { id } = await params;
-  const [template, tests] = await Promise.all([
-    prisma.labTemplate.findFirst({
-      where: { id },
-      include: {
-        labTest: true,
-        items: {
-          include: { refRanges: { orderBy: { order: "asc" } } },
-          orderBy: { order: "asc" },
+  type TemplateWithRelations = NonNullable<Awaited<ReturnType<typeof prisma.labTemplate.findFirst<{
+    where: { id: string };
+    include: { labTest: true; items: { include: { refRanges: true }; orderBy: { order: "asc" } } };
+  }>>>>;
+  let template: TemplateWithRelations;
+  let tests: Awaited<ReturnType<typeof prisma.labTest.findMany>>;
+  try {
+    const [t, tsts] = await Promise.all([
+      prisma.labTemplate.findFirst({
+        where: { id },
+        include: {
+          labTest: true,
+          items: {
+            include: { refRanges: { orderBy: { order: "asc" } } },
+            orderBy: { order: "asc" },
+          },
         },
-      },
-    }),
-    prisma.labTest.findMany({
-      where: { deletedAt: null, isActive: true },
-      orderBy: { name: "asc" },
-    }),
-  ]);
-
-  if (!template) {
+      }),
+      prisma.labTest.findMany({
+        where: { deletedAt: null, isActive: true },
+        orderBy: { name: "asc" },
+      }),
+    ]);
+    if (!t) notFound();
+    template = t as TemplateWithRelations;
+    tests = tsts;
+  } catch {
     notFound();
   }
 
@@ -58,7 +67,7 @@ export default async function TemplateDetailPage({ params }: Props) {
         <CardHeader className="space-y-1">
           <CardTitle className="text-lg">Editar plantilla</CardTitle>
           <p className="text-sm text-slate-500 dark:text-slate-400 font-normal">
-            {template.labTest.code} · {template.labTest.name}
+            {template.labTest?.code} · {template.labTest?.name}
           </p>
         </CardHeader>
         <CardContent>

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { hash } from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, PERMISSION_GESTIONAR_USUARIOS } from "@/lib/auth";
-import { logger } from "@/lib/logger";
+import { handleApiError } from "@/lib/api-errors";
 
 export async function DELETE(
   _request: Request,
@@ -16,11 +16,7 @@ export async function DELETE(
     await prisma.user.delete({ where: { id } });
     return NextResponse.json({ ok: true });
   } catch (error) {
-    logger.error("Error deleting user:", error);
-    return NextResponse.json(
-      { error: "Error al eliminar el usuario" },
-      { status: 500 },
-    );
+    return handleApiError(error, "Error al eliminar el usuario");
   }
 }
 
@@ -78,10 +74,6 @@ export async function PATCH(
     });
     return NextResponse.json(user);
   } catch (error) {
-    logger.error("Error updating user:", error);
-    return NextResponse.json(
-      { error: "Error al actualizar el usuario" },
-      { status: 500 },
-    );
+    return handleApiError(error, "Error al actualizar el usuario");
   }
 }

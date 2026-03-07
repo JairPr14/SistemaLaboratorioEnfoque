@@ -17,6 +17,7 @@ import {
   hasPermission,
 } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { handleApiError } from "@/lib/api-errors";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -51,11 +52,7 @@ export async function GET(_request: Request, { params }: Params) {
 
     return NextResponse.json({ item });
   } catch (error) {
-    logger.error("Error fetching order:", error);
-    return NextResponse.json(
-      { error: "Error al obtener orden" },
-      { status: 500 },
-    );
+    return handleApiError(error, "Error al obtener orden");
   }
 }
 
@@ -125,20 +122,13 @@ export async function PUT(request: Request, { params }: Params) {
 
     return NextResponse.json({ item });
   } catch (error) {
-    logger.error("Error updating order:", error);
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
         { error: "Datos inválidos", details: error },
         { status: 400 },
       );
     }
-    if (error instanceof Error && error.message.includes("Record to update not found")) {
-      return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
-    }
-    return NextResponse.json(
-      { error: "Error al actualizar orden" },
-      { status: 500 },
-    );
+    return handleApiError(error, "Error al actualizar orden");
   }
 }
 
@@ -173,13 +163,6 @@ export async function DELETE(_request: Request, { params }: Params) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    logger.error("Error deleting order:", error);
-    if (error instanceof Error && error.message.includes("Record to delete does not exist")) {
-      return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
-    }
-    return NextResponse.json(
-      { error: "Error al eliminar la orden" },
-      { status: 500 },
-    );
+    return handleApiError(error, "Error al eliminar la orden");
   }
 }

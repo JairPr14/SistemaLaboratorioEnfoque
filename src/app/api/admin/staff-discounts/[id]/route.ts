@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession, ADMIN_ROLE_CODE } from "@/lib/auth";
-import { logger } from "@/lib/logger";
+import { handleApiError } from "@/lib/api-errors";
 
 async function ensureAdmin() {
   const session = await getServerSession();
@@ -55,8 +55,7 @@ export async function PATCH(
     });
     return NextResponse.json(item);
   } catch (error) {
-    logger.error("Error updating staff discount:", error);
-    return NextResponse.json({ error: "Error al actualizar descuento" }, { status: 500 });
+    return handleApiError(error, "Error al actualizar descuento");
   }
 }
 
@@ -74,7 +73,6 @@ export async function DELETE(
     await prisma.staffDiscount.delete({ where: { id } });
     return NextResponse.json({ ok: true });
   } catch (error) {
-    logger.error("Error deleting staff discount:", error);
-    return NextResponse.json({ error: "Error al eliminar descuento" }, { status: 500 });
+    return handleApiError(error, "Error al eliminar descuento");
   }
 }

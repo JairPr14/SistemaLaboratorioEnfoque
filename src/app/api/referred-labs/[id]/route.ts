@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getServerSession, hasPermission, PERMISSION_GESTIONAR_CATALOGO, PERMISSION_GESTIONAR_LAB_REFERIDOS } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { referredLabSchema } from "@/features/lab/schemas";
-import { logger } from "@/lib/logger";
+import { handleApiError } from "@/lib/api-errors";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -16,8 +16,7 @@ export async function GET(_request: Request, { params }: Params) {
     }
     return NextResponse.json({ item });
   } catch (error) {
-    logger.error("Error fetching referred lab:", error);
-    return NextResponse.json({ error: "Error al obtener laboratorio referido" }, { status: 500 });
+    return handleApiError(error, "Error al obtener laboratorio referido");
   }
 }
 
@@ -61,14 +60,10 @@ export async function PUT(request: Request, { params }: Params) {
 
     return NextResponse.json({ item });
   } catch (error) {
-    logger.error("Error updating referred lab:", error);
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json({ error: "Datos inválidos", details: error }, { status: 400 });
     }
-    if (error instanceof Error && error.message.includes("Record to update not found")) {
-      return NextResponse.json({ error: "Laboratorio referido no encontrado" }, { status: 404 });
-    }
-    return NextResponse.json({ error: "Error al actualizar laboratorio referido" }, { status: 500 });
+    return handleApiError(error, "Error al actualizar laboratorio referido");
   }
 }
 
@@ -103,10 +98,6 @@ export async function DELETE(_request: Request, { params }: Params) {
     await prisma.referredLab.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {
-    logger.error("Error deleting referred lab:", error);
-    if (error instanceof Error && error.message.includes("Record to delete not found")) {
-      return NextResponse.json({ error: "Laboratorio referido no encontrado" }, { status: 404 });
-    }
-    return NextResponse.json({ error: "Error al eliminar laboratorio referido" }, { status: 500 });
+    return handleApiError(error, "Error al eliminar laboratorio referido");
   }
 }

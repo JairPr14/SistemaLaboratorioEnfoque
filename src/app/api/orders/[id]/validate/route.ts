@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, PERMISSION_VALIDAR_RESULTADOS } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { handleApiError } from "@/lib/api-errors";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -46,10 +47,6 @@ export async function POST(_request: Request, { params }: Params) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    logger.error("Error validating order:", error);
-    return NextResponse.json(
-      { error: "Error al validar la orden" },
-      { status: 500 }
-    );
+    return handleApiError(error, "Error al validar la orden");
   }
 }

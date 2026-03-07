@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
+import { handleApiError } from "@/lib/api-errors";
 import { parseDateTimePeru } from "@/lib/date";
 import { getServerSession, requirePermission, PERMISSION_REGISTRAR_PAGOS } from "@/lib/auth";
 import { referredLabPaymentSchema } from "@/features/lab/schemas";
@@ -238,16 +239,12 @@ export async function POST(request: Request, { params }: Params) {
       },
     });
   } catch (error) {
-    logger.error("Error registering referred lab payment:", error);
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
         { error: "Datos inválidos", details: error },
         { status: 400 },
       );
     }
-    return NextResponse.json(
-      { error: "Error al registrar pago al laboratorio referido" },
-      { status: 500 },
-    );
+    return handleApiError(error, "Error al registrar pago al laboratorio referido");
   }
 }

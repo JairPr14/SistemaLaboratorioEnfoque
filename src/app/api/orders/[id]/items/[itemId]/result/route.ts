@@ -9,7 +9,7 @@ import {
   PERMISSION_CAPTURAR_RESULTADOS,
   PERMISSION_ELIMINAR_REGISTROS,
 } from "@/lib/auth";
-import { logger } from "@/lib/logger";
+import { handleApiError } from "@/lib/api-errors";
 
 type Params = { params: Promise<{ id: string; itemId: string }> };
 
@@ -35,11 +35,7 @@ export async function GET(_request: Request, { params }: Params) {
 
     return NextResponse.json({ item: orderItem });
   } catch (error) {
-    logger.error("Error fetching result:", error);
-    return NextResponse.json(
-      { error: "Error al obtener resultado" },
-      { status: 500 },
-    );
+    return handleApiError(error, "Error al obtener resultado");
   }
 }
 
@@ -170,17 +166,13 @@ async function upsertResult(
 
     return NextResponse.json({ item: result });
   } catch (error) {
-    logger.error("Error upserting result:", error);
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
         { error: "Datos inválidos", details: error },
         { status: 400 },
       );
     }
-    return NextResponse.json(
-      { error: "Error al guardar resultado" },
-      { status: 500 },
-    );
+    return handleApiError(error, "Error al guardar resultado");
   }
 }
 

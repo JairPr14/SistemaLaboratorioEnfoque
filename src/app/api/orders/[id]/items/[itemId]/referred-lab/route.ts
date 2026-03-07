@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { getServerSession, hasPermission, PERMISSION_CAPTURAR_RESULTADOS, PERMISSION_VER_ORDENES } from "@/lib/auth";
-import { logger } from "@/lib/logger";
+import { handleApiError } from "@/lib/api-errors";
 
 type Params = { params: Promise<{ id: string; itemId: string }> };
 
@@ -74,11 +74,7 @@ export async function PUT(request: Request, { params }: Params) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    logger.error("Error updating referred lab for order item:", error);
-    return NextResponse.json(
-      { error: "Error al actualizar laboratorio referido del análisis" },
-      { status: 500 },
-    );
+    return handleApiError(error, "Error al actualizar laboratorio referido del análisis");
   }
 }
 

@@ -6,33 +6,56 @@ import { patientSchema } from "@/features/lab/schemas";
 import { parseDateTimePeru, parseDatePeru } from "@/lib/date";
 import {
   requirePermission,
+  getServerSession,
+  hasPermission,
   PERMISSION_EDITAR_PACIENTES,
   PERMISSION_ELIMINAR_REGISTROS,
-  getServerSession,
+  PERMISSION_VER_PACIENTES,
 } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function GET(_request: Request, { params }: Params) {
-  const session = await getServerSession();
-  if (!session?.user) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
-
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+    if (!hasPermission(session, PERMISSION_VER_PACIENTES)) {
+      return NextResponse.json({ error: "Sin permiso para ver pacientes" }, { status: 403 });
+    }
+
     const { id } = await params;
+    if (!id || typeof id !== "string" || id.trim().length === 0) {
+      return NextResponse.json({ error: "ID de paciente inválido" }, { status: 400 });
+    }
+
     const item = await prisma.patient.findFirst({
-      where: { id, deletedAt: null },
+      where: { id: id.trim(), deletedAt: null },
+      select: {
+        id: true,
+        code: true,
+        dni: true,
+        firstName: true,
+        lastName: true,
+        birthDate: true,
+        sex: true,
+        phone: true,
+        address: true,
+        email: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
 
     if (!item) {
-      return NextResponse.json({ error: "Paciente no encontrado" }, { status: 404 });
+      return NextResponse.json({ error: "Paciente no encontrado o eliminado" }, { status: 404 });
     }
 
     return NextResponse.json({ item });
   } catch (error) {
-    logger.error("Error fetching patient:", error);
+    logger.error("[api/patients/[id]] GET:", error);
     return NextResponse.json(
       { error: "Error al obtener paciente" },
       { status: 500 },
@@ -40,11 +63,20 @@ export async function GET(_request: Request, { params }: Params) {
   }
 }
 
+function validateId(id: string | undefined): string | null {
+  if (!id || typeof id !== "string" || id.trim().length === 0) return null;
+  return id.trim();
+}
+
 export async function PUT(request: Request, { params }: Params) {
   const auth = await requirePermission(PERMISSION_EDITAR_PACIENTES);
   if (auth.response) return auth.response;
   try {
     const { id } = await params;
+    const validId = validateId(id);
+    if (!validId) {
+      return NextResponse.json({ error: "ID de paciente inválido" }, { status: 400 });
+    }
     const payload = await request.json();
     const parsed = patientSchema.parse(payload);
     const { code: _code, ...rest } = parsed;
@@ -72,23 +104,24 @@ export async function PUT(request: Request, { params }: Params) {
       updateData.createdAt = parseDateTimePeru(createdAtStr);
     }
     const item = await prisma.patient.update({
-      where: { id },
+      where: { id: validId },
       data: updateData as Parameters<typeof prisma.patient.update>[0]["data"],
     });
     revalidatePath("/patients");
-    revalidatePath(`/patients/${id}`);
+    revalidatePath(`/patients/${validId}`);
     return NextResponse.json({ item });
   } catch (error) {
-    logger.error("Error updating patient:", error);
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
         { error: "Datos inválidos", details: error },
         { status: 400 },
       );
     }
-    if (error instanceof Error && error.message.includes("Record to update not found")) {
+    const err = error as { code?: string; message?: string };
+    if (err?.code === "P2025" || err?.message?.includes("Record to update not found")) {
       return NextResponse.json({ error: "Paciente no encontrado" }, { status: 404 });
     }
+    logger.error("[api/patients/[id]] PUT:", error);
     return NextResponse.json(
       { error: "Error al actualizar paciente" },
       { status: 500 },
@@ -101,17 +134,22 @@ export async function PATCH(_request: Request, { params }: Params) {
   if (auth.response) return auth.response;
   try {
     const { id } = await params;
+    const validId = validateId(id);
+    if (!validId) {
+      return NextResponse.json({ error: "ID de paciente inválido" }, { status: 400 });
+    }
     const item = await prisma.patient.update({
-      where: { id },
+      where: { id: validId },
       data: { deletedAt: null },
     });
 
     return NextResponse.json({ item });
   } catch (error) {
-    logger.error("Error restoring patient:", error);
-    if (error instanceof Error && error.message.includes("Record to update not found")) {
+    const err = error as { code?: string; message?: string };
+    if (err?.code === "P2025" || err?.message?.includes("Record to update not found")) {
       return NextResponse.json({ error: "Paciente no encontrado" }, { status: 404 });
     }
+    logger.error("[api/patients/[id]] PATCH:", error);
     return NextResponse.json(
       { error: "Error al restaurar paciente" },
       { status: 500 },
@@ -124,18 +162,23 @@ export async function DELETE(_request: Request, { params }: Params) {
   if (auth.response) return auth.response;
   try {
     const { id } = await params;
+    const validId = validateId(id);
+    if (!validId) {
+      return NextResponse.json({ error: "ID de paciente inválido" }, { status: 400 });
+    }
     const item = await prisma.patient.update({
-      where: { id },
+      where: { id: validId },
       data: { deletedAt: new Date() },
     });
     revalidatePath("/patients");
-    revalidatePath(`/patients/${id}`);
+    revalidatePath(`/patients/${validId}`);
     return NextResponse.json({ item });
   } catch (error) {
-    logger.error("Error deleting patient:", error);
-    if (error instanceof Error && error.message.includes("Record to update not found")) {
+    const err = error as { code?: string; message?: string };
+    if (err?.code === "P2025" || err?.message?.includes("Record to update not found")) {
       return NextResponse.json({ error: "Paciente no encontrado" }, { status: 404 });
     }
+    logger.error("[api/patients/[id]] DELETE:", error);
     return NextResponse.json(
       { error: "Error al eliminar paciente" },
       { status: 500 },

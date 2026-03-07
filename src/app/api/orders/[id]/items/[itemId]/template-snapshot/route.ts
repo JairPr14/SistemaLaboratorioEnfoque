@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "@/lib/auth";
-import { logger } from "@/lib/logger";
+import { handleApiError } from "@/lib/api-errors";
 
 type Params = { params: Promise<{ id: string; itemId: string }> };
 
@@ -117,10 +117,6 @@ export async function PUT(request: Request, { params }: Params) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    logger.error("Error updating template snapshot:", error);
-    return NextResponse.json(
-      { error: "Error al actualizar plantilla del paciente" },
-      { status: 500 }
-    );
+    return handleApiError(error, "Error al actualizar plantilla del paciente");
   }
 }
