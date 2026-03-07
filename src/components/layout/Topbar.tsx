@@ -14,10 +14,18 @@ import {
   LogOut,
   PanelLeft,
   PanelLeftClose,
+  Search,
   Settings,
   Stethoscope,
 } from "lucide-react";
 import { GlobalSearch } from "@/components/dashboard/GlobalSearch";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import {
@@ -70,8 +78,8 @@ export function Topbar({
 
   return (
     <>
-    <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur-md dark:border-slate-700/80 dark:bg-slate-900/90">
-      <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-3 sm:gap-6 sm:px-6">
+    <header className="sticky top-0 z-30 overflow-x-hidden border-b border-slate-200/80 bg-white/90 backdrop-blur-md dark:border-slate-700/80 dark:bg-slate-900/90">
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 px-4 py-3 sm:gap-6 sm:px-6">
         {/* Izquierda: toggle + título */}
         <div className="flex min-w-0 shrink-0 items-center gap-4">
           <Button
@@ -144,6 +152,29 @@ export function Topbar({
               </div>
             </nav>
           )}
+          {/* Búsqueda: icono en móvil (abre dialog), barra en desktop */}
+          <div className="sm:hidden">
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="Buscar"
+                  className="h-10 w-10 rounded-xl border border-slate-200/70 text-slate-500 hover:border-teal-300 hover:text-teal-700 dark:border-slate-700/70 dark:hover:border-teal-700 dark:hover:text-teal-300"
+                >
+                  <Search className="h-4 w-4" aria-hidden />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Buscar paciente u orden</DialogTitle>
+                </DialogHeader>
+                <div className="pt-2">
+                  <GlobalSearch />
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
           <div className="hidden min-w-0 shrink sm:block sm:w-64 md:w-80 lg:mx-4">
             <GlobalSearch />
           </div>

@@ -29,7 +29,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {children}
           </main>
           <footer className="border-t border-slate-200/80 bg-white/70 px-5 py-3 backdrop-blur-md transition-colors dark:border-slate-700/80 dark:bg-slate-900/60 sm:px-6 lg:px-8">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <div className="flex flex-col items-center gap-2 text-center text-xs text-slate-500 dark:text-slate-400 sm:flex-row sm:justify-between sm:text-left">
               <p className="inline-flex items-center gap-1.5">
                 <FlaskConical className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
                 Sistema de Laboratorio Clínico - Enfoque Salud

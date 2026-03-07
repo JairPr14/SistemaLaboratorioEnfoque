@@ -32,7 +32,7 @@ export default async function ReportesPage() {
               </div>
               <CardTitle className="text-lg">Reportes financieros</CardTitle>
               <p className="text-sm font-normal text-slate-500 dark:text-slate-400">
-                Facturación, cobros, pendiente de admisión, terciarización y pre-órdenes.
+                Facturación, cobros, terciarización y pre-órdenes.
               </p>
             </CardHeader>
           </Card>

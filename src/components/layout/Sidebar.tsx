@@ -195,7 +195,7 @@ export function Sidebar({
 
   const navLinkClass = (active: boolean) =>
     cn(
-      "group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200",
+      "group relative flex min-w-0 items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200",
       "text-slate-600 hover:bg-slate-100 hover:text-slate-900 hover:translate-x-0.5 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100",
       active && "bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow-md shadow-teal-600/30 hover:translate-x-0 dark:from-teal-600 dark:to-cyan-500",
     );
@@ -244,7 +244,7 @@ export function Sidebar({
                   <span className="absolute left-0 top-1/2 h-0 w-1 -translate-y-1/2 rounded-r-full bg-teal-500 opacity-0 transition-all duration-200 group-hover:h-5 group-hover:opacity-100" />
                 )}
                 <Icon className={cn("h-4 w-4 shrink-0", active ? "text-white" : "text-slate-400 group-hover:text-teal-600 dark:text-slate-500 dark:group-hover:text-teal-400")} />
-                {entry.label}
+                <span className="min-w-0 truncate" title={entry.label}>{entry.label}</span>
               </Link>
             );
           }
@@ -262,7 +262,7 @@ export function Sidebar({
                 type="button"
                 onClick={() => toggleGroup(entry.label)}
                 className={cn(
-                  "flex w-full items-center gap-2 rounded-xl px-3.5 py-2.5 text-left text-sm font-medium transition-all duration-200",
+                  "flex min-w-0 w-full items-center gap-2 rounded-xl px-3.5 py-2.5 text-left text-sm font-medium transition-all duration-200",
                   "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100",
                 )}
               >
@@ -272,7 +272,7 @@ export function Sidebar({
                   <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
                 )}
                 <GroupIcon className="h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500" />
-                <span>{entry.label}</span>
+                <span className="min-w-0 truncate" title={entry.label}>{entry.label}</span>
               </button>
               {isExpanded && (
                 <div className="ml-4 space-y-0.5 border-l border-slate-200 pl-2 dark:border-slate-700">
@@ -290,7 +290,7 @@ export function Sidebar({
                           <span className="absolute left-0 top-1/2 h-0 w-1 -translate-y-1/2 rounded-r-full bg-teal-500 opacity-0 transition-all duration-200 group-hover:h-5 group-hover:opacity-100" />
                         )}
                         <Icon className={cn("h-4 w-4 shrink-0", active ? "text-white" : "text-slate-400 group-hover:text-teal-600 dark:text-slate-500 dark:group-hover:text-teal-400")} />
-                        {item.label}
+                        <span className="min-w-0 truncate" title={item.label}>{item.label}</span>
                       </Link>
                     );
                   })}

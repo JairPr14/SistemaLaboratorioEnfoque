@@ -182,7 +182,14 @@ export function NotificationBell({ session }: { session: Session | null }) {
     setOpen(false);
     setComandaItem(null);
     void markAsRead(n.id);
-    if (n.linkTo) router.push(n.linkTo);
+    if (n.linkTo) {
+      const href = n.linkTo;
+      if (href.startsWith("/admission") || href.startsWith("/cobro-admision")) {
+        router.push("/dashboard");
+      } else {
+        router.push(href);
+      }
+    }
   };
 
   const dismissComanda = () => {

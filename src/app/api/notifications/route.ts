@@ -12,7 +12,7 @@ import {
   PERMISSION_CAPTURAR_RESULTADOS,
 } from "@/lib/auth";
 
-/** Permisos que permiten ver notificaciones de laboratorio (admisión convertida). */
+/** Permisos que permiten ver notificaciones de laboratorio. */
 const LAB_PERMISSIONS = [
   PERMISSION_VER_ORDENES,
   PERMISSION_QUICK_ACTIONS_RECEPCION,

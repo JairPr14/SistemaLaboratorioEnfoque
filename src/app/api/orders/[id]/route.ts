@@ -9,7 +9,6 @@ import {
   requireAnyPermission,
   PERMISSION_ELIMINAR_REGISTROS,
   PERMISSION_VER_ORDENES,
-  PERMISSION_GESTIONAR_ADMISION,
   PERMISSION_QUICK_ACTIONS_RECEPCION,
   PERMISSION_QUICK_ACTIONS_ANALISTA,
   PERMISSION_QUICK_ACTIONS_ENTREGA,
@@ -24,7 +23,6 @@ type Params = { params: Promise<{ id: string }> };
 export async function GET(_request: Request, { params }: Params) {
   const auth = await requireAnyPermission([
     PERMISSION_VER_ORDENES,
-    PERMISSION_GESTIONAR_ADMISION,
     PERMISSION_QUICK_ACTIONS_RECEPCION,
     PERMISSION_QUICK_ACTIONS_ANALISTA,
     PERMISSION_QUICK_ACTIONS_ENTREGA,
@@ -59,7 +57,6 @@ export async function GET(_request: Request, { params }: Params) {
 export async function PUT(request: Request, { params }: Params) {
   const auth = await requireAnyPermission([
     PERMISSION_VER_ORDENES,
-    PERMISSION_GESTIONAR_ADMISION,
     PERMISSION_QUICK_ACTIONS_RECEPCION,
     PERMISSION_QUICK_ACTIONS_ANALISTA,
     PERMISSION_QUICK_ACTIONS_ENTREGA,

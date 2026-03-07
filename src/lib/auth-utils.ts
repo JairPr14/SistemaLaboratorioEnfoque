@@ -31,9 +31,6 @@ export const PERMISSION_EDITAR_PRECIO_CATALOGO = "EDITAR_PRECIO_CATALOGO";
 export const PERMISSION_GESTIONAR_PLANTILLAS = "GESTIONAR_PLANTILLAS";
 export const PERMISSION_GESTIONAR_SELLO = "GESTIONAR_SELLO";
 export const PERMISSION_GESTIONAR_LAB_REFERIDOS = "GESTIONAR_LAB_REFERIDOS";
-export const PERMISSION_VER_ADMISION = "VER_ADMISION";
-export const PERMISSION_GESTIONAR_ADMISION = "GESTIONAR_ADMISION";
-export const PERMISSION_COBRO_ADMISION = "COBRO_ADMISION";
 
 /** Permisos agrupados por módulo para la configuración de roles. */
 export const PERMISSION_GROUPS = [
@@ -53,18 +50,10 @@ export const PERMISSION_GROUPS = [
   {
     label: "Catálogo y Plantillas",
     permissions: [
-      { code: PERMISSION_VER_CATALOGO, label: "Ver catálogo y promociones (admisión usa el catálogo)" },
+      { code: PERMISSION_VER_CATALOGO, label: "Ver catálogo y promociones" },
       { code: PERMISSION_GESTIONAR_CATALOGO, label: "Gestionar catálogo de análisis" },
       { code: PERMISSION_EDITAR_PRECIO_CATALOGO, label: "Editar precio público y convenio del catálogo" },
       { code: PERMISSION_GESTIONAR_PLANTILLAS, label: "Gestionar plantillas de resultados" },
-    ],
-  },
-  {
-    label: "Admisión",
-    permissions: [
-      { code: PERMISSION_VER_ADMISION, label: "Ver módulo admisión (pacientes del día, resultados listos, pagos externos)" },
-      { code: PERMISSION_GESTIONAR_ADMISION, label: "Nueva atención: registrar paciente, cobrar al público, crear orden" },
-      { code: PERMISSION_COBRO_ADMISION, label: "Lab cobra admisión: ver y cobrar a admisión (precio convenio)" },
     ],
   },
   { label: "Reportes", permissions: [{ code: PERMISSION_REPORTES, label: "Ver reportes" }] },
@@ -120,20 +109,9 @@ export function hasPermission(session: SessionLike, permission: string): boolean
   return false;
 }
 
-const NON_ADMISSION_NAV_PERMISSIONS = [
-  PERMISSION_VER_PACIENTES, PERMISSION_EDITAR_PACIENTES, PERMISSION_VER_CATALOGO, PERMISSION_GESTIONAR_CATALOGO,
-  PERMISSION_EDITAR_PRECIO_CATALOGO, PERMISSION_GESTIONAR_PLANTILLAS, PERMISSION_VER_ORDENES,
-  PERMISSION_QUICK_ACTIONS_RECEPCION, PERMISSION_QUICK_ACTIONS_ANALISTA, PERMISSION_QUICK_ACTIONS_ENTREGA,
-  PERMISSION_VER_PAGOS, PERMISSION_REGISTRAR_PAGOS, PERMISSION_REPORTES, PERMISSION_CAPTURAR_RESULTADOS,
-  PERMISSION_VALIDAR_RESULTADOS, PERMISSION_IMPRIMIR_RESULTADOS, PERMISSION_VER_CONFIGURACION,
-] as const;
-
-export function isAdmissionOnlyProfile(session: SessionLike): boolean {
-  if (!session?.user) return false;
-  if (session.user.roleCode === ADMIN_ROLE_CODE) return false;
-  const hasAdmission = hasPermission(session, PERMISSION_VER_ADMISION) || hasPermission(session, PERMISSION_GESTIONAR_ADMISION);
-  if (!hasAdmission) return false;
-  return !hasAnyPermission(session, [...NON_ADMISSION_NAV_PERMISSIONS]);
+/** El módulo admisión fue removido. Mantenido por compatibilidad con isReceptionProfile. */
+export function isAdmissionOnlyProfile(_session: SessionLike): boolean {
+  return false;
 }
 
 export function isReceptionProfile(session: SessionLike): boolean {

@@ -4,12 +4,11 @@ import { redirect } from "next/navigation";
 import type { Prisma } from "@prisma/client";
 
 import {
-  getServerSession, hasPermission,
+  getServerSession,
+  hasPermission,
   hasAnyPermission,
   PERMISSION_ELIMINAR_REGISTROS,
   PERMISSION_VER_PACIENTES,
-  PERMISSION_VER_ADMISION,
-  PERMISSION_GESTIONAR_ADMISION,
 } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PatientForm } from "@/components/forms/PatientForm";
@@ -30,13 +29,7 @@ export default async function PatientsPage({ searchParams }: Props) {
   const sortDir: Prisma.SortOrder = params.sortDir === "asc" ? "asc" : "desc";
 
   const session = await getServerSession();
-  const canAccess =
-    session?.user &&
-    hasAnyPermission(session, [
-      PERMISSION_VER_PACIENTES,
-      PERMISSION_VER_ADMISION,
-      PERMISSION_GESTIONAR_ADMISION,
-    ]);
+  const canAccess = session?.user && hasPermission(session, PERMISSION_VER_PACIENTES);
   if (!canAccess) {
     redirect("/dashboard");
   }

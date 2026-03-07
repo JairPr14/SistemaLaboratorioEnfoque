@@ -690,23 +690,23 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
       ) : (
         pages.map((page, pageIndex) => (
           <div key={`${page.section}-${pageIndex}`} className="print-html-page relative mx-auto mb-4 bg-white shadow">
-            <img
+            <PrintImageWithFallback
               src="/print-watermark-corner-1.png"
               alt=""
               className="print-watermark-corner print-watermark-corner-tl pointer-events-none select-none"
-              aria-hidden
+              fallback={<span className="print-watermark-corner print-watermark-corner-tl" aria-hidden />}
             />
-            <img
+            <PrintImageWithFallback
               src="/print-watermark-corner-2.png"
               alt=""
               className="print-watermark-corner print-watermark-corner-tr pointer-events-none select-none"
-              aria-hidden
+              fallback={<span className="print-watermark-corner print-watermark-corner-tr" aria-hidden />}
             />
-            <img
+            <PrintImageWithFallback
               src="/print-watermark-central.png"
               alt=""
               className="print-watermark-central pointer-events-none select-none"
-              aria-hidden
+              fallback={<span className="print-watermark-central" aria-hidden />}
             />
             <footer className="print-pdf-footer">
               <PrintImageWithFallback

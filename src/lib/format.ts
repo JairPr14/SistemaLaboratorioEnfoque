@@ -98,7 +98,7 @@ export function formatDniDisplay(dni?: string | null): string {
   return dni;
 }
 
-/** Convierte paciente de BD a opción para select (OrderForm, admisión). */
+/** Convierte paciente de BD a opción para select (OrderForm). */
 export function toPatientSelectOption(p: {
   id: string;
   dni?: string | null;
