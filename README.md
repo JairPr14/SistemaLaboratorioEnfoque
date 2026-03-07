@@ -33,16 +33,19 @@ pnpm install
 
 ### 3. Configurar Variables de Entorno
 
-Crea un archivo `.env` en la raíz del proyecto con el siguiente contenido:
+Crea un archivo `.env` copiando `.env.example` y configúralo:
 
 ```env
-# Base de datos (SQLite para desarrollo)
-DATABASE_URL="file:./prisma/dev.db?connection_limit=1&busy_timeout=10000"
+# Base de datos PostgreSQL (usa Docker local para desarrollo)
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/sistema_lab_dev"
+SHADOW_DATABASE_URL="postgresql://postgres:postgres@localhost:5432/postgres"
 
 # NextAuth
 NEXTAUTH_URL="http://localhost:3000"
 NEXTAUTH_SECRET="tu-secret-key-aqui-genera-una-aleatoria"
 ```
+
+Para desarrollo local necesitas PostgreSQL. Usa Docker: `pnpm docker:up`
 
 **Importante:** Para generar un `NEXTAUTH_SECRET` seguro, puedes usar:
 
@@ -69,9 +72,7 @@ pnpm exec prisma generate
 pnpm exec prisma migrate deploy
 ```
 
-Esto creará todas las tablas necesarias en la base de datos.
-
-**Nota:** En desarrollo se usa SQLite. Para producción, ver la sección de [Despliegue](#-despliegue-en-producción).
+Esto creará todas las tablas necesarias. **Antes:** asegúrate de tener PostgreSQL corriendo (Docker: `pnpm docker:up`). Para producción, ver [Despliegue](#-despliegue-en-producción).
 
 #### 4.3. Poblar la Base de Datos (Opcional)
 
@@ -104,25 +105,10 @@ Si ejecutaste el seed, puedes iniciar sesión con:
 
 ### Crear Usuario Administrador Manualmente
 
-Si no ejecutaste el seed, puedes crear un usuario administrador desde la consola de Prisma:
+Si no ejecutaste el seed, usa Prisma Studio para crear el rol y usuario, o ejecuta:
 
 ```bash
-pnpm exec prisma studio
-```
-
-O usando un script SQL:
-
-1. Abre `prisma/dev.db` con un cliente SQLite
-2. Ejecuta:
-
-```sql
--- Crear rol ADMIN
-INSERT INTO Role (id, code, name, description, "isActive", "createdAt", "updatedAt", permissions)
-VALUES ('admin-role-id', 'ADMIN', 'Administrador', 'Rol con todos los permisos', 1, datetime('now'), datetime('now'), '["REPORTES","EDITAR_PACIENTES","ELIMINAR_REGISTROS"]');
-
--- Crear usuario (la contraseña es 'admin123' hasheada con bcrypt)
-INSERT INTO User (id, email, "passwordHash", name, "isActive", "roleId", "createdAt", "updatedAt")
-VALUES ('user-id', 'admin@lab.com', '$2a$10$rOzJqZqZqZqZqZqZqZqZqOqZqZqZqZqZqZqZqZqZqZqZqZqZqZqZq', 'Administrador', 1, 'admin-role-id', datetime('now'), datetime('now'));
+pnpm db:seed
 ```
 
 ## 📁 Estructura del Proyecto
@@ -131,7 +117,6 @@ VALUES ('user-id', 'admin@lab.com', '$2a$10$rOzJqZqZqZqZqZqZqZqZqOqZqZqZqZqZqZqZ
 SistemaLaboratorioEnfoque/
 ├── prisma/
 │   ├── schema.prisma          # Esquema de la base de datos
-│   ├── dev.db                 # Base de datos SQLite (se crea automáticamente)
 │   ├── migrations/            # Migraciones de Prisma
 │   └── seed.ts                # Script de datos iniciales
 ├── src/
@@ -140,15 +125,15 @@ SistemaLaboratorioEnfoque/
 │   │   │   ├── dashboard/     # Dashboard principal
 │   │   │   ├── patients/      # Gestión de pacientes
 │   │   │   ├── orders/        # Gestión de órdenes
-│   │   │   ├── reportes/      # Reportes (solo admin)
+│   │   │   ├── pagos/         # Pagos y caja
+│   │   │   ├── reportes/      # Reportes
 │   │   │   └── configuracion/ # Configuración del sistema
 │   │   ├── api/               # API Routes
 │   │   └── login/             # Página de login
 │   ├── components/            # Componentes React reutilizables
 │   ├── lib/                   # Utilidades y configuración
-│   │   ├── auth.ts            # Configuración de NextAuth
-│   │   └── prisma.ts          # Cliente de Prisma
 │   └── features/              # Lógica de negocio
+├── docker-compose.yml         # PostgreSQL local para desarrollo
 └── .env                       # Variables de entorno (no se sube a git)
 ```
 
@@ -227,7 +212,7 @@ pnpm exec prisma db seed
 **Causa:** Otro proceso está usando la base de datos (servidor corriendo, Prisma Studio abierto, etc.).
 
 **Solución:**
-1. Cierra todos los procesos que puedan estar usando `prisma/dev.db`
+1. Cierra todos los procesos que puedan estar usando la base de datos (servidor, Prisma Studio)
 2. Vuelve a intentar la operación
 
 ### Error: "No se puede conectar a la base de datos"
@@ -235,7 +220,7 @@ pnpm exec prisma db seed
 **Causa:** La ruta de `DATABASE_URL` en `.env` es incorrecta o la base de datos no existe.
 
 **Solución:**
-1. Verifica que `DATABASE_URL="file:./prisma/dev.db"` en `.env`
+1. Verifica que `DATABASE_URL` en `.env` apunte a PostgreSQL (Docker o Seenode)
 2. Ejecuta las migraciones: `pnpm exec prisma migrate deploy`
 
 ### Error: "NextAuth secret not set"
@@ -346,7 +331,7 @@ DATABASE_URL="tu-connection-string-de-neon" pnpm exec prisma db seed
 
 ## 📝 Notas Importantes
 
-- En desarrollo se usa SQLite (`prisma/dev.db`). En producción se usa PostgreSQL (Neon).
+- En desarrollo se usa PostgreSQL local (Docker). En producción se usa PostgreSQL (Seenode/Neon).
 - El archivo `.env` contiene información sensible y **NO debe subirse a Git**.
 - Las migraciones de Prisma están en `prisma/migrations/`. No las modifiques manualmente.
 - Para producción, consulta [DEPLOYMENT.md](./DEPLOYMENT.md) para instrucciones detalladas.

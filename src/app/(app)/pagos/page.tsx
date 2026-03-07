@@ -196,11 +196,7 @@ export default async function PagosPage({
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Pagos / Cobros</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Cobra órdenes directas (paciente paga al laboratorio). Para órdenes desde admisión, usa{" "}
-            <Link href="/cobro-admision" className="font-medium text-teal-600 hover:underline dark:text-teal-400">
-              Cobro admisión
-            </Link>
-            .
+            Cobra órdenes directas (paciente paga al laboratorio).
           </p>
         </div>
         {canRegisterPayment && <RegistrarpagoButton />}

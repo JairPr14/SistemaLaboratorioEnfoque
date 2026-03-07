@@ -5,7 +5,6 @@ export function buildPatientCode() {
 }
 
 const ORDER_CODE_PREFIX = "ENF-";
-const ADMISSION_CODE_PREFIX = "ADM-";
 
 /** Genera código correlativo global: ENF-000001, ENF-000002... */
 export function buildOrderCode(sequence: number, _date?: Date) {
@@ -40,21 +39,4 @@ export async function getNextOrderSequenceAsync(prisma: PrismaClient): Promise<n
   });
   if (!last) return 1;
   return parseOrderCodeSequence(last.orderCode) + 1;
-}
-
-export function buildAdmissionCode(sequence: number, date?: Date) {
-  const d = date ?? new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  const seq = String(sequence).padStart(4, "0");
-  return `${ADMISSION_CODE_PREFIX}${y}${m}${day}-${seq}`;
-}
-
-/** Prefijo para un día dado (ej. ADM-20260212-) */
-export function admissionCodePrefixForDate(date: Date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${ADMISSION_CODE_PREFIX}${y}${m}${day}-`;
 }
