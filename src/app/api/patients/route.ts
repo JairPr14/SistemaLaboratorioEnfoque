@@ -20,25 +20,34 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search")?.trim();
+    const limit = Math.min(Math.max(1, parseInt(searchParams.get("limit") ?? "200", 10)), 500);
+    const offset = Math.max(0, parseInt(searchParams.get("offset") ?? "0", 10));
 
-    const items = await prisma.patient.findMany({
-      where: {
-        deletedAt: null,
-        ...(search
-          ? {
-              OR: [
-                { firstName: { contains: search } },
-                { lastName: { contains: search } },
-                { dni: { contains: search } },
-                { code: { contains: search } },
-              ],
-            }
-          : {}),
-      },
-      orderBy: { code: "desc" },
-    });
+    const where = {
+      deletedAt: null,
+      ...(search
+        ? {
+            OR: [
+              { firstName: { contains: search, mode: "insensitive" as const } },
+              { lastName: { contains: search, mode: "insensitive" as const } },
+              { dni: { contains: search } },
+              { code: { contains: search } },
+            ],
+          }
+        : {}),
+    };
 
-    return NextResponse.json({ items });
+    const [items, total] = await Promise.all([
+      prisma.patient.findMany({
+        where,
+        orderBy: { code: "desc" },
+        take: limit,
+        skip: offset,
+      }),
+      prisma.patient.count({ where }),
+    ]);
+
+    return NextResponse.json({ items, total });
   } catch (error) {
     logger.error("Error fetching patients:", error);
     return NextResponse.json(

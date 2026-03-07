@@ -2,16 +2,14 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { resultDraftSchema } from "@/features/lab/schemas";
-import { getServerSession } from "@/lib/auth";
+import { requirePermission, PERMISSION_CAPTURAR_RESULTADOS } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 
 type Params = { params: Promise<{ id: string; itemId: string }> };
 
 export async function PUT(request: Request, { params }: Params) {
-  const session = await getServerSession();
-  if (!session?.user) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requirePermission(PERMISSION_CAPTURAR_RESULTADOS);
+  if (auth.response) return auth.response;
 
   try {
     const { id: orderId, itemId } = await params;
@@ -28,6 +26,14 @@ export async function PUT(request: Request, { params }: Params) {
 
     if (!orderItem) {
       return NextResponse.json({ error: "Item no encontrado" }, { status: 404 });
+    }
+
+    // Bloqueo: no modificar borradores si el resultado ya está validado
+    if (orderItem.result && !orderItem.result.isDraft) {
+      return NextResponse.json(
+        { error: "El resultado ya está validado. No se pueden guardar cambios en borrador." },
+        { status: 403 },
+      );
     }
 
     // Solo los IDs de LabTemplateItem son válidos para la FK; los extra (extra-xxx) no existen en BD

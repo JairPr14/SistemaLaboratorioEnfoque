@@ -5,6 +5,7 @@ import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 const publicPaths = ["/login"];
 const authApiPrefix = "/api/auth";
+const publicApiPaths = ["/api/health"];
 
 /**
  * Obtiene el identificador único para rate limiting (IP address)
@@ -97,6 +98,9 @@ export async function proxy(request: NextRequest) {
   if (pathname.startsWith(authApiPrefix) || publicPaths.includes(pathname)) {
     return NextResponse.next();
   }
+  if (publicApiPaths.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
+    return NextResponse.next();
+  }
   if (pathname.startsWith("/_next") || pathname.includes(".")) {
     return NextResponse.next();
   }
@@ -107,6 +111,10 @@ export async function proxy(request: NextRequest) {
     secret: process.env.NEXTAUTH_SECRET,
   });
   if (!token) {
+    // Rutas API: devolver 401 JSON para que el cliente maneje el error correctamente
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);

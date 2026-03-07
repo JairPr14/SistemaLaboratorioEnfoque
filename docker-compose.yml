@@ -1,6 +1,7 @@
 # Base de datos PostgreSQL local para desarrollo
 # Uso: docker compose up -d
-# Conecta con: postgresql://postgres:postgres@localhost:5432/sistema_lab_dev
+# Conecta con: postgresql://postgres:postgres@localhost:5433/sistema_lab_dev
+# Puerto 5433 en host (5432 ocupado por PostgreSQL local)
 
 services:
   postgres:
@@ -13,7 +14,7 @@ services:
       POSTGRES_DB: sistema_lab_dev
       POSTGRES_INITDB_ARGS: "--encoding=UTF8"
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_dev_data:/var/lib/postgresql/data
     healthcheck:

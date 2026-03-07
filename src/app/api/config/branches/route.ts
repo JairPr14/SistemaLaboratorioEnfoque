@@ -4,13 +4,18 @@ import { getServerSession, hasPermission, PERMISSION_GESTIONAR_SEDES, ADMIN_ROLE
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
+  const session = await getServerSession();
+  if (!session?.user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
   try {
     const branches = await prisma.branch.findMany({
       orderBy: [{ order: "asc" }, { name: "asc" }],
+      select: { id: true, code: true, name: true, address: true, phone: true, order: true, isActive: true },
     });
     return NextResponse.json(branches);
   } catch (error) {
-    console.error("Error fetching branches:", error);
+    console.error("[api/config/branches]", error);
     return NextResponse.json({ error: "Error al obtener sedes" }, { status: 500 });
   }
 }

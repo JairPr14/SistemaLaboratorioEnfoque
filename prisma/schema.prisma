@@ -36,6 +36,7 @@ model User {
   notificationReads   NotificationRead[]
   payments            Payment[]
   referredLabPayments ReferredLabPayment[]
+  validatedResults    LabResult[]
   role                Role?                @relation(fields: [roleId], references: [id])
   favoriteTests       UserFavoriteTest[]
 
@@ -314,16 +315,21 @@ model LabOrderItem {
 }
 
 model LabResult {
-  id          String          @id @default(cuid())
-  orderItemId String          @unique
-  reportedAt  DateTime?
-  reportedBy  String?
-  comment     String?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  isDraft     Boolean         @default(true)
-  orderItem   LabOrderItem    @relation(fields: [orderItemId], references: [id])
-  items       LabResultItem[]
+  id            String          @id @default(cuid())
+  orderItemId   String          @unique
+  reportedAt    DateTime?
+  reportedBy    String?
+  comment       String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  isDraft       Boolean         @default(true)
+  validatedById String?
+  validatedAt   DateTime?
+  orderItem     LabOrderItem    @relation(fields: [orderItemId], references: [id])
+  items         LabResultItem[]
+  validatedBy   User?           @relation(fields: [validatedById], references: [id], onDelete: SetNull)
+
+  @@index([validatedById])
 }
 
 model AppConfig {

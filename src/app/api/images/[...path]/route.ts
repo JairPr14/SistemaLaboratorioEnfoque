@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -9,6 +10,11 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ path: string[] }> },
 ) {
+  const session = await getServerSession();
+  if (!session?.user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
   const { path: pathSegments } = await params;
   if (!pathSegments?.length) {
     return NextResponse.json({ error: "Ruta inválida" }, { status: 400 });
@@ -19,6 +25,7 @@ export async function GET(
   try {
     const img = await prisma.storedImage.findUnique({
       where: { key },
+      select: { data: true, mimeType: true },
     });
 
     if (!img) {
@@ -29,10 +36,11 @@ export async function GET(
     return new NextResponse(buffer, {
       headers: {
         "Content-Type": img.mimeType,
-        "Cache-Control": "public, max-age=3600",
+        "Cache-Control": "private, max-age=3600",
       },
     });
-  } catch {
+  } catch (error) {
+    console.error("[api/images]", error);
     return NextResponse.json({ error: "Error al cargar la imagen" }, { status: 500 });
   }
 }

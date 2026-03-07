@@ -51,7 +51,8 @@ export default async function DashboardPage({
   const params = await searchParams;
   const session = await getServerSession();
 
-  if (session?.user && isReceptionProfile(session)) redirect("/orders");
+  if (!session?.user) redirect("/login");
+  if (isReceptionProfile(session)) redirect("/orders");
 
   const hasOrders = !!session?.user && hasPermission(session, PERMISSION_VER_ORDENES);
   const hasPatients = !!session?.user && hasPermission(session, PERMISSION_VER_PACIENTES);

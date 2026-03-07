@@ -4,7 +4,18 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { parseDateTimePeru } from "@/lib/date";
 import { orderUpdateSchema } from "@/features/lab/schemas";
-import { requirePermission, requireAnyPermission, PERMISSION_ELIMINAR_REGISTROS, PERMISSION_VER_ORDENES, PERMISSION_GESTIONAR_ADMISION, PERMISSION_QUICK_ACTIONS_RECEPCION, PERMISSION_QUICK_ACTIONS_ANALISTA, PERMISSION_QUICK_ACTIONS_ENTREGA, getServerSession } from "@/lib/auth";
+import {
+  requirePermission,
+  requireAnyPermission,
+  PERMISSION_ELIMINAR_REGISTROS,
+  PERMISSION_VER_ORDENES,
+  PERMISSION_GESTIONAR_ADMISION,
+  PERMISSION_QUICK_ACTIONS_RECEPCION,
+  PERMISSION_QUICK_ACTIONS_ANALISTA,
+  PERMISSION_QUICK_ACTIONS_ENTREGA,
+  getServerSession,
+  hasPermission,
+} from "@/lib/auth";
 import { logger } from "@/lib/logger";
 
 type Params = { params: Promise<{ id: string }> };
@@ -63,6 +74,16 @@ export async function PUT(request: Request, { params }: Params) {
     const { id } = await params;
     const payload = await request.json();
     const parsed = orderUpdateSchema.parse(payload);
+
+    // Anular orden requiere permiso ELIMINAR_REGISTROS
+    if (parsed.status === "ANULADO") {
+      if (!hasPermission(session, PERMISSION_ELIMINAR_REGISTROS)) {
+        return NextResponse.json(
+          { error: "Sin permiso para anular órdenes" },
+          { status: 403 },
+        );
+      }
+    }
 
     const item = await prisma.labOrder.update({
       where: { id },

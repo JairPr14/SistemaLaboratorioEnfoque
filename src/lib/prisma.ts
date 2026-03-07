@@ -1,3 +1,8 @@
+/**
+ * Cliente Prisma singleton - UNA SOLA instancia en todo el proyecto.
+ * Importar siempre desde aquí: import { prisma } from "@/lib/prisma"
+ * NO crear new PrismaClient() en rutas, server actions, helpers ni componentes.
+ */
 import { PrismaClient } from "@prisma/client";
 import { buildDatabaseUrlInfo } from "@/lib/database-url";
 
@@ -41,6 +46,5 @@ prismaClient.$on("error" as never, (e: { message?: string }) => {
 
 export const prisma = prismaClient;
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
-}
+// Persistir en global para reutilizar entre recargas (dev) o instancias largas (prod).
+globalForPrisma.prisma = prisma;

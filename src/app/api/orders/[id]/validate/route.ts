@@ -1,17 +1,15 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-
-import { getServerSession } from "@/lib/auth";
+import { requirePermission, PERMISSION_VALIDAR_RESULTADOS } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function POST(_request: Request, { params }: Params) {
-  const session = await getServerSession();
-  if (!session?.user) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requirePermission(PERMISSION_VALIDAR_RESULTADOS);
+  if (auth.response) return auth.response;
+  const session = auth.session;
 
   try {
     const { id: orderId } = await params;
@@ -25,12 +23,13 @@ export async function POST(_request: Request, { params }: Params) {
       return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
     }
 
+    const now = new Date();
     await prisma.$transaction(async (tx) => {
       for (const item of order.items) {
         if (item.result) {
           await tx.labResult.update({
             where: { id: item.result.id },
-            data: { isDraft: false },
+            data: { isDraft: false, validatedById: session.user.id, validatedAt: now },
           });
         }
       }

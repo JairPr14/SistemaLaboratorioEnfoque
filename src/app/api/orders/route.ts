@@ -28,28 +28,48 @@ export async function GET(request: Request) {
     const patientId = searchParams.get("patientId");
     const from = searchParams.get("from");
     const to = searchParams.get("to");
+    const limit = Math.min(Math.max(1, parseInt(searchParams.get("limit") ?? "100", 10)), 500);
+    const offset = Math.max(0, parseInt(searchParams.get("offset") ?? "0", 10));
 
-    const items = await prisma.labOrder.findMany({
-      where: {
-        ...(status ? { status: status as never } : {}),
-        ...(patientId ? { patientId } : {}),
-        ...(from || to
-          ? {
-              createdAt: {
-                ...(from ? { gte: new Date(from) } : {}),
-                ...(to ? { lte: new Date(to) } : {}),
-              },
-            }
-          : {}),
-      },
-      include: {
-        patient: true,
-        items: { include: { labTest: true, result: true } },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const [items, total] = await Promise.all([
+      prisma.labOrder.findMany({
+        where: {
+          ...(status ? { status: status as never } : {}),
+          ...(patientId ? { patientId } : {}),
+          ...(from || to
+            ? {
+                createdAt: {
+                  ...(from ? { gte: new Date(from) } : {}),
+                  ...(to ? { lte: new Date(to) } : {}),
+                },
+              }
+            : {}),
+        },
+        include: {
+          patient: true,
+          items: { include: { labTest: true, result: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        skip: offset,
+      }),
+      prisma.labOrder.count({
+        where: {
+          ...(status ? { status: status as never } : {}),
+          ...(patientId ? { patientId } : {}),
+          ...(from || to
+            ? {
+                createdAt: {
+                  ...(from ? { gte: new Date(from) } : {}),
+                  ...(to ? { lte: new Date(to) } : {}),
+                },
+              }
+            : {}),
+        },
+      }),
+    ]);
 
-    return NextResponse.json({ items });
+    return NextResponse.json({ items, total });
   } catch (error) {
     logger.error("Error fetching orders:", error);
     return NextResponse.json(

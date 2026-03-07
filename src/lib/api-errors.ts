@@ -53,7 +53,7 @@ export function handleApiError(error: unknown, defaultMessage: string): NextResp
     // Errores de "no encontrado" comunes
     if (error.message.includes("not found") || error.message.includes("no encontrado")) {
       return NextResponse.json(
-        { error: error.message },
+        { error: process.env.NODE_ENV === "production" ? "Registro no encontrado" : error.message },
         { status: 404 },
       );
     }
@@ -61,14 +61,16 @@ export function handleApiError(error: unknown, defaultMessage: string): NextResp
     // Errores de validación
     if (error.name === "ZodError") {
       return NextResponse.json(
-        { error: "Datos inválidos", details: error },
+        { error: "Datos inválidos", details: process.env.NODE_ENV === "production" ? undefined : error },
         { status: 400 },
       );
     }
 
     logger.error("API error:", error);
+    // En producción no exponer mensajes internos al cliente
+    const safeMessage = process.env.NODE_ENV === "production" ? defaultMessage : (error.message || defaultMessage);
     return NextResponse.json(
-      { error: error.message || defaultMessage },
+      { error: safeMessage },
       { status: 500 },
     );
   }

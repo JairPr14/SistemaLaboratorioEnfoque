@@ -51,3 +51,4 @@ sistema-lab/
 # volcado de BD (no subir a repo)
 backup-production.sql
 .prod-url.txt
+.env*.local

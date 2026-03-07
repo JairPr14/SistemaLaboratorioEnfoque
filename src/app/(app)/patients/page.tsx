@@ -51,6 +51,7 @@ export default async function PatientsPage({ searchParams }: Props) {
 
   const patients = await prisma.patient.findMany({
     where: {
+      deletedAt: null,
       ...(search
         ? {
             OR: [
@@ -60,9 +61,10 @@ export default async function PatientsPage({ searchParams }: Props) {
               { code: { contains: search, mode: "insensitive" } },
             ],
           }
-        : { deletedAt: null }),
+        : {}),
     },
     orderBy,
+    take: 500,
   });
 
   return (
