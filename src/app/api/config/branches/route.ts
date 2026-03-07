@@ -10,7 +10,7 @@ export async function GET() {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
   try {
-    const branches = await prisma.branch.findMany({
+    const branches = await withDbRetry(() => prisma.branch.findMany({
       orderBy: [{ order: "asc" }, { name: "asc" }],
       select: { id: true, code: true, name: true, address: true, phone: true, order: true, isActive: true },
     }));
