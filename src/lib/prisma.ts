@@ -1,7 +1,11 @@
 /**
- * Cliente Prisma singleton - UNA SOLA instancia en todo el proyecto.
- * Importar siempre desde aquí: import { prisma } from "@/lib/prisma"
+ * Cliente Prisma singleton - UNA SOLA instancia por proceso.
+ * Todo el código debe importar: import { prisma } from "@/lib/prisma"
  * NO crear new PrismaClient() en rutas, server actions, helpers ni componentes.
+ *
+ * En Vercel serverless cada función puede ser un proceso distinto; cada uno
+ * tendrá su propio singleton. La URL de BD ya incluye connection_limit=1
+ * para Seenode, así cada proceso usa solo 1 conexión.
  */
 import { PrismaClient } from "@prisma/client";
 import { buildDatabaseUrlInfo } from "@/lib/database-url";

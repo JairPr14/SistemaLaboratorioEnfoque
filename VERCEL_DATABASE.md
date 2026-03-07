@@ -66,19 +66,24 @@ El sistema está preparado para **al menos 3 usuarios concurrentes** sin saturar
 - **Caché:** Las páginas y datos se revalidan cada 30 s y hay caché de rutas dinámicas/estáticas, así se reduce la carga a la base de datos.
 - **Comprobar que responde:** Abre `https://TU-DOMINIO.vercel.app/api/health` en el navegador; debe devolver `{ "database": "connected" }`. Si 3 usuarios usan la app a la vez y no ves errores de “too many connections” en Vercel/Seenode, el acceso concurrente está bien configurado.
 
-## Evitar saturación (important para Seenode)
+## Arquitectura: una conexión por instancia
 
-Si ves errores tipo "too many connections" o fallos aleatorios en `/catalog/tests`:
+La app usa un **singleton de Prisma** (`src/lib/prisma.ts`). Todas las rutas, server components y API handlers importan `prisma` desde ese único módulo; no se crean instancias adicionales.
 
-1. **Añade en Vercel → Environment Variables:**
-   - `PRISMA_CONNECTION_LIMIT` = `1`
+En Vercel serverless, cada petición puede ejecutarse en una función distinta (= proceso distinto). Cada proceso tiene su propio singleton, por lo que **N peticiones simultáneas ≈ N conexiones a la BD**. La app fuerza `connection_limit=1` por instancia para Seenode, minimizando el uso.
 
-2. La app ya limita las conexiones por instancia; esta variable refuerza el límite.
+**Límite de Seenode:** Verifica en tu panel cuántas conexiones permite tu plan. Si hay muchos usuarios concurrentes, considera un plan con más conexiones o un pooler externo.
+
+## Evitar saturación (importante para Seenode)
+
+Si ves "too many connections":
+
+1. **La app ya usa `connection_limit=1` por defecto** para Seenode en producción.
+2. Opcional: añade `PRISMA_CONNECTION_LIMIT=1` en Vercel (redundante pero explícito).
+3. Reduce el uso concurrente o verifica el límite de conexiones de tu plan en Seenode.
 
 ## Ajustes opcionales de pool (avanzado)
 
-- `PRISMA_CONNECTION_LIMIT` (ej: `1` para Seenode, `5` para Neon)
+- `PRISMA_CONNECTION_LIMIT` – para Seenode la app fuerza máx. 1 en prod; solo tiene efecto en dev
 - `PRISMA_POOL_TIMEOUT` (segundos)
 - `PRISMA_CONNECT_TIMEOUT` (segundos)
-
-Si no se configuran, la app usa 1 conexión para Seenode/Neon por defecto.
