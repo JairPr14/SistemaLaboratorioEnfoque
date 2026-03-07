@@ -65,23 +65,16 @@ export function DescuentosTab() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [staffRes, typesRes, discountsRes] = await Promise.all([
-        fetch("/api/admin/staff"),
-        fetch("/api/admin/catalog/discount-types"),
-        fetch(
-          `/api/admin/staff-discounts?${filterYear ? `year=${filterYear}` : ""}${filterMonth ? `&month=${filterMonth}` : ""}`
-        ),
-      ]);
-      const staffData = await staffRes.json().catch(() => ({}));
-      const typesData = await typesRes.json().catch(() => ({}));
-      const discountsData = await discountsRes.json().catch(() => ({}));
-      if (!staffRes.ok) throw new Error(staffData.error ?? "Error al cargar personal");
-      if (!typesRes.ok) throw new Error(typesData.error ?? "Error al cargar tipos");
-      if (!discountsRes.ok) throw new Error(discountsData.error ?? "Error al cargar descuentos");
+      const qs = new URLSearchParams();
+      if (filterYear) qs.set("year", String(filterYear));
+      if (filterMonth) qs.set("month", String(filterMonth));
+      const res = await fetch(`/api/admin/descuentos-bundle?${qs}`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Error al cargar descuentos");
 
-      setStaff((staffData.items ?? []).filter((s: { isActive: boolean }) => s.isActive));
-      setDiscountTypes(typesData?.items ?? typesData ?? []);
-      setItems(discountsData.items ?? []);
+      setStaff(data.staff ?? []);
+      setDiscountTypes(data.discountTypes ?? []);
+      setItems(data.staffDiscounts ?? []);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error");
     } finally {

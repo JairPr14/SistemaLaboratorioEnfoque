@@ -51,39 +51,19 @@ export function QuickOrderModal({ open, onOpenChange }: Props) {
   const [searchLoading, setSearchLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const fetchTests = useCallback(async () => {
-    const res = await fetch("/api/tests?active=true");
-    const data = await res.json();
-    const items = (data.items ?? []).map((t: { section?: { code: string } | string | null }) => ({
-      ...t,
-      section: typeof t.section === "object" && t.section ? (t.section as { code: string }).code : (t.section ?? ""),
-    }));
-    setTests(items);
-  }, []);
-
-  const fetchProfiles = useCallback(async () => {
-    const res = await fetch("/api/test-profiles");
-    const data = await res.json();
-    setProfiles(data.profiles ?? []);
-  }, []);
-
-  const fetchFavorites = useCallback(async () => {
-    try {
-      const res = await fetch("/api/favorites/tests");
-      const data = await res.json();
+  const fetchQuickData = useCallback(async () => {
+    const res = await fetch("/api/orders/quick-data");
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      setTests(data.items ?? []);
+      setProfiles(data.profiles ?? []);
       setFavoriteIds(new Set(data.testIds ?? []));
-    } catch {
-      setFavoriteIds(new Set());
     }
   }, []);
 
   useEffect(() => {
-    if (open) {
-      fetchTests();
-      fetchProfiles();
-      fetchFavorites();
-    }
-  }, [open, fetchTests, fetchProfiles, fetchFavorites]);
+    if (open) fetchQuickData();
+  }, [open, fetchQuickData]);
 
   useEffect(() => {
     if (!patientQuery || patientQuery.length < 2) {
@@ -181,7 +161,7 @@ export function QuickOrderModal({ open, onOpenChange }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ testId, add }),
       });
-      if (res.ok) fetchFavorites();
+      if (res.ok) fetchQuickData();
     } catch {
       toast.error("No se pudo actualizar favorito");
     }

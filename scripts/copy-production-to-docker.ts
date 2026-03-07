@@ -20,9 +20,10 @@ import * as path from "path";
 
 const BACKUP_FILE = path.join(process.cwd(), "backup-production.sql");
 
-// host.docker.internal funciona en Docker Desktop (Win/Mac). En Linux se usa --add-host
+// host.docker.internal funciona en Docker Desktop (Win/Mac). Puerto 5433 = mapeo en docker-compose (5433:5432)
 const LOCAL_HOST = "host.docker.internal";
-const LOCAL_URL = `postgresql://postgres:postgres@${LOCAL_HOST}:5432/sistema_lab_dev`;
+const LOCAL_PORT = process.env.DOCKER_POSTGRES_PORT || "5433";
+const LOCAL_URL = `postgresql://postgres:postgres@${LOCAL_HOST}:${LOCAL_PORT}/sistema_lab_dev`;
 
 function runDocker(args: string[], env?: Record<string, string>): boolean {
   const r = spawnSync("docker", args, {

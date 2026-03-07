@@ -49,26 +49,21 @@ export default function PromocionesPage() {
   const [searchTest, setSearchTest] = useState("");
 
   const loadData = async () => {
-    const [profRes, testsRes] = await Promise.all([
-      fetch("/api/test-profiles?active=false"),
-      fetch("/api/tests?active=true"),
-    ]);
-    if (profRes.ok) {
-      const data = await profRes.json();
+    const res = await fetch("/api/catalog/promociones-data");
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
       setProfiles(data.profiles ?? []);
-    }
-    if (testsRes.ok) {
-      const data = await testsRes.json();
-      const items = (data.items ?? []).map(
-        (t: { id: string; code: string; name: string; section?: { name?: string; code?: string } | null; price: number }) => ({
-          id: t.id,
-          code: t.code,
-          name: t.name,
-          section: t.section?.name ?? t.section?.code ?? "",
-          price: t.price,
-        }),
+      setTests(
+        (data.items ?? []).map(
+          (t: { id: string; code: string; name: string; section?: string; price: number }) => ({
+            id: t.id,
+            code: t.code,
+            name: t.name,
+            section: t.section ?? "",
+            price: t.price,
+          }),
+        )
       );
-      setTests(items);
     }
   };
 

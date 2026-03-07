@@ -109,6 +109,17 @@ export default function ConfiguracionPage() {
     hasPermissionClient(session, PERMISSION_GESTIONAR_CATALOGO) ||
     hasPermissionClient(session, PERMISSION_GESTIONAR_LAB_REFERIDOS);
 
+  const loadConfig = async () => {
+    const res = await fetch("/api/config/bundle");
+    if (res.ok) {
+      const data = await res.json();
+      setRoles(data.roles ?? []);
+      setUsers(data.users ?? []);
+      setBranches(data.branches ?? []);
+      setPrintConfig(data.printConfig ?? null);
+    }
+  };
+
   const loadRoles = async () => {
     const res = await fetch("/api/roles");
     if (res.ok) {
@@ -142,7 +153,7 @@ export default function ConfiguracionPage() {
   };
 
   useEffect(() => {
-    Promise.all([loadRoles(), loadUsers(), loadPrintConfig(), loadBranches()]).finally(() => setLoading(false));
+    loadConfig().finally(() => setLoading(false));
   }, []);
 
   const handleSaveRole = async (e: React.FormEvent<HTMLFormElement>) => {

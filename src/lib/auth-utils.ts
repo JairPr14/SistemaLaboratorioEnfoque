@@ -77,20 +77,20 @@ export const PERMISSION_GROUPS = [
     ],
   },
   {
-    label: "Órdenes y Flujo",
-    permissions: [{ code: PERMISSION_VER_ORDENES, label: "Ver órdenes, pendientes, entregados, laboratorio" }],
+    label: "Órdenes",
+    permissions: [{ code: PERMISSION_VER_ORDENES, label: "Ver órdenes, pendientes y entregados" }],
   },
   { label: "Recepción", permissions: [{ code: PERMISSION_QUICK_ACTIONS_RECEPCION, label: "Acciones rápidas de recepción" }] },
   {
-    label: "Análisis",
+    label: "Opciones de Laboratorio",
     permissions: [
       { code: PERMISSION_QUICK_ACTIONS_ANALISTA, label: "Acciones rápidas de analista" },
       { code: PERMISSION_CAPTURAR_RESULTADOS, label: "Capturar resultados" },
       { code: PERMISSION_VALIDAR_RESULTADOS, label: "Validar resultados" },
+      { code: PERMISSION_IMPRIMIR_RESULTADOS, label: "Imprimir resultados" },
     ],
   },
   { label: "Entrega", permissions: [{ code: PERMISSION_QUICK_ACTIONS_ENTREGA, label: "Acciones rápidas de entrega" }] },
-  { label: "Resultados", permissions: [{ code: PERMISSION_IMPRIMIR_RESULTADOS, label: "Imprimir resultados" }] },
 ] as const;
 
 export const ALL_PERMISSIONS = PERMISSION_GROUPS.flatMap((g) =>

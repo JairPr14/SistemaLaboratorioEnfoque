@@ -123,6 +123,7 @@ export function ResultForm({
   const [updatingParamId, setUpdatingParamId] = useState<string | null>(null);
   const [additionalItems, setAdditionalItems] = useState<TemplateItem[]>([]);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const editParamGroupInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<ResultFormValues>({
     resolver: zodResolver(resultSchema) as Resolver<ResultFormValues>,
@@ -356,6 +357,14 @@ export function ResultForm({
     setEditParamName(item.paramName);
     setEditParamModalOpen(true);
   };
+
+  // Enfocar el campo Grupo al abrir el diálogo para poder editarlo (evita que quede bloqueado)
+  useEffect(() => {
+    if (editParamModalOpen && editParamGroupInputRef.current) {
+      const t = setTimeout(() => editParamGroupInputRef.current?.focus(), 50);
+      return () => clearTimeout(t);
+    }
+  }, [editParamModalOpen]);
 
   const handleSaveEditParam = async () => {
     if (!editingParam) return;
@@ -822,17 +831,27 @@ export function ResultForm({
                   Modifica el nombre y grupo del parámetro adicional.
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 py-2">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSaveEditParam();
+                }}
+                className="space-y-4 py-2"
+              >
                 <div className="space-y-2">
                   <label htmlFor="editParamGroup" className="text-sm font-medium text-slate-700 dark:text-slate-300">
                     Grupo (opcional)
                   </label>
                   <Input
+                    ref={editParamGroupInputRef}
                     id="editParamGroup"
+                    type="text"
                     value={editParamGroup}
                     onChange={(e) => setEditParamGroup(e.target.value)}
                     placeholder="Ej. Microscópico, Químico... (vacío = General)"
                     className="h-9"
+                    autoComplete="off"
+                    aria-label="Grupo del parámetro"
                   />
                 </div>
                 <div className="space-y-2">
@@ -841,28 +860,31 @@ export function ResultForm({
                   </label>
                   <Input
                     id="editParamName"
+                    type="text"
                     value={editParamName}
                     onChange={(e) => setEditParamName(e.target.value)}
                     placeholder="Nuevo parámetro"
                     className="h-9"
+                    autoComplete="off"
+                    aria-label="Nombre del parámetro"
                   />
                 </div>
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setEditParamModalOpen(false);
-                    setEditingParam(null);
-                  }}
-                >
-                  Cancelar
-                </Button>
-                <Button type="button" onClick={handleSaveEditParam}>
-                  Guardar
-                </Button>
-              </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setEditParamModalOpen(false);
+                      setEditingParam(null);
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button type="submit">
+                    Guardar
+                  </Button>
+                </div>
+              </form>
             </DialogContent>
           </Dialog>
         </>
