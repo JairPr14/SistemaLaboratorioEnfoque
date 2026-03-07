@@ -23,7 +23,9 @@
     "db:copy-production": "tsx scripts/copy-production-to-docker.ts",
     "db:setup-from-production": "pnpm docker:up && pnpm db:copy-production",
     "db:restore-to-production": "tsx scripts/restore-backup-to-production.ts",
-    "studio:local": "tsx scripts/prisma-studio-local.ts"
+    "studio:local": "tsx scripts/prisma-studio-local.ts",
+    "db:verify-catalog": "tsx scripts/verify-catalog-templates.ts",
+    "db:restore-tests": "tsx scripts/restore-deleted-tests.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

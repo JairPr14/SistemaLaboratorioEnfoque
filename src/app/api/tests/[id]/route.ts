@@ -153,11 +153,25 @@ export async function DELETE(_request: Request, { params }: Params) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
   if (!hasPermission(session, PERMISSION_GESTIONAR_CATALOGO)) {
-    return NextResponse.json({ error: "Sin permiso para eliminar análisis" }, { status: 403 });
+    return NextResponse.json({ error: "Sin permiso para eliminar an?lisis" }, { status: 403 });
   }
 
   try {
     const { id } = await params;
+    const test = await prisma.labTest.findUnique({
+      where: { id },
+      select: { template: { select: { id: true } } },
+    });
+    if (!test) {
+      return NextResponse.json({ error: "An?lisis no encontrado" }, { status: 404 });
+    }
+    if (!test.template) {
+      return NextResponse.json(
+        { error: "No se puede eliminar un an?lisis sin plantilla. Cree primero una plantilla para este an?lisis." },
+        { status: 400 },
+      );
+    }
+
     const item = await prisma.labTest.update({
       where: { id },
       data: { deletedAt: new Date(), isActive: false },

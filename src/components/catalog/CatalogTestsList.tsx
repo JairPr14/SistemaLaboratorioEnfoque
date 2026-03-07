@@ -6,6 +6,7 @@ import { CheckCircle2, FileText } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 import { DeleteButton } from "@/components/common/DeleteButton";
 import { formatCurrency } from "@/lib/format";
 
@@ -157,7 +158,20 @@ export function CatalogTestsList({ tests, canEdit = false, canDelete = false }: 
                               Editar
                             </Link>
                           )}
-                          {canDelete && <DeleteButton url={`/api/tests/${test.id}`} label="Eliminar" />}
+                          {canDelete && (
+                              test.hasTemplate ? (
+                                <DeleteButton url={`/api/tests/${test.id}`} label="Eliminar" />
+                              ) : (
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  disabled
+                                  title="No se puede eliminar un análisis sin plantilla. Cree primero una plantilla."
+                                >
+                                  Eliminar
+                                </Button>
+                              )
+                            )}
                         </TableCell>
                         )}
                       </TableRow>

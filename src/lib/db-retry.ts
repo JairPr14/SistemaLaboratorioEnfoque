@@ -17,14 +17,14 @@ function isConnectionLimitError(err: unknown): boolean {
 
 /**
  * Ejecuta una operación de BD y reintenta hasta `maxRetries` veces si falla por límite de conexiones.
- * Espera entre reintentos (1s, 2s, 3s...) para dar tiempo a que se liberen conexiones.
+ * Espera entre reintentos (2s, 4s, 6s...) para dar tiempo a que se liberen conexiones.
  */
 export async function withDbRetry<T>(
   fn: () => Promise<T>,
   options?: { maxRetries?: number; baseDelayMs?: number }
 ): Promise<T> {
-  const maxRetries = options?.maxRetries ?? 3;
-  const baseDelayMs = options?.baseDelayMs ?? 1000;
+  const maxRetries = options?.maxRetries ?? 5;
+  const baseDelayMs = options?.baseDelayMs ?? 2000;
 
   let lastError: unknown;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
