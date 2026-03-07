@@ -2,22 +2,20 @@ import { NextResponse } from "next/server";
 
 
 import { prisma } from "@/lib/prisma";
-import { getServerSession, hasPermission, PERMISSION_CAPTURAR_RESULTADOS, PERMISSION_VER_ORDENES } from "@/lib/auth";
+import { requireAnyPermission, PERMISSION_CAPTURAR_RESULTADOS, PERMISSION_VER_ORDENES, PERMISSION_QUICK_ACTIONS_RECEPCION, PERMISSION_QUICK_ACTIONS_ANALISTA, PERMISSION_QUICK_ACTIONS_ENTREGA } from "@/lib/auth";
 import { handleApiError } from "@/lib/api-errors";
 
 type Params = { params: Promise<{ id: string; itemId: string }> };
 
 export async function PUT(request: Request, { params }: Params) {
-  const session = await getServerSession();
-  if (!session?.user) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
-  const canEdit =
-    hasPermission(session, PERMISSION_CAPTURAR_RESULTADOS) ||
-    hasPermission(session, PERMISSION_VER_ORDENES);
-  if (!canEdit) {
-    return NextResponse.json({ error: "Sin permiso para actualizar laboratorio referido" }, { status: 403 });
-  }
+  const auth = await requireAnyPermission([
+    PERMISSION_CAPTURAR_RESULTADOS,
+    PERMISSION_VER_ORDENES,
+    PERMISSION_QUICK_ACTIONS_RECEPCION,
+    PERMISSION_QUICK_ACTIONS_ANALISTA,
+    PERMISSION_QUICK_ACTIONS_ENTREGA,
+  ]);
+  if (auth.response) return auth.response;
 
   try {
     const { id: orderId, itemId } = await params;
