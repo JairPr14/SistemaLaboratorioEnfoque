@@ -6,6 +6,9 @@ import { getPrintConfig } from "@/lib/print-config";
 import { formatDatePrint, formatDniDisplay, formatPatientDisplayName, formatSexDisplay } from "@/lib/format";
 import { PrintViewClient } from "@/components/orders/PrintViewClient";
 import { PrintImageWithFallback } from "@/components/orders/PrintImageWithFallback";
+import { DraggableStamp } from "@/components/orders/DraggableStamp";
+import { DraggableReferredLogo } from "@/components/orders/DraggableReferredLogo";
+import { DraggableReferredStamp } from "@/components/orders/DraggableReferredStamp";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -558,9 +561,9 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
           labTest: { 
             include: { 
               section: true,
-              referredLab: { select: { id: true, name: true, logoUrl: true } },
+              referredLab: { select: { id: true, name: true, logoUrl: true, stampImageUrl: true } },
               referredLabOptions: {
-                include: { referredLab: { select: { id: true, name: true, logoUrl: true } } },
+                include: { referredLab: { select: { id: true, name: true, logoUrl: true, stampImageUrl: true } } },
                 take: 5,
               },
               template: { 
@@ -573,7 +576,7 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
               },
             },
           },
-          referredLab: { select: { id: true, name: true, logoUrl: true } },
+          referredLab: { select: { id: true, name: true, logoUrl: true, stampImageUrl: true } },
           result: { include: { items: { orderBy: { order: "asc" } } } },
         },
         orderBy: { createdAt: "asc" },
@@ -640,7 +643,7 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
 
   const getEffectiveReferredLab = (
     item: (typeof itemsToPrint)[number]
-  ): { id: string; name: string; logoUrl: string | null } | null => {
+  ): { id: string; name: string; logoUrl: string | null; stampImageUrl: string | null } | null => {
     if (item.referredLab) return item.referredLab;
     if (item.labTest.referredLab) return item.labTest.referredLab;
     const opts = item.labTest.referredLabOptions ?? [];
@@ -652,6 +655,19 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
   const referredLabWithLogo = itemsToPrint
     .map(getEffectiveReferredLab)
     .find((lab) => lab?.logoUrl);
+
+  const referredLabWithStamp = itemsToPrint
+    .map(getEffectiveReferredLab)
+    .find((lab) => lab?.stampImageUrl);
+
+  const referredLabIdsWithStamp = [
+    ...new Set(
+      itemsToPrint
+        .map(getEffectiveReferredLab)
+        .filter((lab): lab is NonNullable<typeof lab> => !!lab?.stampImageUrl)
+        .map((lab) => lab.id)
+    ),
+  ];
 
   const printConfig = await getPrintConfig();
   const showStamp = printConfig.stampEnabled && printConfig.stampImageUrl;
@@ -676,6 +692,9 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
     toggleLogoUrl: buildPrintUrl(!showReferredLogo),
     showLogoButton: !!referredLabWithLogo,
     logoVisible: showReferredLogo,
+    showStampButton: !!showStamp || !!referredLabWithLogo || !!referredLabWithStamp,
+    orderId: id,
+    referredLabIdsWithStamp,
   };
 
   return (
@@ -709,33 +728,40 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
               fallback={<span className="print-watermark-central" aria-hidden />}
             />
             <footer className="print-pdf-footer">
-              <PrintImageWithFallback
-                src="/print-footer.png"
-                className="print-pdf-footer-img"
-                fallback={
-                  <div className="print-pdf-footer-html">
-                    <div className="print-pdf-footer-left">
-                      <span> Clinica Enfoque Salud</span>
-                      <span>TU SALUD NUESTRA PRIORIDAD</span>
-                    </div>
-                    <div className="print-pdf-footer-right">
-                      <span>992 928 248</span>
-                      <span>Calle Alfonso Ugarte #641</span>
-                    </div>
-                  </div>
-                }
-              />
+              <div className="print-pdf-footer-left">
+                <span className="print-pdf-footer-item">
+                  <svg className="print-pdf-footer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+                  Clinica Enfoque Salud
+                </span>
+                <span className="print-pdf-footer-item">
+                  <svg className="print-pdf-footer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                  CLINICA ENFOQUE SALUD
+                </span>
+              </div>
+              <div className="print-pdf-footer-right">
+                <span className="print-pdf-footer-item">
+                  <svg className="print-pdf-footer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                  992 928 248
+                </span>
+                <span className="print-pdf-footer-item">
+                  <svg className="print-pdf-footer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  Calle Alfonso Ugarte #641
+                </span>
+              </div>
             </footer>
             {showReferredLogo && referredLabWithLogo && page.hasReferredAnalyses && (
-              <div className="print-referred-lab-header">
-                <span className="print-referred-lab-label">Con el respaldo de</span>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={referredLabWithLogo.logoUrl!}
-                  alt={referredLabWithLogo.name}
-                  className="print-referred-lab-logo"
-                />
-              </div>
+              <DraggableReferredLogo
+                logoUrl={referredLabWithLogo.logoUrl!}
+                labName={referredLabWithLogo.name}
+                orderId={id}
+              />
+            )}
+            {referredLabWithStamp && page.hasReferredAnalyses && (
+              <DraggableReferredStamp
+                stampImageUrl={referredLabWithStamp.stampImageUrl!}
+                orderId={id}
+                labId={referredLabWithStamp.id}
+              />
             )}
             <div className={`print-html-content relative z-10 ${page.hasCompactAdditionalParams ? "print-html-content-compact" : ""}`}>
               <div className="print-patient-block">
@@ -830,14 +856,7 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
               </div>
             </div>
             {showStamp && (
-              <div className="print-stamp-overlay">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={printConfig.stampImageUrl!}
-                  alt="Sello y firma"
-                  className="print-stamp-img"
-                />
-              </div>
+              <DraggableStamp stampImageUrl={printConfig.stampImageUrl!} orderId={id} />
             )}
           </div>
         ))

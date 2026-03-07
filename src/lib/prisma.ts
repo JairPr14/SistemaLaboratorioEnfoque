@@ -23,9 +23,12 @@ if (dbUrlInfo.effectiveUrl) {
   prismaOptions.datasources = { db: { url: dbUrlInfo.effectiveUrl } };
 }
 
+const suppressManagedDbWarning = process.env.DATABASE_USE_PRODUCTION === "1";
+
 if (
   process.env.NODE_ENV !== "production" &&
   dbUrlInfo.isManagedPostgres &&
+  !suppressManagedDbWarning &&
   !globalForPrisma.prismaManagedDbWarningShown
 ) {
   console.warn(

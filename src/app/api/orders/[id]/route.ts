@@ -12,7 +12,6 @@ import {
   PERMISSION_QUICK_ACTIONS_RECEPCION,
   PERMISSION_QUICK_ACTIONS_ANALISTA,
   PERMISSION_QUICK_ACTIONS_ENTREGA,
-  getServerSession,
   hasPermission,
 } from "@/lib/auth";
 import { logger } from "@/lib/logger";
@@ -79,29 +78,27 @@ export async function PUT(request: Request, { params }: Params) {
       }
     }
 
+    let updateData: Parameters<typeof prisma.labOrder.update>[0]["data"] = {
+      status: parsed.status,
+      notes: parsed.notes !== undefined ? parsed.notes : undefined,
+      preAnalyticNote:
+        parsed.preAnalyticNote !== undefined ? parsed.preAnalyticNote : undefined,
+      requestedBy: parsed.requestedBy !== undefined ? parsed.requestedBy : undefined,
+      patientType: parsed.patientType !== undefined ? parsed.patientType : undefined,
+      branchId: parsed.branchId !== undefined ? parsed.branchId : undefined,
+      deliveredAt:
+        parsed.deliveredAt !== undefined
+          ? parsed.deliveredAt
+            ? parseDateTimePeru(parsed.deliveredAt)
+            : null
+          : parsed.status === "ENTREGADO"
+            ? new Date()
+            : undefined,
+    };
+
     const item = await prisma.labOrder.update({
       where: { id },
-      data: {
-        status: parsed.status,
-        notes: parsed.notes !== undefined ? parsed.notes : undefined,
-        preAnalyticNote:
-          parsed.preAnalyticNote !== undefined ? parsed.preAnalyticNote : undefined,
-        requestedBy: parsed.requestedBy !== undefined ? parsed.requestedBy : undefined,
-        patientType: parsed.patientType !== undefined ? parsed.patientType : undefined,
-        branchId: parsed.branchId !== undefined ? parsed.branchId : undefined,
-        admissionSettledAt:
-          parsed.admissionSettledAt !== undefined
-            ? (parsed.admissionSettledAt ? parseDateTimePeru(parsed.admissionSettledAt) : null)
-            : undefined,
-        deliveredAt:
-          parsed.deliveredAt !== undefined
-            ? parsed.deliveredAt
-              ? parseDateTimePeru(parsed.deliveredAt)
-              : null
-            : parsed.status === "ENTREGADO"
-              ? new Date()
-              : undefined,
-      },
+      data: updateData,
     });
 
     if (parsed.preAnalyticNote !== undefined) {

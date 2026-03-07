@@ -208,7 +208,6 @@ export const templateSchema = z.object({
   items: z.array(templateItemSchema).min(1),
 });
 
-export const orderSourceValues = ["ADMISION", "LABORATORIO"] as const;
 export const orderPriceTypeValues = ["PUBLICO", "CONVENIO"] as const;
 export const paymentMethodValues = ["EFECTIVO", "TARJETA", "TRANSFERENCIA", "CREDITO"] as const;
 
@@ -266,50 +265,6 @@ export const quickOrderSchema = z.object({
   { message: "Selecciona al menos un análisis o una promoción", path: ["tests"] }
 );
 
-export const admissionStatusValues = ["PENDIENTE", "CONVERTIDA", "CANCELADA"] as const;
-
-export const admissionItemAdjustmentSchema = z.object({
-  testId: z.string().min(1),
-  priceApplied: z.coerce.number().min(0),
-  adjustmentReason: z.string().max(200).optional().nullable(),
-});
-
-export const admissionCreateSchema = z.object({
-  patientId: z.string().optional(),
-  patientDraft: patientDraftSchema.optional(),
-  requestedBy: z.string().optional().nullable(),
-  notes: z.string().optional().nullable(),
-  patientType: z.preprocess(
-    (v) => (v === "" || v === undefined ? null : v),
-    z.enum(orderPatientTypeValues).nullable()
-  ).optional(),
-  branchId: z.preprocess(
-    (v) => (v === "" || v === undefined ? null : v),
-    z.string().nullable()
-  ).optional(),
-  tests: z.array(z.string().min(1)).optional().default([]),
-  profileIds: z.array(z.string().min(1)).optional().default([]),
-  itemAdjustments: z.array(admissionItemAdjustmentSchema).optional().default([]),
-}).refine(
-  (data) => data.tests.length > 0 || data.profileIds.length > 0,
-  { message: "Selecciona al menos un análisis o una promoción", path: ["tests"] }
-);
-
-export const admissionUpdateSchema = z.object({
-  requestedBy: z.string().optional().nullable(),
-  notes: z.string().optional().nullable(),
-  patientType: z.preprocess(
-    (v) => (v === "" || v === undefined ? null : v),
-    z.enum(orderPatientTypeValues).nullable()
-  ).optional(),
-  branchId: z.preprocess(
-    (v) => (v === "" || v === undefined ? null : v),
-    z.string().nullable()
-  ).optional(),
-  status: z.enum(admissionStatusValues).optional(),
-  itemAdjustments: z.array(admissionItemAdjustmentSchema).optional().default([]),
-});
-
 export const testProfileSchema = z.object({
   name: z.string().min(2, "Nombre mínimo 2 caracteres"),
   packagePrice: z.preprocess(
@@ -332,10 +287,6 @@ export const orderUpdateSchema = z.object({
   branchId: z.preprocess(
     (v) => (v === "" || v === undefined ? null : v),
     z.string().nullable()
-  ).optional(),
-  admissionSettledAt: z.preprocess(
-    (v) => (v === "" || v === undefined ? null : v),
-    z.string().datetime().nullable()
   ).optional(),
 });
 

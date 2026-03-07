@@ -217,6 +217,7 @@ export default async function DashboardPage({
           <QuickActions
             sectionOptions={sections.map((s) => ({ value: s.code, label: s.name }))}
             hasPatients={hasPatients}
+            session={session}
           />
         )}
       </div>

@@ -109,15 +109,9 @@ export function hasPermission(session: SessionLike, permission: string): boolean
   return false;
 }
 
-/** El módulo admisión fue removido. Mantenido por compatibilidad con isReceptionProfile. */
-export function isAdmissionOnlyProfile(_session: SessionLike): boolean {
-  return false;
-}
-
 export function isReceptionProfile(session: SessionLike): boolean {
   if (!session?.user) return false;
   if (session.user.roleCode === ADMIN_ROLE_CODE) return false;
-  if (isAdmissionOnlyProfile(session)) return false;
   return hasPermission(session, PERMISSION_QUICK_ACTIONS_RECEPCION) && hasPermission(session, PERMISSION_VER_ORDENES);
 }
 

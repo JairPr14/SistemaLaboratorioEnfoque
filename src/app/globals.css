@@ -120,7 +120,7 @@ body {
   aside,
   header,
   nav,
-  footer,
+  footer:not(.print-pdf-footer),
   button:not(.print-keep) {
     display: none !important;
   }
@@ -355,6 +355,11 @@ body {
   position: relative;
 }
 
+/* En modo edición del sello: permitir que mango e imagen sobresalgan del PDF */
+.print-stamp-edit-mode .print-html-page {
+  overflow: visible;
+}
+
 /* Watermarks en esquinas: debajo del texto, 10% transparencia */
 .print-watermark-corner {
   position: absolute;
@@ -398,47 +403,69 @@ body {
   display: none !important;
 }
 
-/* Footer del PDF: banner contacto, sin márgenes ni padding */
+/* Footer del PDF: dos secciones (azul + teal), bordes redondeados */
 .print-pdf-footer {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  height: 50px;
-  z-index: 2;
+  width: 100%;
+  box-sizing: border-box;
+  height: 56px;
+  min-height: 56px;
+  z-index: 50;
   display: flex;
   align-items: stretch;
   margin: 0;
-  padding: 0;
-}
-.print-pdf-footer-img {
-  width: 100%;
-  height: 100%;
-  object-fit: fill;
-}
-.print-pdf-footer-html {
-  display: flex;
-  width: 100%;
-  font-size: 10px;
-  color: white;
+  padding: 0 7px 10px 7px;
+  border-radius: 28px;
+  overflow: hidden;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
 }
 .print-pdf-footer-left {
   flex: 1;
-  background: #1e3a5f;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 24px;
-  padding: 0 12px;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+  padding: 8px 16px;
+  border-radius: 28px 0 0 28px;
+  background-color: #00688d !important;
+  color: #ffffff !important;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
 }
 .print-pdf-footer-right {
   flex: 1;
-  background: #0d9488;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 24px;
-  padding: 0 12px;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+  padding: 8px 16px;
+  border-radius: 0 28px 28px 0;
+  background-color: #5ce1e6 !important;
+  color: #ffffff !important;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+.print-pdf-footer-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffffff !important;
+}
+.print-pdf-footer-icon {
+  width: 19px;
+  height: 19px;
+  flex-shrink: 0;
+  color: #ffffff;
 }
 
 /* Logo lab terciarizado: a la altura de la firma, a la izquierda */
@@ -455,6 +482,9 @@ body {
   pointer-events: none;
   user-select: none;
 }
+.print-referred-lab-header.print-referred-lab-editable {
+  pointer-events: auto;
+}
 
 .print-referred-lab-label {
   font-size: 10px;
@@ -470,6 +500,11 @@ body {
   width: auto;
   height: auto;
   object-fit: contain;
+}
+
+.print-referred-logo-wrapper {
+  position: relative;
+  display: inline-block;
 }
 
 /* Área de contenido: watermarks en esquinas, sin header grande */
@@ -601,28 +636,81 @@ body {
   color: #64748b;
 }
 
-/* Sello y firma: solo en última hoja, encima del contenido a la derecha, sin tapar texto */
+/* Sello y firma: posición por defecto; draggable permite moverlo */
 .print-stamp-overlay {
   position: absolute;
   bottom: 20mm;
   right: calc(12mm - 30px);
   z-index: 2;
-  pointer-events: none;
   user-select: none;
   display: flex;
   justify-content: flex-end;
   align-items: flex-end;
 }
 
+/* En pantalla: permitir arrastrar el sello solo en modo edición */
+.print-stamp-draggable {
+  cursor: grab;
+}
+.print-stamp-draggable:active {
+  cursor: grabbing;
+}
+
+/* Contenedor del sello para controlar tamaño */
+.print-stamp-img-wrapper {
+  flex-shrink: 0;
+  position: relative;
+}
+
 .print-stamp-img {
-  max-width: 250px;
-  max-height: 150px;
+  max-width: 263px;
+  max-height: 158px;
   width: auto;
   height: auto;
   object-fit: contain;
   pointer-events: none;
   user-select: none;
   opacity: 0.82;
+}
+
+.print-stamp-img-wrapper .print-stamp-img {
+  max-width: none;
+  max-height: none;
+}
+
+/* Mango de redimensionar: sobre la esquina de la imagen, solo en modo edición */
+.print-stamp-resize-handle {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 2px solid #0d9488;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 4px;
+  cursor: nwse-resize;
+  z-index: 10;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+.print-stamp-resize-handle::after {
+  content: "";
+  position: absolute;
+  bottom: 3px;
+  right: 3px;
+  width: 6px;
+  height: 6px;
+  border-right: 2px solid #0d9488;
+  border-bottom: 2px solid #0d9488;
+}
+
+@media print {
+  .print-stamp-draggable {
+    pointer-events: none !important;
+  }
+  .print-stamp-resize-handle {
+    display: none !important;
+  }
 }
 
 @media print {
@@ -639,6 +727,7 @@ body {
     margin: 0 auto !important;
     box-shadow: none !important;
     page-break-after: always;
+    overflow: hidden !important;
   }
 
   .print-html-page:last-child {

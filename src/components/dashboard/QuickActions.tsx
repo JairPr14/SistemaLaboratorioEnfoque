@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import type { Session } from "next-auth";
 import { toast } from "sonner";
 import {
   FileCheck2,
@@ -40,10 +40,12 @@ import { CashierDialog } from "@/components/pagos/CashierDialog";
 type Props = {
   sectionOptions: Array<{ value: string; label: string }>;
   hasPatients?: boolean;
+  /** Sesión del servidor (evita depender de SessionProvider) */
+  session?: Session | null;
 };
 
-export function QuickActions({ sectionOptions, hasPatients }: Props) {
-  const { data: session } = useSession();
+export function QuickActions({ sectionOptions, hasPatients, session: sessionProp }: Props) {
+  const session = sessionProp ?? null;
   const router = useRouter();
   const [quickOrderOpen, setQuickOrderOpen] = useState(false);
   const [cashierOpen, setCashierOpen] = useState(false);

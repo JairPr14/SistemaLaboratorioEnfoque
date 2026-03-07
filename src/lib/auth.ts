@@ -46,7 +46,6 @@ export {
   ADMIN_ROLE_CODE,
   hasPermission,
   hasAnyPermission,
-  isAdmissionOnlyProfile,
   isReceptionProfile,
   hasRoleWithPermissions,
   isAdmin,

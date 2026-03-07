@@ -1,9 +1,10 @@
 "use client";
 
+import { useRef, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { FileDown, ArrowLeft, ImagePlus, ImageMinus, EyeOff } from "lucide-react";
+import { FileDown, ArrowLeft, ImagePlus, ImageMinus, EyeOff, Move, RotateCcw, Settings2, ChevronDown } from "lucide-react";
 
 const WHATSAPP_SVG = (
   <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden>
@@ -33,6 +34,16 @@ type PrintToolbarProps = {
   onToggleWatermarkFooter?: () => void;
   /** Si la marca de agua y footer están ocultos */
   watermarkFooterHidden?: boolean;
+  /** Callback para alternar modo de edición del sello (posición y tamaño) */
+  onToggleStampEdit?: () => void;
+  /** Si el modo edición del sello está activo */
+  stampEditMode?: boolean;
+  /** Mostrar botón de modificar lugar de firma (solo cuando hay sello) */
+  showStampButton?: boolean;
+  /** ID de la orden para restaurar posiciones de firma/logo/sellos */
+  orderId?: string;
+  /** IDs de laboratorios referidos con sello (para limpiar sus posiciones) */
+  referredLabIdsWithStamp?: string[];
 };
 
 /** Genera nombre de archivo PDF: Nombre-Apellido-codigoOrden (ej. CesarJair-PalaciosRodas-ENF001) */
@@ -67,8 +78,46 @@ export function PrintToolbar({
   logoVisible = true,
   onToggleWatermarkFooter,
   watermarkFooterHidden = false,
+  onToggleStampEdit,
+  stampEditMode = false,
+  showStampButton = false,
+  orderId,
+  referredLabIdsWithStamp = [],
 }: PrintToolbarProps) {
   const router = useRouter();
+  const [configOpen, setConfigOpen] = useState(false);
+  const configRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (configRef.current && !configRef.current.contains(e.target as Node)) {
+        setConfigOpen(false);
+      }
+    };
+    if (configOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [configOpen]);
+
+  const handleRestorePositions = () => {
+    if (!orderId) return;
+    try {
+      localStorage.removeItem(`print-stamp-position-${orderId}`);
+      localStorage.removeItem(`print-referred-logo-position-${orderId}`);
+      for (const labId of referredLabIdsWithStamp) {
+        localStorage.removeItem(`print-referred-stamp-position-${orderId}-${labId}`);
+      }
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith(`print-referred-stamp-position-${orderId}-`)) {
+          localStorage.removeItem(key);
+        }
+      });
+      window.location.reload();
+    } catch {
+      // ignore
+    }
+  };
 
   const handleSavePdf = () => {
     const baseTitle = document.title;
@@ -120,34 +169,90 @@ export function PrintToolbar({
         </Button>
       )}
       <div className="flex flex-wrap items-center gap-2">
-        {onToggleWatermarkFooter && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onToggleWatermarkFooter}
-            className="inline-flex items-center gap-1"
-          >
-            <EyeOff className="h-4 w-4" />
-            {watermarkFooterHidden ? "Mostrar marca de agua y footer" : "Quitar marca de agua y footer"}
-          </Button>
-        )}
-        {showLogoButton && toggleLogoUrl && (
-          <Button type="button" variant="outline" size="sm" asChild>
-            <Link href={toggleLogoUrl} className="inline-flex items-center gap-1">
-              {logoVisible ? (
-                <>
-                  <ImageMinus className="h-4 w-4" />
-                  Quitar logo referido
-                </>
-              ) : (
-                <>
-                  <ImagePlus className="h-4 w-4" />
-                  Poner logo referido
-                </>
-              )}
-            </Link>
-          </Button>
+        {(onToggleWatermarkFooter || showStampButton || showLogoButton) && (
+          <div ref={configRef} className="relative">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="inline-flex items-center gap-1"
+              onClick={() => setConfigOpen((o) => !o)}
+            >
+              <Settings2 className="h-4 w-4" />
+              Configurar PDF
+              <ChevronDown
+                className={`h-4 w-4 transition-transform ${configOpen ? "rotate-180" : ""}`}
+              />
+            </Button>
+            {configOpen && (
+              <div className="absolute right-0 top-full mt-1 z-50 min-w-[240px] rounded-lg border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+              <div className="flex flex-col gap-1">
+                {onToggleWatermarkFooter && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      onToggleWatermarkFooter();
+                      setConfigOpen(false);
+                    }}
+                    className="justify-start gap-2 h-9"
+                  >
+                    <EyeOff className="h-4 w-4" />
+                    {watermarkFooterHidden ? "Mostrar marca de agua y footer" : "Quitar marca de agua y footer"}
+                  </Button>
+                )}
+                {showStampButton && onToggleStampEdit && (
+                  <Button
+                    type="button"
+                    variant={stampEditMode ? "secondary" : "ghost"}
+                    size="sm"
+                    onClick={() => {
+                      onToggleStampEdit();
+                      setConfigOpen(false);
+                    }}
+                    className="justify-start gap-2 h-9"
+                  >
+                    <Move className="h-4 w-4" />
+                    {stampEditMode ? "Listo (posición guardada)" : "Modificar lugar de firma"}
+                  </Button>
+                )}
+                {showStampButton && orderId && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      handleRestorePositions();
+                      setConfigOpen(false);
+                    }}
+                    className="justify-start gap-2 h-9"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    Restaurar posición
+                  </Button>
+                )}
+                {showLogoButton && toggleLogoUrl && (
+                  <Button type="button" variant="ghost" size="sm" asChild className="justify-start gap-2 h-9">
+                    <Link href={toggleLogoUrl}>
+                      {logoVisible ? (
+                        <>
+                          <ImageMinus className="h-4 w-4" />
+                          Quitar logo referido
+                        </>
+                      ) : (
+                        <>
+                          <ImagePlus className="h-4 w-4" />
+                          Poner logo referido
+                        </>
+                      )}
+                    </Link>
+                  </Button>
+                )}
+              </div>
+            </div>
+            )}
+          </div>
         )}
         <Button type="button" variant="default" size="sm" onClick={handleSavePdf}>
           <FileDown className="h-4 w-4" />
