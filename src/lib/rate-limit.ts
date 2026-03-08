@@ -91,6 +91,11 @@ export const RATE_LIMITS = {
     maxRequests: 100,
     windowMs: 60 * 1000, // 1 minuto
   },
+  /** Límite global para APIs: 60 peticiones por minuto por IP */
+  api: {
+    maxRequests: 60,
+    windowMs: 60 * 1000, // 1 minuto
+  },
   default: {
     maxRequests: 100,
     windowMs: 60 * 1000, // 1 minuto

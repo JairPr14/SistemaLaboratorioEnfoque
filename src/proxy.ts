@@ -94,6 +94,28 @@ export async function proxy(request: NextRequest) {
     }
   }
 
+  // Límite global de API: 60 peticiones por minuto por IP (evita saturar BD)
+  if (pathname.startsWith("/api/")) {
+    const identifier = getRateLimitIdentifier(request);
+    const result = checkRateLimit(`api:${identifier}`, RATE_LIMITS.api);
+    if (!result.success) {
+      return NextResponse.json(
+        {
+          error: "Demasiadas peticiones. Espere un momento e intente de nuevo.",
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(Math.ceil((result.resetTime - Date.now()) / 1000)),
+            "X-RateLimit-Limit": String(RATE_LIMITS.api.maxRequests),
+            "X-RateLimit-Remaining": String(result.remaining),
+            "X-RateLimit-Reset": String(result.resetTime),
+          },
+        },
+      );
+    }
+  }
+
   // Rutas públicas y assets
   if (pathname.startsWith(authApiPrefix) || publicPaths.includes(pathname)) {
     return NextResponse.next();

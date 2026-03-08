@@ -70,8 +70,11 @@ export default async function DashboardPage({
   let recentActivity: Array<{ id: string; orderId: string; patientName: string; text: string; createdAt: string }> = [];
   let tableOrdersWithPayment: Parameters<typeof DashboardPendingTable>[0]["orders"] = [];
 
+  const DASHBOARD_TIMEOUT_MS = 25_000;
+
   try {
-    await withDbRetry(async () => {
+    await Promise.race([
+      withDbRetry(async () => {
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -171,7 +174,11 @@ export default async function DashboardPage({
       const paymentStatus = paid <= 0 ? "PENDIENTE" : paid + 0.0001 < total ? "PARCIAL" : "PAGADO";
       return { ...order, paymentStatus: paymentStatus as "PENDIENTE" | "PARCIAL" | "PAGADO" };
     }) as Parameters<typeof DashboardPendingTable>[0]["orders"];
-    }, { maxRetries: 8, baseDelayMs: 3000 });
+      }, { maxRetries: 2, baseDelayMs: 1500 }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Dashboard timeout")), DASHBOARD_TIMEOUT_MS),
+      ),
+    ]);
   } catch (error) {
     logger.error("Dashboard data load failed:", error);
     // Fallback seguro: evitamos que la página entera caiga por errores transitorios de DB.
