@@ -3,12 +3,9 @@ import { redirect } from "next/navigation";
 import { getServerSession, hasPermission, isReceptionProfile } from "@/lib/auth";
 import {
   PERMISSION_VER_ORDENES,
-  PERMISSION_VER_PACIENTES,
-  PERMISSION_VER_CATALOGO,
   PERMISSION_QUICK_ACTIONS_RECEPCION,
   PERMISSION_QUICK_ACTIONS_ANALISTA,
   PERMISSION_QUICK_ACTIONS_ENTREGA,
-  PERMISSION_REGISTRAR_PAGOS,
 } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { withDbRetry } from "@/lib/db-retry";
@@ -17,7 +14,6 @@ import { logger } from "@/lib/logger";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClipboardList, Calendar } from "lucide-react";
 import { MetricCard } from "@/components/dashboard/MetricCard";
-import { QuickActions } from "@/components/dashboard/QuickActions";
 import { DashboardPendingTable } from "@/components/dashboard/DashboardPendingTable";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
 
@@ -56,13 +52,10 @@ export default async function DashboardPage({
   if (isReceptionProfile(session)) redirect("/orders");
 
   const hasOrders = !!session?.user && hasPermission(session, PERMISSION_VER_ORDENES);
-  const hasPatients = !!session?.user && hasPermission(session, PERMISSION_VER_PACIENTES);
-  const hasCatalog = !!session?.user && hasPermission(session, PERMISSION_VER_CATALOGO);
   const hasReception = !!session?.user && hasPermission(session, PERMISSION_QUICK_ACTIONS_RECEPCION);
   const hasAnalyst = !!session?.user && hasPermission(session, PERMISSION_QUICK_ACTIONS_ANALISTA);
   const hasDelivery = !!session?.user && hasPermission(session, PERMISSION_QUICK_ACTIONS_ENTREGA);
   const hasQuickActions = hasReception || hasAnalyst || hasDelivery;
-  const canRegisterPayment = !!session?.user && hasPermission(session, PERMISSION_REGISTRAR_PAGOS);
 
   let sections: Array<{ code: string; name: string }> = [];
   let pendingCount = 0;
@@ -189,7 +182,7 @@ export default async function DashboardPage({
       const paymentStatus = paid <= 0 ? "PENDIENTE" : paid + 0.0001 < total ? "PARCIAL" : "PAGADO";
       return { ...order, paymentStatus: paymentStatus as "PENDIENTE" | "PARCIAL" | "PAGADO" };
     }) as Parameters<typeof DashboardPendingTable>[0]["orders"];
-      }, { maxRetries: 2, baseDelayMs: 1500 }),
+      }, { maxRetries: 4, baseDelayMs: 2000 }),
       new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error("Dashboard timeout")), DASHBOARD_TIMEOUT_MS),
       ),
@@ -230,21 +223,12 @@ export default async function DashboardPage({
 
   return (
     <div className="min-w-0 space-y-5">
-      {/* Header compacto + acciones */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">Resumen</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 capitalize">
-            {new Date().toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-          </p>
-        </div>
-        {(hasQuickActions || canRegisterPayment || hasPatients) && (
-          <QuickActions
-            sectionOptions={sections.map((s) => ({ value: s.code, label: s.name }))}
-            hasPatients={hasPatients}
-            session={session}
-          />
-        )}
+      {/* Header: solo resumen (acciones en Topbar y Sidebar) */}
+      <div>
+        <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">Resumen</h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400 capitalize">
+          {new Date().toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+        </p>
       </div>
 
       {/* Métricas */}

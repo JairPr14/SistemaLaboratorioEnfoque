@@ -5,6 +5,7 @@
 const CONNECTION_ERROR_PATTERNS = [
   "too many connections",
   "too many database connections",
+  "too many connections for role",
   "connection limit exceeded",
   "remaining connection slots",
 ];

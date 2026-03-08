@@ -77,13 +77,31 @@ En Vercel serverless, cada petición puede ejecutarse en una función distinta (
 
 **Límite de Seenode:** Verifica en tu panel cuántas conexiones permite tu plan. Si hay muchos usuarios concurrentes, considera un plan con más conexiones o un pooler externo.
 
+## Desarrollo local: usa Docker, no Seenode
+
+Para evitar consumir las 5 conexiones de Seenode durante el desarrollo:
+
+1. En `.env`, cambia `DATABASE_URL` y `DIRECT_URL` a Docker:
+   ```
+   DATABASE_URL="postgresql://postgres:postgres@localhost:5433/sistema_lab_dev"
+   DIRECT_URL="postgresql://postgres:postgres@localhost:5433/sistema_lab_dev"
+   ```
+2. Levanta Docker: `docker compose up -d` (o el comando que use tu proyecto)
+3. Deja Seenode solo para producción (Vercel)
+
 ## Evitar saturación (importante para Seenode)
 
-Si ves "too many connections":
+Si ves **"Too many database connections"** o **"FATAL: too many connections for role"**:
 
-1. **La app ya usa `connection_limit=1` por defecto** para Seenode en producción.
-2. Opcional: añade `PRISMA_CONNECTION_LIMIT=1` en Vercel (redundante pero explícito).
-3. Reduce el uso concurrente o verifica el límite de conexiones de tu plan en Seenode.
+1. **Añade `connection_limit=1` a la URL** en Vercel (Settings → Environment Variables):
+   - `postgresql://user:pass@host:port/db?sslmode=require&connection_limit=1&pool_timeout=10&connect_timeout=15`
+   - Tanto `DATABASE_URL` como `DIRECT_URL` deben tener estos parámetros
+
+2. **Añade `PRISMA_CONNECTION_LIMIT=1`** en Vercel (refuerzo).
+
+3. **Revisa el límite de tu plan en Seenode** – muchos planes permiten 5–10 conexiones. Cada petición simultánea en Vercel ≈ 1 conexión. Con 5+ usuarios o pestañas abiertas se puede superar el límite.
+
+4. **Alternativa: migrar a Neon o Supabase** – ofrecen poolers integrados y funcionan mejor con serverless. Neon: [neon.tech](https://neon.tech). Supabase: [supabase.com](https://supabase.com).
 
 ## Ajustes opcionales de pool (avanzado)
 

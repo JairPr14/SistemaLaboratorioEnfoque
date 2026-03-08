@@ -16,7 +16,7 @@ export async function GET() {
         orderBy: [{ section: { order: "asc" } }, { name: "asc" }],
       });
       const profilesRes = await prisma.testProfile.findMany({
-        where: { isActive: false },
+        where: { isActive: true },
         include: testProfileIncludeItems,
         orderBy: { name: "asc" },
       });
