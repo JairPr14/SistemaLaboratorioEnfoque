@@ -7,8 +7,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
 import { resultSchema } from "@/features/lab/schemas";
-import { useAutosaveResults } from "@/hooks/useAutosaveResults";
-import { AutosaveIndicator } from "./AutosaveIndicator";
+import { useLocalResultDraft } from "@/hooks/useLocalResultDraft";
+import { useWatch } from "react-hook-form";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,7 +48,8 @@ type TemplateItem = {
   refRanges?: RefRange[];
 };
 
-export type ResultFormHandle = { saveDraft: () => Promise<void> };
+/** Persiste borrador local en sessionStorage (sync). No llama a la API. */
+export type ResultFormHandle = { persistLocalDraft: () => void };
 
 function generateExtraId(): string {
   return `extra-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
@@ -89,6 +90,14 @@ function normalizeGroupNameForMatch(name: string): string {
     .toUpperCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
+}
+
+function formatTimeAgo(date: Date): string {
+  const sec = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (sec < 5) return "hace un momento";
+  if (sec < 60) return `hace ${sec}s`;
+  const min = Math.floor(sec / 60);
+  return `hace ${min}m`;
 }
 
 function isAdditionalParamGroup(groupName: string | null | undefined): boolean {
@@ -150,22 +159,47 @@ export function ResultForm({
 
   const { fields, append, remove } = useFieldArray({ control: form.control, name: "items" });
 
-  const { status, savedAt, saveOnBlur, retry } = useAutosaveResults({
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const { loadFromStorage, persistToStorage, persistDebounced, clearDraft } = useLocalResultDraft({
     orderId,
     itemId,
     form,
-    debounceMs: 800,
     enabled: fields.length > 0,
+    debounceMs: 500,
   });
+
+  const items = useWatch({ control: form.control, name: "items" as never });
+
+  // Cargar borrador local al montar (si existe y no hay defaultValues del servidor)
+  useEffect(() => {
+    if (!defaultValues && templateItems.length > 0) {
+      const draft = loadFromStorage();
+      if (draft?.items && draft.items.length === templateItems.length) {
+        form.reset({
+          reportedBy: draft.reportedBy ?? "",
+          comment: draft.comment ?? "",
+          items: draft.items,
+        });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al montar
+  }, []);
+
+  // Persistir a sessionStorage en cada cambio (debounced, sin API)
+  useEffect(() => {
+    const arr = Array.isArray(items) ? items : [];
+    if (arr.length === 0) return;
+    persistDebounced();
+  }, [items, persistDebounced]);
 
   useEffect(() => {
     if (resultFormRef) {
-      resultFormRef.current = { saveDraft: saveOnBlur };
+      resultFormRef.current = { persistLocalDraft: persistToStorage };
       return () => {
         resultFormRef.current = null;
       };
     }
-  }, [resultFormRef, saveOnBlur]);
+  }, [resultFormRef, persistToStorage]);
 
   // No hacer router.refresh() al guardar: evita que los campos se actualicen/parpadeen mientras el usuario escribe
 
@@ -481,6 +515,8 @@ export function ResultForm({
         }
         return;
       }
+      clearDraft();
+      setLastSavedAt(new Date());
       toast.success("Resultados guardados");
       onSaved?.();
     } catch {
@@ -508,10 +544,22 @@ export function ResultForm({
     [flatIndices]
   );
 
+  const statusLabel = saving
+    ? "Guardando…"
+    : lastSavedAt
+      ? `Guardado ${formatTimeAgo(lastSavedAt)}`
+      : "Cambios sin guardar";
+
   return (
-    <form onBlur={() => saveOnBlur()} className="space-y-4">
+    <form className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <AutosaveIndicator status={status} savedAt={savedAt} onRetry={retry} />
+        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+          {saving && <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" />}
+          {lastSavedAt && !saving && (
+            <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden />
+          )}
+          <span>{statusLabel}</span>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -542,7 +590,7 @@ export function ResultForm({
       <p className="text-xs text-slate-500 dark:text-slate-400">
         Usa <kbd className="rounded border border-slate-300 px-1.5 py-0.5 text-[10px]">Tab</kbd> o{" "}
         <kbd className="rounded border border-slate-300 px-1.5 py-0.5 text-[10px]">Enter</kbd> para
-        desplazarte entre parámetros. Guardado automático.
+        desplazarte entre parámetros. Pulsa <strong>Guardar</strong> para persistir en la base de datos.
       </p>
 
       <div className="rounded-xl border border-slate-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">

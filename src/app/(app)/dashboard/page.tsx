@@ -79,9 +79,11 @@ export default async function DashboardPage({
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-      const pendingWhere = { status: { in: ["PENDIENTE", "EN_PROCESO"] } as const };
+      const pendingWhere = { status: { in: ["PENDIENTE", "EN_PROCESO"] as ["PENDIENTE", "EN_PROCESO"] } };
       const todayWhere = { createdAt: { gte: startOfToday } };
-      const tableWhere = { status: { in: ["PENDIENTE", "EN_PROCESO", "COMPLETADO", "ENTREGADO"] } } as const;
+      const tableWhere = {
+        status: { in: ["PENDIENTE", "EN_PROCESO", "COMPLETADO", "ENTREGADO"] as ["PENDIENTE", "EN_PROCESO", "COMPLETADO", "ENTREGADO"] },
+      };
 
       const [sectionsRes, countsRes, ordersRes] = await Promise.all([
         prisma.labSection.findMany({

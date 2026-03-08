@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+
+export const runtime = "nodejs";
 import { resultDraftSchema } from "@/features/lab/schemas";
 import { requirePermission, PERMISSION_CAPTURAR_RESULTADOS } from "@/lib/auth";
 import { handleApiError } from "@/lib/api-errors";

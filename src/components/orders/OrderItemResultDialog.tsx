@@ -75,16 +75,12 @@ export function OrderItemResultDialog({
 
   const setOpen = (next: boolean) => {
     if (!next) {
-      // Al cerrar el modal, guardar borrador primero para que los datos persistan
-      const savePromise = resultFormRef.current?.saveDraft();
-      if (savePromise) {
-        savePromise.finally(() => {
-          router.refresh();
-          if (isControlled) onOpenChange?.(false);
-          else setInternalOpen(false);
-        });
-        return;
-      }
+      // Al cerrar: persistir solo en sessionStorage (sin API). Los datos se recuperan si el usuario recarga.
+      resultFormRef.current?.persistLocalDraft();
+      router.refresh();
+      if (isControlled) onOpenChange?.(false);
+      else setInternalOpen(false);
+      return;
     }
     if (isControlled) {
       onOpenChange?.(next);
