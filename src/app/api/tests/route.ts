@@ -6,6 +6,8 @@ import { labTestSchema } from "@/features/lab/schemas";
 import { getServerSession, hasPermission, PERMISSION_GESTIONAR_CATALOGO } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 
+export const runtime = "nodejs";
+
 type PrismaErrorWithCode = { code?: string };
 
 export async function GET(request: Request) {

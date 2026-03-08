@@ -53,5 +53,5 @@ prismaClient.$on("error" as never, (e: { message?: string }) => {
 
 export const prisma = prismaClient;
 
-// Persistir en global para reutilizar entre recargas (dev) o instancias largas (prod).
+// Persistir en global: en dev evita múltiples instancias por HMR; en Vercel reutiliza entre requests calientes.
 globalForPrisma.prisma = prisma;

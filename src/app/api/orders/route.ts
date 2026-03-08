@@ -12,6 +12,8 @@ import {
 } from "@/features/lab/order-utils";
 import { parseDatePeru } from "@/lib/date";
 
+export const runtime = "nodejs";
+
 export async function GET(request: Request) {
   const session = await getServerSession();
   if (!session?.user) {

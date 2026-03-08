@@ -5,11 +5,12 @@ Este proyecto usa **Seenode** como base de datos en producción. Sigue estos pas
 ## Variables de entorno en Vercel
 
 1. Ve a [vercel.com](https://vercel.com) → tu proyecto → **Settings** → **Environment Variables**
-2. Configura exactamente estas 3 variables:
+2. Configura estas variables:
 
 | Variable | Valor | Entornos |
 |----------|-------|----------|
 | `DATABASE_URL` | Tu connection string de Seenode (copiada del panel de Seenode) | Production, Preview, Development |
+| `DIRECT_URL` | **Igual que DATABASE_URL** (Seenode no tiene pooler separado) | Production, Preview, Development |
 | `NEXTAUTH_URL` | La URL real de tu app, ej: `https://sistema-laboratorio-enfoque.vercel.app` | Production, Preview, Development |
 | `NEXTAUTH_SECRET` | Una clave secreta (usa la misma que en desarrollo) | Production, Preview, Development |
 
@@ -18,9 +19,11 @@ Este proyecto usa **Seenode** como base de datos en producción. Sigue estos pas
 Antes de usar la app, debes aplicar el esquema a la base de datos de Seenode:
 
 ```bash
-# Con DATABASE_URL apuntando a Seenode en .env (o inline):
-DATABASE_URL="postgresql://..." pnpm prisma migrate deploy
+# Con DATABASE_URL y DIRECT_URL apuntando a Seenode (o inline):
+DATABASE_URL="postgresql://..." DIRECT_URL="postgresql://..." pnpm prisma migrate deploy
 ```
+
+> **Nota:** `DIRECT_URL` debe ser igual a `DATABASE_URL` en Seenode (no hay pooler separado). Para migraciones locales, añade `DIRECT_URL` a tu `.env` con el mismo valor que `DATABASE_URL`.
 
 O temporalmente cambia `DATABASE_URL` en `.env` a Seenode, ejecuta `pnpm prisma migrate deploy`, y luego vuelve a poner Docker para desarrollo local.
 

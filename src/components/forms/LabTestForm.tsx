@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,6 +26,7 @@ type Props = {
 
 export function LabTestForm({ testId, defaultValues, sections, referredLabs }: Props) {
   const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const form = useForm<LabTestFormValues>({
     resolver: zodResolver(labTestSchema) as Resolver<LabTestFormValues>,
     defaultValues: {
@@ -64,6 +66,8 @@ export function LabTestForm({ testId, defaultValues, sections, referredLabs }: P
   };
 
   const onSubmit = async (values: LabTestFormValues) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       const method = testId ? "PUT" : "POST";
       const url = testId ? `/api/tests/${testId}` : "/api/tests";
@@ -85,6 +89,8 @@ export function LabTestForm({ testId, defaultValues, sections, referredLabs }: P
     } catch (error) {
       console.error("Error submitting test form:", error);
       toast.error("Error de conexión. Intenta nuevamente.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -227,7 +233,7 @@ export function LabTestForm({ testId, defaultValues, sections, referredLabs }: P
         </div>
       )}
       <div className="flex justify-end">
-        <Button type="submit">Guardar</Button>
+        <Button type="submit" disabled={isSubmitting}>{isSubmitting ? "Guardando…" : "Guardar"}</Button>
       </div>
     </form>
   );

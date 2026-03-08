@@ -79,36 +79,49 @@ export default async function DashboardPage({
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-      sections = await prisma.labSection.findMany({
-      where: { isActive: true },
-      orderBy: { order: "asc" },
-      select: { code: true, name: true },
-    });
+      const pendingWhere = { status: { in: ["PENDIENTE", "EN_PROCESO"] } as const };
+      const todayWhere = { createdAt: { gte: startOfToday } };
+      const tableWhere = { status: { in: ["PENDIENTE", "EN_PROCESO", "COMPLETADO", "ENTREGADO"] } } as const;
 
-    let pendingOrders: unknown[] = [];
-    let recentOrdersForActivity: unknown[] = [];
-    if (hasOrders || hasQuickActions) {
+      const [sectionsRes, countsRes, ordersRes] = await Promise.all([
+        prisma.labSection.findMany({
+          where: { isActive: true },
+          orderBy: { order: "asc" },
+          select: { code: true, name: true },
+        }),
+        hasOrders || hasQuickActions
+          ? Promise.all([
+              hasOrders ? prisma.labOrder.count({ where: pendingWhere }) : 0,
+              hasOrders ? prisma.labOrder.count({ where: todayWhere }) : 0,
+            ])
+          : Promise.resolve([0, 0]),
+        hasOrders
+          ? Promise.all([
+              prisma.labOrder.findMany({
+                where: tableWhere,
+                include: {
+                  patient: true,
+                  items: { include: { labTest: { include: { section: true } } } },
+                },
+                orderBy: { createdAt: "desc" },
+                take: 80,
+              }),
+              prisma.labOrder.findMany({
+                orderBy: { createdAt: "desc" },
+                take: 12,
+                include: { patient: true },
+              }),
+            ])
+          : Promise.resolve([[], []]),
+      ]);
+
+      sections = sectionsRes;
       if (hasOrders) {
-        pendingCount = await prisma.labOrder.count({ where: { status: { in: ["PENDIENTE", "EN_PROCESO"] } } });
-        ordersToday = await prisma.labOrder.count({ where: { createdAt: { gte: startOfToday } } });
+        pendingCount = countsRes[0];
+        ordersToday = countsRes[1];
       }
-      if (hasOrders) {
-        pendingOrders = await prisma.labOrder.findMany({
-          where: { status: { in: ["PENDIENTE", "EN_PROCESO", "COMPLETADO", "ENTREGADO"] } },
-          include: {
-            patient: true,
-            items: { include: { labTest: { include: { section: true } } } },
-          },
-          orderBy: { createdAt: "desc" },
-          take: 80,
-        });
-        recentOrdersForActivity = await prisma.labOrder.findMany({
-          orderBy: { createdAt: "desc" },
-          take: 12,
-          include: { patient: true },
-        });
-      }
-    }
+      const pendingOrders = ordersRes[0];
+      const recentOrdersForActivity = ordersRes[1];
 
     const patientName = (o: { patient: { firstName: string; lastName: string } }) =>
       `${o.patient.lastName} ${o.patient.firstName}`.trim() || "Paciente";

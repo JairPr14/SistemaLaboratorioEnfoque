@@ -59,6 +59,7 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [],
   const router = useRouter();
   const [patientSearch, setPatientSearch] = useState("");
   const [testSearch, setTestSearch] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<OrderFormValues>({
     resolver: zodResolver(orderCreateSchema) as Resolver<OrderFormValues>,
@@ -188,6 +189,8 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [],
   };
 
   const onSubmit = async (values: OrderFormValues) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       const profileIds = values.profileIds ?? [];
       const testIdsInSelectedPromos = new Set(
@@ -221,6 +224,8 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [],
     } catch (error) {
       console.error("Error submitting order form:", error);
       toast.error("Error de conexión. Intenta nuevamente.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -604,9 +609,9 @@ export function OrderForm({ patients, recentPatients = [], tests, profiles = [],
         <Button
           type="submit"
           className="min-w-[140px] bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-500 hover:to-cyan-500"
-          disabled={selectedProfileIds.length === 0 && selectedIds.size === 0}
+          disabled={isSubmitting || (selectedProfileIds.length === 0 && selectedIds.size === 0)}
         >
-          Crear orden
+          {isSubmitting ? "Creando…" : "Crear orden"}
         </Button>
       </FormFooter>
     </form>

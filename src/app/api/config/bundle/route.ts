@@ -16,6 +16,8 @@ import {
 } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 
+export const runtime = "nodejs";
+
 export async function GET() {
   const auth = await requireAnyPermission([
     PERMISSION_VER_CONFIGURACION,
