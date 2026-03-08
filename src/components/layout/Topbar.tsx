@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -35,7 +36,10 @@ import {
   PERMISSION_QUICK_ACTIONS_ENTREGA,
   PERMISSION_QUICK_ACTIONS_RECEPCION,
 } from "@/lib/auth-utils";
-import { QuickOrderModal } from "@/components/orders/QuickOrderModal";
+const QuickOrderModal = dynamic(
+  () => import("@/components/orders/QuickOrderModal").then((m) => m.QuickOrderModal),
+  { ssr: false },
+);
 
 export function Topbar({
   sidebarOpen,

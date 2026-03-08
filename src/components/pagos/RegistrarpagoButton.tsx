@@ -1,10 +1,14 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState } from "react";
 import { Receipt } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { CashierDialog } from "./CashierDialog";
+
+const CashierDialog = dynamic(() => import("./CashierDialog").then((m) => m.CashierDialog), {
+  ssr: false,
+});
 
 export function RegistrarpagoButton() {
   const [open, setOpen] = useState(false);

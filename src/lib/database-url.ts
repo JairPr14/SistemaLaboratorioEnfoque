@@ -43,13 +43,10 @@ export function buildDatabaseUrlInfo(): DatabaseUrlInfo {
   const extraParams: string[] = [];
 
   const configuredLimit = readNumericEnv("PRISMA_CONNECTION_LIMIT");
-  // Seenode/Neon: 1 por defecto para no saturar límite del proveedor. Cada instancia serverless = 1 conexión.
+  // Seenode/Neon: planes con límite bajo (5-20 conexiones totales). 1 por proceso para evitar FATAL: too many connections.
   const defaultLimit = isManagedPostgres ? 1 : isVercelRuntime ? 5 : 10;
   const connectionLimit = configuredLimit ?? defaultLimit;
-  // Seenode: máx 1 conexión por instancia en prod; máx 3 en dev
-  const effectiveLimit = isManagedPostgres
-    ? (isVercelRuntime ? Math.min(connectionLimit, 1) : Math.min(connectionLimit, 3))
-    : connectionLimit;
+  const effectiveLimit = isManagedPostgres ? Math.min(connectionLimit, 1) : connectionLimit;
 
   const configuredPoolTimeout = readNumericEnv("PRISMA_POOL_TIMEOUT");
   const defaultPoolTimeout = isManagedPostgres ? 10 : 10;

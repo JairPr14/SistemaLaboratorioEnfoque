@@ -63,12 +63,14 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
 
-  // Cache: revalidación periódica para respuestas más rápidas
+
   experimental: {
     staleTimes: {
       dynamic: 30,
       static: 180,
     },
+    // Reduce peticiones: importa solo lo necesario de lucide-react en 1 chunk
+    optimizePackageImports: ["lucide-react"],
   },
 };
 

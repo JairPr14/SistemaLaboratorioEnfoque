@@ -51,7 +51,7 @@ export function GlobalSearch() {
   }, []);
 
   useEffect(() => {
-    const t = setTimeout(() => fetchResults(query), 200);
+    const t = setTimeout(() => fetchResults(query), 350);
     return () => clearTimeout(t);
   }, [query, fetchResults]);
 

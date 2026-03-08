@@ -47,38 +47,30 @@ export function OrderPaymentPanel({
     totalBalanceOwed: number;
   } | null>(null);
 
-  const reloadReferredLabSummary = useCallback(async () => {
-    const res = await fetch(`/api/orders/${orderId}/referred-lab-payments`);
+  const reload = useCallback(async () => {
+    const res = await fetch(`/api/orders/${orderId}/payment-panel`);
     const data = await res.json().catch(() => ({}));
-    if (res.ok && data.totalExternalCost != null) {
+    if (!res.ok) {
+      toast.error(data.error ?? "No se pudo cargar los pagos");
+      return;
+    }
+    setPayments(data.payments ?? []);
+    const ref = data.referredLabSummary;
+    if (ref && ref.totalExternalCost != null && ref.totalExternalCost > 0) {
       setReferredLabSummary({
-        totalExternalCost: data.totalExternalCost,
-        totalPaidToLabs: data.totalPaidToLabs ?? 0,
-        totalBalanceOwed: data.totalBalanceOwed ?? 0,
+        totalExternalCost: ref.totalExternalCost,
+        totalPaidToLabs: ref.totalPaidToLabs ?? 0,
+        totalBalanceOwed: ref.totalBalanceOwed ?? 0,
       });
     } else {
       setReferredLabSummary(null);
     }
   }, [orderId]);
 
-  const reloadPayments = useCallback(async () => {
-    const res = await fetch(`/api/orders/${orderId}/payments`);
-    const data = await res.json().catch(() => ({}));
-    if (res.ok && data.item?.payments) {
-      setPayments(data.item.payments);
-      return;
-    }
-    toast.error(data.error ?? "No se pudo cargar los pagos");
-  }, [orderId]);
-
   useEffect(() => {
-    const load = () => {
-      void reloadPayments();
-      void reloadReferredLabSummary();
-    };
-    const id = setTimeout(load, 0);
+    const id = setTimeout(() => void reload(), 0);
     return () => clearTimeout(id);
-  }, [orderId, reloadPayments, reloadReferredLabSummary]);
+  }, [orderId, reload]);
   const paidTotal = useMemo(
     () => payments.reduce((acc, p) => acc + Number(p.amount), 0),
     [payments],
@@ -112,7 +104,7 @@ export function OrderPaymentPanel({
                 defaultAmount={balance > 0 ? balance : undefined}
                 disabled={balance <= 0}
                 onPaymentSaved={async () => {
-                  await reloadPayments();
+                  await reload();
                   router.refresh();
                 }}
               />
@@ -122,7 +114,7 @@ export function OrderPaymentPanel({
                   orderCode={orderCode}
                   canRegisterPayment={canRegisterPayment}
                   onPaymentSaved={() => {
-                    void reloadReferredLabSummary();
+                    void reload();
                     router.refresh();
                   }}
                 />
