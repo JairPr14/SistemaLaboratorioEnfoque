@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { toast } from "sonner";
@@ -52,6 +52,8 @@ export function Topbar({
   const router = useRouter();
   const [quickOrderOpen, setQuickOrderOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const canReception = hasPermission(session ?? null, PERMISSION_QUICK_ACTIONS_RECEPCION);
   const canAnalyst = hasPermission(session ?? null, PERMISSION_QUICK_ACTIONS_ANALISTA);
   const canDelivery = hasPermission(session ?? null, PERMISSION_QUICK_ACTIONS_ENTREGA);
@@ -155,28 +157,35 @@ export function Topbar({
               </div>
             </nav>
           )}
-          {/* Búsqueda: icono en móvil (abre dialog), barra en desktop */}
+          {/* Búsqueda: icono en móvil (abre dialog), barra en desktop. Dialog solo en cliente para evitar hydration mismatch de IDs Radix */}
           <div className="sm:hidden">
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  title="Buscar"
-                  className="h-10 w-10 rounded-xl border border-slate-200/70 text-slate-500 hover:border-teal-300 hover:text-teal-700 dark:border-slate-700/70 dark:hover:border-teal-700 dark:hover:text-teal-300"
-                >
-                  <Search className="h-4 w-4" aria-hidden />
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-md sm:max-w-lg">
-                <DialogHeader>
-                  <DialogTitle>Buscar paciente u orden</DialogTitle>
-                </DialogHeader>
-                <div className="pt-2">
-                  <GlobalSearch />
-                </div>
-              </DialogContent>
-            </Dialog>
+            {mounted ? (
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="Buscar"
+                    className="h-10 w-10 rounded-xl border border-slate-200/70 text-slate-500 hover:border-teal-300 hover:text-teal-700 dark:border-slate-700/70 dark:hover:border-teal-700 dark:hover:text-teal-300"
+                  >
+                    <Search className="h-4 w-4" aria-hidden />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md sm:max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Buscar paciente u orden</DialogTitle>
+                  </DialogHeader>
+                  <div className="pt-2">
+                    <GlobalSearch />
+                  </div>
+                </DialogContent>
+              </Dialog>
+            ) : (
+              <div
+                className="h-10 w-10 rounded-xl border border-slate-200/70 bg-transparent dark:border-slate-700/70"
+                aria-hidden
+              />
+            )}
           </div>
           <div className="hidden min-w-0 shrink sm:block sm:w-64 md:w-80 lg:mx-4">
             <GlobalSearch />

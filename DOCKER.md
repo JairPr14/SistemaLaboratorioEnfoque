@@ -15,8 +15,8 @@ docker compose up -d
 Crea o edita `.env` con las URLs locales:
 
 ```env
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/sistema_lab_dev"
-SHADOW_DATABASE_URL="postgresql://postgres:postgres@localhost:5432/postgres"
+DATABASE_URL="postgresql://postgres:postgres@localhost:5433/sistema_lab_dev"
+SHADOW_DATABASE_URL="postgresql://postgres:postgres@localhost:5433/postgres"
 
 NEXTAUTH_URL="http://localhost:3000"
 NEXTAUTH_SECRET="tu-secret-generado"
@@ -55,7 +55,7 @@ pnpm dev
 
 ## Cambiar entre desarrollo y producción
 
-- **Desarrollo:** usa `DATABASE_URL` apuntando a `localhost:5432/sistema_lab_dev`
+- **Desarrollo:** usa `DATABASE_URL` apuntando a `localhost:5433/sistema_lab_dev`
 - **Producción:** usa `DATABASE_URL` apuntando a tu servidor real (Seenode, Neon, etc.)
 
 No mezcles ambas. Mantén la BD de producción fuera del `.env` en despliegues (usa variables de entorno del host/Vercel/Railway, etc.).

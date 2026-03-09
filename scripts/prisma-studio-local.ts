@@ -8,7 +8,7 @@
 
 import { execSync } from "child_process";
 
-const LOCAL_URL = "postgresql://postgres:postgres@localhost:5432/sistema_lab_dev";
+const LOCAL_URL = "postgresql://postgres:postgres@localhost:5433/sistema_lab_dev";
 
 process.env.DATABASE_URL = LOCAL_URL;
 execSync("npx prisma studio", {

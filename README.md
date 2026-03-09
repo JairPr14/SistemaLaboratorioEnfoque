@@ -4,6 +4,8 @@ Sistema de gestión de laboratorio clínico desarrollado con Next.js 16, Prisma,
 
 ## 📋 Requisitos Previos
 
+> **Ejecución local sin desplegar:** Si solo vas a usar el sistema en tu PC con Docker y CMD, consulta [EJECUCION_LOCAL.md](./EJECUCION_LOCAL.md) para una guía paso a paso.
+
 Antes de comenzar, asegúrate de tener instalado:
 
 - **Node.js** (versión 18 o superior)
@@ -36,9 +38,9 @@ pnpm install
 Crea un archivo `.env` copiando `.env.example` y configúralo:
 
 ```env
-# Base de datos PostgreSQL (usa Docker local para desarrollo)
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/sistema_lab_dev"
-SHADOW_DATABASE_URL="postgresql://postgres:postgres@localhost:5432/postgres"
+# Base de datos PostgreSQL (usa Docker local para desarrollo, puerto 5433)
+DATABASE_URL="postgresql://postgres:postgres@localhost:5433/sistema_lab_dev"
+SHADOW_DATABASE_URL="postgresql://postgres:postgres@localhost:5433/postgres"
 
 # NextAuth
 NEXTAUTH_URL="http://localhost:3000"

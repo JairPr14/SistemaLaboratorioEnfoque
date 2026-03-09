@@ -6,7 +6,7 @@
  * no a Seenode, para no ejecutar por error migraciones o seeds contra producción.
  *
  * Uso:
- *   1. .env con DATABASE_URL=postgresql://postgres:postgres@localhost:5432/sistema_lab_dev
+ *   1. .env con DATABASE_URL=postgresql://postgres:postgres@localhost:5433/sistema_lab_dev
  *   2. Docker y Postgres local arriba: pnpm docker:up
  *   3. PRODUCTION_DATABASE_URL solo en la sesión (PowerShell/Bash), no en .env
  *   4. pnpm db:copy-production
@@ -201,7 +201,7 @@ function main() {
   }
 
   console.log("\n✅ Copia completada. BD local ≈ producción.");
-  console.log("   DATABASE_URL en .env debe apuntar a: postgresql://postgres:postgres@localhost:5432/sistema_lab_dev");
+  console.log("   DATABASE_URL en .env debe apuntar a: postgresql://postgres:postgres@localhost:5433/sistema_lab_dev");
   console.log("   Reinicia pnpm dev si estaba corriendo.");
 }
 

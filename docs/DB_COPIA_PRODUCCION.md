@@ -9,7 +9,7 @@ Para desarrollar con datos reales sin saturar Seenode (límite de conexiones), c
 Asegúrate de que `.env` tenga:
 
 ```
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/sistema_lab_dev"
+DATABASE_URL="postgresql://postgres:postgres@localhost:5433/sistema_lab_dev"
 ```
 
 Y añade la URL de producción (Seenode) para la copia:
@@ -46,7 +46,7 @@ pnpm db:copy-production
 pnpm dev
 ```
 
-## Solución al error "database server is running at localhost:5432"
+## Solución al error "database server is running at localhost:5433"
 
 Ese error indica que la app intenta conectar a Docker pero Postgres no está corriendo. Solución:
 
