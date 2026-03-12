@@ -66,6 +66,7 @@ export function formatDateTime(date?: Date | string | null) {
   if (!date) return "-";
   const d = typeof date === "string" ? new Date(date) : date;
   if (typeof d.getTime !== "function" || isNaN(d.getTime())) return "-";
+  // Formato 24h para evitar hydration mismatch (Node vs browser difieren en "a. m." / "p. m.")
   return d.toLocaleString("es-PE", {
     timeZone: PERU_TIMEZONE,
     day: "2-digit",
@@ -74,6 +75,7 @@ export function formatDateTime(date?: Date | string | null) {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
+    hour12: false,
   });
 }
 

@@ -14,16 +14,20 @@
  * O todo en uno: pnpm db:setup-from-production (levanta Docker y copia si PRODUCTION_DATABASE_URL está en .env)
  */
 
+import "dotenv/config";
 import { execSync, spawnSync } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 
 const BACKUP_FILE = path.join(process.cwd(), "backup-production.sql");
 
-// host.docker.internal funciona en Docker Desktop (Win/Mac). Puerto 5433 = mapeo en docker-compose (5433:5432)
-const LOCAL_HOST = "host.docker.internal";
-const LOCAL_PORT = process.env.DOCKER_POSTGRES_PORT || "5433";
-const LOCAL_URL = `postgresql://postgres:postgres@${LOCAL_HOST}:${LOCAL_PORT}/sistema_lab_dev`;
+/** URL para restaurar: usa DATABASE_URL. Si es localhost, reemplaza por host.docker.internal (Docker accede al host). */
+function getLocalRestoreUrl(): string {
+  const dbUrl = process.env.DATABASE_URL?.trim();
+  if (!dbUrl) throw new Error("DATABASE_URL no está definida en .env");
+  // Dentro de Docker, localhost es el contenedor; host.docker.internal = máquina host
+  return dbUrl.replace(/localhost|127\.0\.0\.1/, "host.docker.internal");
+}
 
 function runDocker(args: string[], env?: Record<string, string>): boolean {
   const r = spawnSync("docker", args, {
@@ -135,17 +139,13 @@ function main() {
     process.exit(1);
   }
 
-  if (!isDockerPostgresRunning()) {
-    console.log("⚠️  Postgres local no está corriendo.");
-    if (process.env.AUTO_START_DOCKER !== "0") {
-      if (!dockerComposeUp()) {
-        console.error("❌ No se pudo levantar Docker. Ejecuta manualmente: pnpm docker:up");
-        process.exit(1);
-      }
-    } else {
-      console.error("❌ Ejecuta primero: pnpm docker:up");
-      process.exit(1);
-    }
+  // Docker solo se usa para ejecutar pg_dump y psql; el destino puede ser PostgreSQL local o Docker
+  let localUrl: string;
+  try {
+    localUrl = getLocalRestoreUrl();
+  } catch (e) {
+    console.error("❌", String(e));
+    process.exit(1);
   }
 
   console.log("📤 1/2 Volcando base de datos de producción...");
@@ -185,7 +185,7 @@ function main() {
     "run",
     "--rm",
     "-e",
-    `LOCAL_DATABASE_URL=${LOCAL_URL}`,
+    `LOCAL_DATABASE_URL=${localUrl}`,
     "-v",
     `${cwd}:/out`,
     ...(process.platform !== "win32" ? ["--add-host=host.docker.internal:host-gateway"] : []),
@@ -194,14 +194,14 @@ function main() {
     "-c",
     "psql $LOCAL_DATABASE_URL -f /out/backup-production.sql",
   ];
-  console.log("📥 2/2 Restaurando en PostgreSQL local (Docker)...");
+  console.log("📥 2/2 Restaurando en PostgreSQL local...");
   if (!runDocker(restoreArgs)) {
-    console.error("❌ Error al restaurar. ¿Está el contenedor Postgres local arriba? (pnpm docker:up)");
+    console.error("❌ Error al restaurar. Verifica que PostgreSQL local esté corriendo y DATABASE_URL en .env sea correcta.");
     process.exit(1);
   }
 
-  console.log("\n✅ Copia completada. BD local ≈ producción.");
-  console.log("   DATABASE_URL en .env debe apuntar a: postgresql://postgres:postgres@localhost:5433/sistema_lab_dev");
+  console.log("\n✅ Copia completada. BD local ≈ producción (Seenode).");
+  console.log("   DATABASE_URL en .env apunta a tu PostgreSQL local.");
   console.log("   Reinicia pnpm dev si estaba corriendo.");
 }
 

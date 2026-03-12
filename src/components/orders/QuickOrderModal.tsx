@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Search, Star, X } from "lucide-react";
+import { calculateAge } from "@/lib/template-helpers";
 
 type PatientResult = { id: string; label: string; sublabel: string };
 type TestItem = { id: string; code: string; name: string; section: string; price: number };
@@ -37,6 +38,7 @@ export function QuickOrderModal({ open, onOpenChange }: Props) {
     dni: "",
     sex: "M" as "M" | "F" | "O",
     birthDate: "",
+    ageYears: null as number | null,
   });
   const [tests, setTests] = useState<TestItem[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -183,17 +185,35 @@ export function QuickOrderModal({ open, onOpenChange }: Props) {
 
     let patientId: string | undefined;
     let patientDraftPayload:
-      | { firstName: string; lastName: string; dni: string | null; sex: "M" | "F" | "O"; birthDate: string }
+      | {
+          firstName: string;
+          lastName: string;
+          dni: string | null;
+          sex: "M" | "F" | "O";
+          birthDate?: string;
+          ageYears?: number | null;
+        }
       | undefined;
 
     if (selectedPatient) {
       patientId = selectedPatient.id;
-    } else if (showNewPatient && patientDraft.firstName && patientDraft.lastName && patientDraft.birthDate) {
+    } else if (showNewPatient && patientDraft.firstName && patientDraft.lastName && (patientDraft.birthDate || (patientDraft.ageYears != null && patientDraft.ageYears >= 0))) {
+      const hasBirthDate = !!patientDraft.birthDate?.trim();
       patientDraftPayload = {
-        ...patientDraft,
-        birthDate: patientDraft.birthDate,
-        dni: patientDraft.dni && String(patientDraft.dni).trim() ? String(patientDraft.dni).trim() : null,
+        firstName: patientDraft.firstName.trim(),
+        lastName: patientDraft.lastName.trim(),
+        dni: patientDraft.dni?.trim() || null,
+        sex: patientDraft.sex,
+        ...(hasBirthDate
+          ? { birthDate: patientDraft.birthDate.trim(), ageYears: null }
+          : { ageYears: patientDraft.ageYears }),
       };
+    } else if (showNewPatient && (!patientDraft.firstName || !patientDraft.lastName)) {
+      toast.error("Completa nombre y apellido del paciente");
+      return;
+    } else if (showNewPatient && !patientDraft.birthDate && (patientDraft.ageYears == null || patientDraft.ageYears < 0)) {
+      toast.error("Indica fecha de nacimiento o edad");
+      return;
     } else {
       toast.error("Selecciona o crea un paciente");
       return;
@@ -218,7 +238,8 @@ export function QuickOrderModal({ open, onOpenChange }: Props) {
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        toast.error(data.error || "Error al crear la orden");
+        const errMsg = data?.error || (data?.details ? "Datos inválidos" : "Error al crear la orden");
+        toast.error(errMsg);
         return;
       }
 
@@ -310,8 +331,58 @@ export function QuickOrderModal({ open, onOpenChange }: Props) {
                     type="date"
                     placeholder="Fecha nac."
                     value={patientDraft.birthDate}
-                    onChange={(e) => setPatientDraft((p) => ({ ...p, birthDate: e.target.value }))}
+                    onChange={(e) =>
+                      setPatientDraft((p) => ({
+                        ...p,
+                        birthDate: e.target.value,
+                        ...(e.target.value ? { ageYears: null } : {}),
+                      }))
+                    }
                   />
+                  {patientDraft.birthDate ? (
+                    <div className="space-y-1">
+                      <label className="text-xs text-slate-500 dark:text-slate-400">
+                        Edad (calculada)
+                      </label>
+                      <Input
+                        className="h-9 read-only:opacity-100"
+                        value={
+                          (() => {
+                            try {
+                              const d = new Date(patientDraft.birthDate);
+                              return isNaN(d.getTime()) ? "" : `${calculateAge(d)} años`;
+                            } catch {
+                              return "";
+                            }
+                          })()
+                        }
+                        readOnly
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <label className="text-xs text-slate-500 dark:text-slate-400">
+                        Edad (años)
+                      </label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={150}
+                        placeholder="Ej: 28"
+                        className="h-9"
+                        value={
+                          patientDraft.ageYears != null ? String(patientDraft.ageYears) : ""
+                        }
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setPatientDraft((p) => ({
+                            ...p,
+                            ageYears: v === "" ? null : Number(v),
+                          }));
+                        }}
+                      />
+                    </div>
+                  )}
                   <select
                     value={patientDraft.sex}
                     onChange={(e) =>

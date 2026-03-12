@@ -13,6 +13,7 @@ ALTER TABLE "PeriodStaffDays" DROP CONSTRAINT IF EXISTS "PeriodStaffDays_staffMe
 ALTER TABLE "StaffMember" DROP CONSTRAINT IF EXISTS "StaffMember_branchId_fkey";
 
 -- DropTable (StaffMember debe eliminarse antes de los enums porque usa StaffSalaryType)
+DROP TABLE IF EXISTS "StaffShiftCount";
 DROP TABLE IF EXISTS "PayrollLine";
 DROP TABLE IF EXISTS "StaffDiscount";
 DROP TABLE IF EXISTS "StaffBonus";

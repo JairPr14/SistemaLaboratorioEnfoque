@@ -6,7 +6,7 @@ import type { Prisma } from "@prisma/client";
 import {
   getServerSession,
   hasPermission,
-  hasAnyPermission,
+  PERMISSION_EDITAR_PACIENTES,
   PERMISSION_ELIMINAR_REGISTROS,
   PERMISSION_VER_PACIENTES,
 } from "@/lib/auth";
@@ -15,6 +15,8 @@ import { PatientForm } from "@/components/forms/PatientForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DeleteButton } from "@/components/common/DeleteButton";
+import { RestorePatientButton } from "@/components/common/RestorePatientButton";
+import { PermanentDeletePatientButton } from "@/components/common/PermanentDeletePatientButton";
 import { formatDate, formatDniDisplay, formatPatientDisplayName } from "@/lib/format";
 import { ArrowUpDown } from "lucide-react";
 
@@ -34,6 +36,7 @@ export default async function PatientsPage({ searchParams }: Props) {
     redirect("/dashboard");
   }
   const canDeletePatients = hasPermission(session, PERMISSION_ELIMINAR_REGISTROS);
+  const canEditPatients = hasPermission(session, PERMISSION_EDITAR_PACIENTES);
 
   const orderBy: Prisma.PatientOrderByWithRelationInput =
     sortBy === "lastName"
@@ -44,7 +47,6 @@ export default async function PatientsPage({ searchParams }: Props) {
 
   const patients = await prisma.patient.findMany({
     where: {
-      deletedAt: null,
       ...(search
         ? {
             OR: [
@@ -193,15 +195,26 @@ export default async function PatientsPage({ searchParams }: Props) {
                         <TableCell className="text-sm font-semibold text-slate-700 dark:text-slate-300">{formatDniDisplay(patient.dni)}</TableCell>
                         <TableCell className="text-slate-700 dark:text-slate-300">{formatDate(patient.birthDate)}</TableCell>
                         <TableCell className="text-right">
-                          <Link
-                            href={`/patients/${patient.id}`}
-                            className="text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:underline mr-2"
-                          >
-                            {canDeletePatients ? "Editar" : "Ver"}
-                          </Link>
-                          {canDeletePatients && !patient.deletedAt && (
-                            <DeleteButton url={`/api/patients/${patient.id}`} label="Eliminar" />
-                          )}
+                          <div className="flex items-center justify-end gap-2">
+                            <Link
+                              href={`/patients/${patient.id}`}
+                              className="text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:underline"
+                            >
+                              {canEditPatients || canDeletePatients ? "Editar" : "Ver"}
+                            </Link>
+                            {canEditPatients && patient.deletedAt && (
+                              <RestorePatientButton patientId={patient.id} />
+                            )}
+                            {canDeletePatients && patient.deletedAt && (
+                              <PermanentDeletePatientButton
+                                patientId={patient.id}
+                                patientName={formatPatientDisplayName(patient.firstName, patient.lastName)}
+                              />
+                            )}
+                            {canDeletePatients && !patient.deletedAt && (
+                              <DeleteButton url={`/api/patients/${patient.id}`} label="Eliminar" />
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

@@ -7,6 +7,7 @@
   },
   "scripts": {
     "dev": "next dev",
+    "iniciar": "powershell -ExecutionPolicy Bypass -File scripts/iniciar-proyecto.ps1",
     "dev:clean": "node -e \"try{require('fs').rmSync('.next',{recursive:true,force:true})}catch(e){}\" && next dev",
     "build": "prisma generate && next build",
     "start": "next start",
@@ -21,6 +22,7 @@
     "db:seed:patients": "tsx scripts/seed-patients.ts",
     "db:seed:templates:complete": "tsx scripts/seed-complete-templates.ts",
     "db:copy-production": "tsx scripts/copy-production-to-docker.ts",
+    "db:copy-seenode": "tsx scripts/copy-seenode-to-local.ts",
     "db:push-to-production": "tsx scripts/copy-docker-to-production.ts",
     "db:setup-from-production": "pnpm docker:up && pnpm db:copy-production",
     "db:restore-to-production": "tsx scripts/restore-backup-to-production.ts",
@@ -56,6 +58,7 @@
     "dotenv": "^16.6.1",
     "eslint": "^9.39.4",
     "eslint-config-next": "16.1.6",
+    "pg": "^8.20.0",
     "prisma": "^6.19.2",
     "tailwindcss": "^4.2.1",
     "tsx": "^4.21.0",

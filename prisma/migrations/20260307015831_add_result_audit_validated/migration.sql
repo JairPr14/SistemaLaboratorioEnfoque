@@ -1,5 +1,5 @@
 -- DropForeignKey
-ALTER TABLE "StaffDiscount" DROP CONSTRAINT "StaffDiscount_payrollId_fkey";
+ALTER TABLE "StaffDiscount" DROP CONSTRAINT IF EXISTS "StaffDiscount_payrollId_fkey";
 
 -- AlterTable
 ALTER TABLE "LabResult" ADD COLUMN     "validatedAt" TIMESTAMP(3),

@@ -43,13 +43,19 @@ export async function POST(request: Request) {
       const lastName = draft.lastName.trim().toUpperCase();
 
       const dniVal = draft.dni && String(draft.dni).trim() ? String(draft.dni).trim() : undefined;
+      const birthDateValue =
+        draft.birthDate && String(draft.birthDate).trim()
+          ? parseDatePeru(draft.birthDate)
+          : draft.ageYears != null && !Number.isNaN(draft.ageYears)
+            ? parseDatePeru(`${new Date().getFullYear() - draft.ageYears}-01-01`)
+            : parseDatePeru("2000-01-01");
       const patient = await prisma.patient.create({
         data: {
           code,
           ...(dniVal != null ? { dni: dniVal } : {}),
           firstName,
           lastName,
-          birthDate: parseDatePeru(draft.birthDate),
+          birthDate: birthDateValue,
           sex: draft.sex,
         },
       });
@@ -211,9 +217,11 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     logger.error("Error creating quick order:", error);
-    if (error instanceof Error && error.name === "ZodError") {
+    if (error && typeof error === "object" && "name" in error && (error as { name: string }).name === "ZodError") {
+      const zodError = error as { errors?: Array<{ message?: string; path?: (string | number)[] }> };
+      const firstMsg = zodError.errors?.[0]?.message;
       return NextResponse.json(
-        { error: "Datos inválidos", details: error },
+        { error: firstMsg || "Datos inválidos" },
         { status: 400 }
       );
     }

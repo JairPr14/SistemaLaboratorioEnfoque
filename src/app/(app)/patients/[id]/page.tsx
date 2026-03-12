@@ -4,12 +4,13 @@ import { Plus } from "lucide-react";
 
 import { notFound, redirect } from "next/navigation";
 
-import { getServerSession, hasPermission, PERMISSION_EDITAR_PACIENTES, PERMISSION_VER_PACIENTES } from "@/lib/auth";
+import { getServerSession, hasPermission, PERMISSION_EDITAR_PACIENTES, PERMISSION_ELIMINAR_REGISTROS, PERMISSION_VER_PACIENTES } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatDate, safeDateToInput } from "@/lib/format";
+import { formatDate, formatPatientDisplayName, safeDateToInput } from "@/lib/format";
 import { logger } from "@/lib/logger";
 import { PatientForm } from "@/components/forms/PatientForm";
 import { RestorePatientButton } from "@/components/common/RestorePatientButton";
+import { PermanentDeletePatientButton } from "@/components/common/PermanentDeletePatientButton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -70,9 +71,17 @@ export default async function PatientDetailPage({ params }: Props) {
       {isDeleted && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 dark:border-amber-800/60 dark:bg-amber-900/20 p-4 flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
-            Este paciente fue eliminado. Puedes restaurarlo para que vuelva a aparecer en el listado activo.
+            Este paciente fue eliminado. Puedes restaurarlo o eliminarlo definitivamente.
           </p>
-          {canEditPatient && <RestorePatientButton patientId={patient.id} />}
+          <div className="flex items-center gap-2">
+            {canEditPatient && <RestorePatientButton patientId={patient.id} />}
+            {hasPermission(session, PERMISSION_ELIMINAR_REGISTROS) && (
+              <PermanentDeletePatientButton
+                patientId={patient.id}
+                patientName={formatPatientDisplayName(patient.firstName, patient.lastName)}
+              />
+            )}
+          </div>
         </div>
       )}
       <div className="rounded-2xl border border-slate-200/80 bg-white/80 shadow-sm backdrop-blur-sm dark:border-slate-700/80 dark:bg-slate-900/60">

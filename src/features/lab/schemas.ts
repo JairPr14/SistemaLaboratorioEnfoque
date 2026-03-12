@@ -242,11 +242,29 @@ export const patientDraftSchema = z.object({
   lastName: z.string().min(2),
   dni: z.preprocess(
     (v) => (v === "" || v === null || v === undefined ? null : String(v)),
-    z.union([z.string().min(6), z.literal(null)]).optional().nullable(),
+    z.union([z.string().min(6, "DNI mínimo 6 caracteres"), z.literal(null)]).optional().nullable(),
   ),
   sex: z.enum(sexValues),
-  birthDate: z.string().min(1),
-});
+  birthDate: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : String(v).trim() || undefined),
+    z.string().optional(),
+  ),
+  ageYears: z.preprocess(
+    (v) => {
+      if (v === "" || v === null || v === undefined) return null;
+      const n = Number(v);
+      return Number.isNaN(n) ? null : n;
+    },
+    z.number().int().min(0).max(150).nullable().optional(),
+  ),
+}).refine(
+  (data) => {
+    const hasBirthDate = data.birthDate && String(data.birthDate).trim() !== "";
+    const hasAge = data.ageYears != null && !Number.isNaN(data.ageYears) && data.ageYears >= 0;
+    return hasBirthDate || hasAge;
+  },
+  { message: "Indica fecha de nacimiento o edad", path: ["birthDate"] }
+);
 
 export const quickOrderSchema = z.object({
   patientId: z.string().optional(),

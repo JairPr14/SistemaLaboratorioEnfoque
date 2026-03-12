@@ -142,7 +142,8 @@ export async function PATCH(_request: Request, { params }: Params) {
       where: { id: validId },
       data: { deletedAt: null },
     });
-
+    revalidatePath("/patients");
+    revalidatePath(`/patients/${validId}`);
     return NextResponse.json({ item });
   } catch (error) {
     const err = error as { code?: string; message?: string };
