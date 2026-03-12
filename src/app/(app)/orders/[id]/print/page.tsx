@@ -12,7 +12,7 @@ import { DraggableReferredStamp } from "@/components/orders/DraggableReferredSta
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ items?: string; showReferredLogo?: string }>;
+  searchParams: Promise<{ items?: string; showReferredLogo?: string; showReferredStamp?: string }>;
 };
 
 type RefRangeItem = {
@@ -547,8 +547,9 @@ function buildPages(sections: Record<string, Array<{
 
 export default async function OrderPrintPage({ params, searchParams }: Props) {
   const { id } = await params;
-  const { items: itemsParam, showReferredLogo: showReferredLogoParam } = await searchParams;
+  const { items: itemsParam, showReferredLogo: showReferredLogoParam, showReferredStamp: showReferredStampParam } = await searchParams;
   const showReferredLogo = showReferredLogoParam === "0" ? false : true;
+  const showReferredStamp = showReferredStampParam === "0" ? false : true;
 
   let order;
   try {
@@ -672,13 +673,17 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
   const printConfig = await getPrintConfig();
   const showStamp = printConfig.stampEnabled && printConfig.stampImageUrl;
 
-  const buildPrintUrl = (logoVisible: boolean) => {
+  const buildPrintUrl = (overrides: { logoVisible?: boolean; stampVisible?: boolean }) => {
     const params = new URLSearchParams();
     if (typeof itemsParam === "string") params.set("items", itemsParam);
-    if (!logoVisible) params.set("showReferredLogo", "0");
+    if (overrides.logoVisible !== undefined && !overrides.logoVisible) params.set("showReferredLogo", "0");
+    if (overrides.stampVisible !== undefined && !overrides.stampVisible) params.set("showReferredStamp", "0");
     const qs = params.toString();
     return qs ? `/orders/${id}/print?${qs}` : `/orders/${id}/print`;
   };
+
+  const buildToggleLogoUrl = () => buildPrintUrl({ logoVisible: !showReferredLogo, stampVisible: showReferredStamp });
+  const buildToggleStampUrl = () => buildPrintUrl({ logoVisible: showReferredLogo, stampVisible: !showReferredStamp });
 
   const toolbarProps = {
     patientName,
@@ -689,9 +694,12 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
     patientFirstName: order.patient.firstName,
     patientLastName: order.patient.lastName,
     backHref: `/orders/${id}`,
-    toggleLogoUrl: buildPrintUrl(!showReferredLogo),
+    toggleLogoUrl: buildToggleLogoUrl(),
     showLogoButton: !!referredLabWithLogo,
     logoVisible: showReferredLogo,
+    toggleReferredStampUrl: buildToggleStampUrl(),
+    showReferredStampButton: !!referredLabWithStamp,
+    referredStampVisible: showReferredStamp,
     showStampButton: !!showStamp || !!referredLabWithLogo || !!referredLabWithStamp,
     orderId: id,
     referredLabIdsWithStamp,
@@ -756,7 +764,7 @@ export default async function OrderPrintPage({ params, searchParams }: Props) {
                 orderId={id}
               />
             )}
-            {referredLabWithStamp && page.hasReferredAnalyses && (
+            {showReferredStamp && referredLabWithStamp && page.hasReferredAnalyses && (
               <DraggableReferredStamp
                 stampImageUrl={referredLabWithStamp.stampImageUrl!}
                 orderId={id}

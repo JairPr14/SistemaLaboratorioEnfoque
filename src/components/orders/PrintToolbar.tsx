@@ -30,6 +30,12 @@ type PrintToolbarProps = {
   showLogoButton?: boolean;
   /** Si el logo está actualmente visible */
   logoVisible?: boolean;
+  /** URL para alternar visibilidad del sello del lab referido (mostrar/ocultar) */
+  toggleReferredStampUrl?: string;
+  /** Mostrar botón solo cuando hay sello de lab referido disponible */
+  showReferredStampButton?: boolean;
+  /** Si el sello referido está actualmente visible */
+  referredStampVisible?: boolean;
   /** Callback para alternar marca de agua y footer */
   onToggleWatermarkFooter?: () => void;
   /** Si la marca de agua y footer están ocultos */
@@ -76,6 +82,9 @@ export function PrintToolbar({
   toggleLogoUrl,
   showLogoButton,
   logoVisible = true,
+  toggleReferredStampUrl,
+  showReferredStampButton,
+  referredStampVisible = true,
   onToggleWatermarkFooter,
   watermarkFooterHidden = false,
   onToggleStampEdit,
@@ -244,6 +253,23 @@ export function PrintToolbar({
                         <>
                           <ImagePlus className="h-4 w-4" />
                           Poner logo referido
+                        </>
+                      )}
+                    </Link>
+                  </Button>
+                )}
+                {showReferredStampButton && toggleReferredStampUrl && (
+                  <Button type="button" variant="ghost" size="sm" asChild className="justify-start gap-2 h-9">
+                    <Link href={toggleReferredStampUrl}>
+                      {referredStampVisible ? (
+                        <>
+                          <ImageMinus className="h-4 w-4" />
+                          Quitar sello referido
+                        </>
+                      ) : (
+                        <>
+                          <ImagePlus className="h-4 w-4" />
+                          Poner sello referido
                         </>
                       )}
                     </Link>
