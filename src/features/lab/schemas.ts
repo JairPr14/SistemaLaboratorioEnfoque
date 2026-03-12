@@ -233,9 +233,15 @@ export const orderCreateSchema = z.object({
   { message: "Selecciona al menos un análisis o una promoción", path: ["labTestIds"] }
 );
 
-export const orderAddItemsSchema = z.object({
-  labTestIds: z.array(z.string().min(1)).min(1),
-});
+export const orderAddItemsSchema = z
+  .object({
+    labTestIds: z.array(z.string().min(1)).optional().default([]),
+    profileIds: z.array(z.string().min(1)).optional().default([]),
+  })
+  .refine((data) => data.labTestIds.length > 0 || data.profileIds.length > 0, {
+    message: "Selecciona al menos un análisis o una promoción",
+    path: ["labTestIds"],
+  });
 
 export const patientDraftSchema = z.object({
   firstName: z.string().min(2),

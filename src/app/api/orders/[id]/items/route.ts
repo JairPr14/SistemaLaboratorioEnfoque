@@ -9,6 +9,49 @@ import { handleApiError } from "@/lib/api-errors";
 
 type Params = { params: Promise<{ id: string }> };
 
+const fullInclude = {
+  template: {
+    include: {
+      items: {
+        include: { refRanges: { orderBy: { order: "asc" as const } } },
+        orderBy: { order: "asc" as const },
+      },
+    },
+  },
+} as const;
+
+function buildTemplateSnapshot(test: { template?: { title: string; notes: string | null; items: Array<{
+  id: string; groupName: string | null; paramName: string; unit: string | null; refRangeText: string | null;
+  refMin: number | null; refMax: number | null; valueType: string; selectOptions: string; order: number;
+  refRanges: Array<{ ageGroup: string | null; sex: string | null; refRangeText: string | null; refMin: number | null; refMax: number | null; order: number }>;
+}> } | null }) {
+  if (!test.template) return undefined;
+  return JSON.stringify({
+    title: test.template.title,
+    notes: test.template.notes,
+    items: test.template.items.map((item) => ({
+      id: item.id,
+      groupName: item.groupName,
+      paramName: item.paramName,
+      unit: item.unit,
+      refRangeText: item.refRangeText,
+      refMin: item.refMin,
+      refMax: item.refMax,
+      valueType: item.valueType,
+      selectOptions: item.selectOptions ?? "[]",
+      order: item.order,
+      refRanges: (item.refRanges ?? []).map((r) => ({
+        ageGroup: r.ageGroup,
+        sex: r.sex,
+        refRangeText: r.refRangeText,
+        refMin: r.refMin,
+        refMax: r.refMax,
+        order: r.order ?? 0,
+      })),
+    })),
+  });
+}
+
 export async function POST(request: Request, { params }: Params) {
   const session = await getServerSession();
   if (!session?.user) {
@@ -20,15 +63,18 @@ export async function POST(request: Request, { params }: Params) {
     const payload = await request.json();
     const parsed = orderAddItemsSchema.parse(payload);
 
+    const labTestIds = parsed.labTestIds ?? [];
+    const profileIds = parsed.profileIds ?? [];
+
     const order = await prisma.labOrder.findFirst({
       where: { id: orderId },
-      include: { 
-        items: { 
-          select: { 
+      include: {
+        items: {
+          select: {
             labTestId: true,
-            promotionId: true 
-          } 
-        } 
+            promotionId: true,
+          },
+        },
       },
     });
 
@@ -43,123 +89,155 @@ export async function POST(request: Request, { params }: Params) {
       );
     }
 
-    // Verificar análisis existentes (tanto sueltos como en promociones)
     const existingLabTestIds = new Set(order.items.map((i) => i.labTestId));
-    
-    // Si hay promociones en la orden, verificar que los análisis a agregar no estén en esas promociones
-    const itemsWithPromotions = order.items.filter((i) => i.promotionId != null);
-    if (itemsWithPromotions.length > 0) {
-      const promotionIds = itemsWithPromotions
-        .map((i) => i.promotionId)
-        .filter((id): id is string => id != null);
-      if (promotionIds.length > 0) {
-        const profiles = await prisma.testProfile.findMany({
-          where: { id: { in: promotionIds } },
-          include: { items: { select: { labTestId: true } } },
-        });
-        
-        const testIdsInPromotions = new Set(
-          profiles.flatMap((p) => p.items.map((i) => i.labTestId))
-        );
-        
-        const duplicatesInPromotions = parsed.labTestIds.filter((id) => testIdsInPromotions.has(id));
-        if (duplicatesInPromotions.length > 0) {
+    const existingPromotionIds = new Set(
+      order.items.map((i) => i.promotionId).filter((id): id is string => id != null),
+    );
+
+    // Perfiles ya en la orden: obtener tests para detectar duplicados
+    let testIdsInExistingPromotions = new Set<string>();
+    if (existingPromotionIds.size > 0) {
+      const existingProfiles = await prisma.testProfile.findMany({
+        where: { id: { in: [...existingPromotionIds] } },
+        include: { items: { select: { labTestId: true } } },
+      });
+      testIdsInExistingPromotions = new Set(
+        existingProfiles.flatMap((p) => p.items.map((i) => i.labTestId)),
+      );
+    }
+
+    const itemsToCreate: Array<{
+      labTestId: string;
+      priceSnapshot: number;
+      templateSnapshot: string | undefined;
+      promotionId?: string;
+      promotionName?: string;
+      referredLabId?: string;
+      externalLabCostSnapshot?: number;
+    }> = [];
+    let addedFromProfiles = 0;
+
+    // Añadir promociones
+    const profileIdsToAdd = [...new Set(profileIds)].filter((id) => !existingPromotionIds.has(id));
+    if (profileIdsToAdd.length > 0) {
+      const profiles = await prisma.testProfile.findMany({
+        where: { id: { in: profileIdsToAdd }, isActive: true },
+        include: {
+          items: {
+            orderBy: { order: "asc" },
+            include: {
+              labTest: { include: { ...fullInclude, referredLab: true } },
+            },
+          },
+        },
+      });
+
+      for (const profile of profiles) {
+        const profileTests = profile.items.map((i) => i.labTest).filter(Boolean);
+        if (profileTests.length === 0) continue;
+
+        const hasConflict = profileTests.some((t) => existingLabTestIds.has(t.id) || testIdsInExistingPromotions.has(t.id));
+        if (hasConflict) {
           return NextResponse.json(
-            { 
-              error: `Los siguientes análisis ya están incluidos en promociones de esta orden: ${duplicatesInPromotions.join(", ")}. No se pueden agregar duplicados.` 
+            {
+              error: `La promoción "${profile.name}" incluye análisis que ya están en la orden. No se puede añadir.`,
             },
             { status: 400 },
           );
         }
+
+        const priceEach =
+          profile.packagePrice != null ? Number(profile.packagePrice) / profileTests.length : null;
+        for (const test of profileTests) {
+          existingLabTestIds.add(test.id);
+          const publicPrice = priceEach ?? Number(test.price);
+          itemsToCreate.push({
+            labTestId: test.id,
+            priceSnapshot: publicPrice,
+            templateSnapshot: buildTemplateSnapshot(test),
+            promotionId: profile.id,
+            promotionName: profile.name,
+            referredLabId: test.isReferred && test.referredLabId ? test.referredLabId : undefined,
+            externalLabCostSnapshot: test.externalLabCost != null ? Number(test.externalLabCost) : undefined,
+          });
+        }
+        addedFromProfiles += profileTests.length;
       }
     }
-    
-    const uniqueRequestedIds = [...new Set(parsed.labTestIds)];
-    const labTestIdsToAdd = uniqueRequestedIds.filter((tid) => !existingLabTestIds.has(tid));
 
-    if (labTestIdsToAdd.length === 0) {
+    // Verificar análisis individuales: no duplicar con promociones existentes
+    const duplicatesInPromotions = labTestIds.filter((id) => testIdsInExistingPromotions.has(id));
+    if (duplicatesInPromotions.length > 0) {
       return NextResponse.json(
-        { error: "Todos los análisis seleccionados ya están en la orden o están repetidos." },
-        { status: 400 },
-      );
-    }
-
-    const tests = await prisma.labTest.findMany({
-      where: {
-        id: { in: labTestIdsToAdd },
-        deletedAt: null,
-        isActive: true,
-      },
-      include: {
-        template: {
-          include: {
-            items: {
-              include: { refRanges: { orderBy: { order: "asc" } } },
-              orderBy: { order: "asc" },
-            },
-          },
+        {
+          error: `Los siguientes análisis ya están en promociones de esta orden: no se pueden agregar duplicados.`,
         },
-      },
-    });
-
-    if (!tests.length) {
-      return NextResponse.json(
-        { error: "Ningún análisis válido para añadir." },
         { status: 400 },
       );
     }
 
-    const currentTotal = Number(order.totalPrice);
-    const addedPrice = tests.reduce((acc, t) => acc + Number(t.price), 0);
-    const newTotal = currentTotal + addedPrice;
+    const uniqueLabTestIds = [...new Set(labTestIds)];
+    const labTestIdsToAdd = uniqueLabTestIds.filter((tid) => !existingLabTestIds.has(tid));
+
+    if (labTestIdsToAdd.length > 0) {
+      const tests = await prisma.labTest.findMany({
+        where: { id: { in: labTestIdsToAdd }, deletedAt: null, isActive: true },
+        include: { ...fullInclude, referredLab: true },
+      });
+
+      for (const test of tests) {
+        itemsToCreate.push({
+          labTestId: test.id,
+          priceSnapshot: Number(test.price),
+          templateSnapshot: buildTemplateSnapshot(test),
+          referredLabId: test.isReferred && test.referredLabId ? test.referredLabId : undefined,
+          externalLabCostSnapshot: test.externalLabCost != null ? Number(test.externalLabCost) : undefined,
+        });
+      }
+    }
+
+    if (itemsToCreate.length === 0) {
+      return NextResponse.json(
+        {
+          error:
+            profileIds.length > 0 || labTestIds.length > 0
+              ? "Todos los análisis y promociones seleccionados ya están en la orden."
+              : "Selecciona al menos un análisis o una promoción.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const addedPrice = itemsToCreate.reduce((acc, i) => acc + i.priceSnapshot, 0);
+    const newTotal = Number(order.totalPrice) + addedPrice;
 
     await prisma.$transaction(async (tx) => {
       await tx.labOrderItem.createMany({
-        data: tests.map((test) => ({
+        data: itemsToCreate.map((item) => ({
           orderId,
-          labTestId: test.id,
-          priceSnapshot: test.price,
-          templateSnapshot: (test.template
-            ? JSON.stringify({
-                title: test.template.title,
-                notes: test.template.notes,
-                items: test.template.items.map((item) => ({
-                  id: item.id,
-                  groupName: item.groupName,
-                  paramName: item.paramName,
-                  unit: item.unit,
-                  refRangeText: item.refRangeText,
-                  refMin: item.refMin ? Number(item.refMin) : null,
-                  refMax: item.refMax ? Number(item.refMax) : null,
-                  valueType: item.valueType,
-                  selectOptions: item.selectOptions ?? "[]",
-                  order: item.order,
-                  refRanges: (item.refRanges ?? []).map((r) => ({
-                    ageGroup: r.ageGroup,
-                    sex: r.sex,
-                    refRangeText: r.refRangeText,
-                    refMin: r.refMin,
-                    refMax: r.refMax,
-                    order: r.order ?? 0,
-                  })),
-                })),
-              })
-            : undefined) as string | undefined,
+          labTestId: item.labTestId,
+          priceSnapshot: item.priceSnapshot,
+          templateSnapshot: item.templateSnapshot,
+          promotionId: item.promotionId,
+          promotionName: item.promotionName,
+          referredLabId: item.referredLabId,
+          externalLabCostSnapshot: item.externalLabCostSnapshot,
         })),
       });
-
       await tx.labOrder.update({
         where: { id: orderId },
         data: { totalPrice: newTotal },
       });
     });
+
     revalidatePath("/orders");
     revalidatePath(`/orders/${orderId}`);
     revalidatePath("/dashboard");
 
     return NextResponse.json({
       success: true,
-      added: tests.length,
+      added: itemsToCreate.length,
+      addedFromProfiles,
       newTotal,
     });
   } catch (error) {

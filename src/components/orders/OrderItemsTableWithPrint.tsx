@@ -106,6 +106,11 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteIt
     () => order.items.map((i) => i.labTest.id),
     [order.items],
   );
+  const existingPromotionIds = useMemo(
+    () =>
+      [...new Set(order.items.map((i) => i.promotionId).filter((id): id is string => id != null))],
+    [order.items],
+  );
   const canAddAnalysis = order.status !== "ANULADO";
 
   const itemsByPromotion = useMemo(() => {
@@ -188,6 +193,7 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteIt
           <AddAnalysisToOrderDialog
             orderId={order.id}
             existingLabTestIds={[]}
+            existingPromotionIds={[]}
             open={addAnalysisOpen}
             onOpenChange={setAddAnalysisOpen}
           />
@@ -216,6 +222,7 @@ export function OrderItemsTableWithPrint({ order, defaultOpenItemId, canDeleteIt
               <AddAnalysisToOrderDialog
                 orderId={order.id}
                 existingLabTestIds={existingLabTestIds}
+                existingPromotionIds={existingPromotionIds}
                 open={addAnalysisOpen}
                 onOpenChange={setAddAnalysisOpen}
               />
